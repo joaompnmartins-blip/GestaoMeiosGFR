@@ -16,7 +16,8 @@ const JWT_EXPIRES = '12h';
 const PORT        = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static(__dirname));   // serves Gestao_Meios_v17.html and other static assets
+app.use(express.static(__dirname));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'Gestao_Meios_v17.html')));
 
 // ─── Role ordering ────────────────────────────────────────────────
 const ROLE_ORDER = ['visualizador', 'operacional', 'gestor', 'admin'];
