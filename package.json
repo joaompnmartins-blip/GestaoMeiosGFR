@@ -1,0 +1,18 @@
+{
+  "name": "gestao-meios-gfr",
+  "version": "1.0.0",
+  "description": "Gestão de Meios — ICNF/GFR",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
+  }
+}
