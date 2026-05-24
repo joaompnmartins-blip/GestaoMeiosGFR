@@ -320,5 +320,27 @@ app.delete('/api/utilizadores/:id', requireAuth('admin'), wrap(async (req, res) 
   res.json({ ok: true });
 }));
 
+// ─── Startup migrations ──────────────────────────────────────────
+async function runMigrations() {
+  // Add new columns (idempotent)
+  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS tipo_equipa TEXT`);
+  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS subregiao   TEXT`);
+  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS concelho    TEXT`);
+
+  // Seed ICNF/ANEPC 2026 data if table is empty
+  const { rows: cnt } = await pool.query('SELECT COUNT(*) FROM equipas');
+  if (parseInt(cnt[0].count) === 0) {
+    const fs = require('fs');
+    const sqlPath = require('path').join(__dirname, 'migration_v2_equipas.sql');
+    if (fs.existsSync(sqlPath)) {
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      await pool.query(sql);
+      console.log('Meios predefinidos ICNF/ANEPC 2026 importados.');
+    }
+  }
+}
+
 // ─── Start ────────────────────────────────────────────────────────
-app.listen(PORT, () => console.log(`Gestão Meios a correr na porta ${PORT}`));
+runMigrations()
+  .then(() => app.listen(PORT, () => console.log(`Gestão Meios a correr na porta ${PORT}`)))
+  .catch(err => { console.error('Erro na migração:', err.message); process.exit(1); });
