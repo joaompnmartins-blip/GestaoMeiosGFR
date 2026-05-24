@@ -320,6 +320,16 @@ app.delete('/api/utilizadores/:id', requireAuth('admin'), wrap(async (req, res) 
   res.json({ ok: true });
 }));
 
+// ─── Proxy fogos.pt (browser directo é bloqueado por Cloudflare) ─
+app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) => {
+  const r = await fetch('https://api.fogos.pt/v2/incidents/active', {
+    headers: { 'User-Agent': 'GestaoMeiosGFR/1.0' },
+  });
+  if (!r.ok) return res.status(502).json({ success: false, error: 'fogos.pt indisponível' });
+  const data = await r.json();
+  res.json(data);
+}));
+
 // ─── Startup migrations ──────────────────────────────────────────
 async function runMigrations() {
   // Add new columns (idempotent)

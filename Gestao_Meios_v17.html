@@ -3503,7 +3503,7 @@ async function loadFogosData() {
   document.getElementById('fogos-list').innerHTML = '<div class="fogos-loading">A carregar fogos.pt...</div>';
   document.getElementById('fogos-count-badge').textContent = '';
   try {
-    const res = await fetch('https://api.fogos.pt/v2/incidents/active');
+    const res = await fetch('/api/fogos/active');
     const json = await res.json();
     if(!json.success) throw new Error('API error');
     fogosData = (json.data || []).filter(d => d.coords && d.lat && d.lng);
