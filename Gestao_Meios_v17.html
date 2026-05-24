@@ -682,10 +682,20 @@
           <div class="section-title">Meios Predefinidos</div>
           <button class="btn btn-primary btn-sm auth-gestor" onclick="openNewEquipa()">+ Novo Meio</button>
         </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <input class="form-input" id="eq-filter-text" placeholder="🔍 Filtrar designação…" oninput="renderEquipas()" style="flex:1;min-width:140px;font-size:12px;padding:5px 8px;"/>
+          <select class="form-select" id="eq-filter-tipo-equipa" onchange="renderEquipas()" style="font-size:12px;padding:5px 8px;">
+            <option value="">Todos os tipos</option>
+          </select>
+          <select class="form-select" id="eq-filter-subregiao" onchange="renderEquipas()" style="font-size:12px;padding:5px 8px;">
+            <option value="">Todas as sub-regiões</option>
+          </select>
+          <input class="form-input" id="eq-filter-concelho" placeholder="Concelho…" oninput="renderEquipas()" style="width:130px;font-size:12px;padding:5px 8px;"/>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Designação</th><th>Tipo</th><th>Capacidade</th><th>Origem</th><th>Notas</th><th></th></tr>
+              <tr><th>Designação</th><th>Tipo Veículo</th><th>Tipo Equipa</th><th>Sub-Região</th><th>Concelho</th><th></th></tr>
             </thead>
             <tbody id="equipas-tbody"></tbody>
           </table>
@@ -817,7 +827,16 @@
     <div class="modal-section">Identificação</div>
     <div class="form-grid-3">
       <div class="form-field span3">
-        <label class="form-label">Meio predefinido</label>
+        <label class="form-label">Filtrar meio predefinido</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+          <select class="form-select" id="preset-filter-te" onchange="refreshPresetSelect()" style="flex:1;min-width:110px;font-size:11px;padding:4px 6px;">
+            <option value="">Tipo equipa…</option>
+          </select>
+          <select class="form-select" id="preset-filter-sr" onchange="refreshPresetSelect()" style="flex:1;min-width:130px;font-size:11px;padding:4px 6px;">
+            <option value="">Sub-região…</option>
+          </select>
+          <input class="form-input" id="preset-filter-cc" placeholder="Concelho…" oninput="refreshPresetSelect()" style="flex:1;min-width:100px;font-size:11px;padding:4px 6px;"/>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <select class="form-select" id="team-preset" onchange="applyPreset(this.value)" style="flex:1;">
             <option value="">— Selecionar meio predefinido —</option>
@@ -971,16 +990,32 @@
 <div class="modal-overlay" id="modal-equipa">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-equipa')">✕</button>
-    <div class="modal-title">Novo Meio Predefinido</div>
+    <div class="modal-title" id="modal-equipa-title">Novo Meio Predefinido</div>
     <input type="hidden" id="eq-edit-id"/>
     <div class="form-grid">
-      <div class="form-field"><label class="form-label">Designação</label><input class="form-input" id="eq-nome" placeholder="Ex: VLCI 22 FSBF"/></div>
-      <div class="form-field"><label class="form-label">Tipo</label>
+      <div class="form-field span2"><label class="form-label">Designação</label><input class="form-input" id="eq-nome" placeholder="Ex: VLCI 22 FSBF"/></div>
+      <div class="form-field"><label class="form-label">Tipo Veículo</label>
         <select class="form-select" id="eq-tipo">
-          <option>VLCI</option><option>VFCI</option><option>VAFR</option><option>VGFR</option>
-          <option>MR</option><option>PM</option><option>CNAF</option><option>SF</option><option>VN</option><option>Outro</option>
+          <option value="">— Tipo veículo —</option>
+          <option>ESF</option><option>VLCI</option><option>VFCI</option><option>VT_ICNF</option>
+          <option>VTEC</option><option>VTEC_ICNF</option><option>MR</option><option>PM</option>
+          <option>VALE</option><option>TF</option><option>VAFR</option><option>VGFR</option>
+          <option>VASG</option><option>VAOP</option><option>BRG</option><option>Outro</option>
         </select>
       </div>
+      <div class="form-field"><label class="form-label">Tipo Equipa</label>
+        <select class="form-select" id="eq-tipo-equipa">
+          <option value="">— Tipo equipa —</option>
+          <option>ESF</option><option>GFR</option><option>VN</option><option>FSBF</option>
+          <option>CNAF</option><option>UNM_FSBF</option><option>Outro</option>
+        </select>
+      </div>
+      <div class="form-field"><label class="form-label">Sub-Região</label>
+        <select class="form-select" id="eq-subregiao">
+          <option value="">— Sub-região —</option>
+        </select>
+      </div>
+      <div class="form-field"><label class="form-label">Concelho</label><input class="form-input" id="eq-concelho" placeholder="Ex: Lousã"/></div>
       <div class="form-field"><label class="form-label">Capacidade</label><input class="form-input" type="number" id="eq-cap" min="1" placeholder="4"/></div>
       <div class="form-field"><label class="form-label">Origem / Brigada</label><input class="form-input" id="eq-origem" placeholder="Ex: FSBF, LVT…"/></div>
       <div class="form-field span2"><label class="form-label">Notas</label><textarea class="form-textarea" id="eq-notas" placeholder="Equipamento, características…"></textarea></div>
@@ -1639,7 +1674,7 @@ function mapTeam(r){
   return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, eventos, created:r.created_at };
 }
 
-function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo, capacidade:r.capacidade, origem:r.origem, notas:r.notas }; }
+function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
 
 // ══════════════════════════════════════════════════════════════════
 //  SAVE HELPERS — offline-aware (queue when offline, Supabase when online)
@@ -1697,7 +1732,7 @@ async function persistOccEvento(occId, tag, msg, meioLabel){
 }
 
 async function persistEquipa(payload, editId){
-  const row = { nome:payload.nome, tipo:payload.tipo, capacidade:payload.capacidade, origem:payload.origem, notas:payload.notas };
+  const row = { nome:payload.nome, tipo:payload.tipo, tipo_equipa:payload.tipo_equipa||null, subregiao:payload.subregiao||null, concelho:payload.concelho||null, capacidade:payload.capacidade, origem:payload.origem, notas:payload.notas };
   if(editId){
     const id = await supaWriteOrQueue('equipas','update',{id:editId,row}, editId, `Editar equipa: ${payload.nome}`);
     if(id===null && isOnline) return null;
@@ -2641,9 +2676,9 @@ function applyPreset(id){
   if(!e) return;
   document.getElementById('team-eq').value=e.nome;
   document.getElementById('team-tipo').value=e.tipo;
-  document.getElementById('team-ops').value=e.capacidade;
-  document.getElementById('team-concelho').value=e.origem||'';
-  syncOpsFields(e.capacidade);
+  document.getElementById('team-ops').value=e.capacidade||'';
+  document.getElementById('team-concelho').value=e.concelho||e.origem||'';
+  syncOpsFields(e.capacidade||0);
 }
 
 function editTeam(id){
@@ -2783,13 +2818,40 @@ async function deleteTeam(id){
 // ══════════════════════════════════════════════════════════════════
 function renderEquipas(){
   const tbody=document.getElementById('equipas-tbody');
-  if(!db.equipas.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios predefinidos.</div></div></td></tr>';return;}
-  tbody.innerHTML=db.equipas.map(e=>`<tr>
+
+  // Populate filter selects on first render
+  const teSel = document.getElementById('eq-filter-tipo-equipa');
+  const srSel = document.getElementById('eq-filter-subregiao');
+  if(teSel && teSel.options.length <= 1){
+    const tipos = [...new Set(db.equipas.map(e=>e.tipo_equipa).filter(Boolean))].sort();
+    teSel.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  }
+  if(srSel && srSel.options.length <= 1){
+    const subs = [...new Set(db.equipas.map(e=>e.subregiao).filter(Boolean))].sort();
+    srSel.innerHTML = '<option value="">Todas as sub-regiões</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  }
+
+  // Apply filters
+  const q = (document.getElementById('eq-filter-text')?.value||'').toLowerCase();
+  const fTE = document.getElementById('eq-filter-tipo-equipa')?.value||'';
+  const fSR = document.getElementById('eq-filter-subregiao')?.value||'';
+  const fCC = (document.getElementById('eq-filter-concelho')?.value||'').toLowerCase();
+
+  const list = db.equipas.filter(e=>{
+    if(q && !e.nome.toLowerCase().includes(q)) return false;
+    if(fTE && e.tipo_equipa !== fTE) return false;
+    if(fSR && e.subregiao !== fSR) return false;
+    if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
+    return true;
+  });
+
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios predefinidos.</div></div></td></tr>';return;}
+  tbody.innerHTML=list.map(e=>`<tr>
     <td><strong>${esc(e.nome)}</strong></td>
-    <td><span class="badge badge-y">${esc(e.tipo)}</span></td>
-    <td style="text-align:center;font-family:'IBM Plex Mono',monospace">${e.capacidade||'—'}</td>
-    <td class="mono">${esc(e.origem||'—')}</td>
-    <td style="font-size:11px;color:var(--muted)">${esc(e.notas||'')}</td>
+    <td><span class="badge badge-y" style="font-size:9px">${esc(e.tipo)}</span></td>
+    <td><span class="badge" style="font-size:9px;border-color:var(--accent2);color:var(--accent2)">${esc(e.tipo_equipa||'—')}</span></td>
+    <td style="font-size:11px">${esc(e.subregiao||'—')}</td>
+    <td style="font-size:11px">${esc(e.concelho||'—')}</td>
     <td><div style="display:flex;gap:4px;">
       ${['admin','gestor'].includes(currentRole)?`<button class="btn btn-ghost btn-sm" onclick="editEquipa('${e.id}')">✎</button>`:''}
       ${['admin','gestor'].includes(currentRole)?`<button class="btn btn-danger btn-sm" onclick="deleteEquipa('${e.id}')">✕</button>`:''}
@@ -2804,18 +2866,48 @@ function openNewEquipaFromTeam(){
 let _equipa_from_team=false;
 
 function refreshPresetSelect(selectedId){
-  const sel=document.getElementById('team-preset');
+  const sel = document.getElementById('team-preset');
   if(!sel) return;
-  sel.innerHTML='<option value="">— Selecionar meio predefinido —</option>'+
-    db.equipas.map(e=>`<option value="${e.id}"${e.id===selectedId?' selected':''}>${esc(e.nome)} (${e.tipo})</option>`).join('');
+
+  // Populate filter dropdowns on first call
+  const teSel = document.getElementById('preset-filter-te');
+  const srSel = document.getElementById('preset-filter-sr');
+  if(teSel && teSel.options.length <= 1){
+    const tipos = [...new Set(db.equipas.map(e=>e.tipo_equipa).filter(Boolean))].sort();
+    teSel.innerHTML = '<option value="">Tipo equipa…</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  }
+  if(srSel && srSel.options.length <= 1){
+    const subs = [...new Set(db.equipas.map(e=>e.subregiao).filter(Boolean))].sort();
+    srSel.innerHTML = '<option value="">Sub-região…</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  }
+
+  // Apply filters
+  const fTE = teSel?.value || '';
+  const fSR = srSel?.value || '';
+  const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
+
+  const filtered = db.equipas.filter(e => {
+    if(fTE && e.tipo_equipa !== fTE) return false;
+    if(fSR && e.subregiao !== fSR) return false;
+    if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
+    return true;
+  });
+
+  sel.innerHTML = '<option value="">— Selecionar meio predefinido —</option>' +
+    filtered.map(e=>`<option value="${e.id}"${e.id===selectedId?' selected':''}>` +
+      `${esc(e.nome)}${e.tipo?' ('+esc(e.tipo)+')':''}${e.concelho?' · '+esc(e.concelho):''}` +
+      `</option>`).join('');
   if(selectedId) applyPreset(selectedId);
 }
 
 function openNewEquipa(){
   document.getElementById('eq-edit-id').value='';
-  ['eq-nome','eq-origem','eq-notas'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('eq-tipo').value='VLCI';
+  document.getElementById('modal-equipa-title').textContent='Novo Meio Predefinido';
+  ['eq-nome','eq-origem','eq-notas','eq-concelho'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('eq-tipo').value='';
+  document.getElementById('eq-tipo-equipa').value='';
   document.getElementById('eq-cap').value='';
+  populateSubregiaoSelect('eq-subregiao','');
   openModal('modal-equipa');
 }
 
@@ -2823,8 +2915,12 @@ function editEquipa(id){
   const e=db.equipas.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('eq-edit-id').value=e.id;
+  document.getElementById('modal-equipa-title').textContent='Editar Meio Predefinido';
   document.getElementById('eq-nome').value=e.nome||'';
-  document.getElementById('eq-tipo').value=e.tipo||'VLCI';
+  document.getElementById('eq-tipo').value=e.tipo||'';
+  document.getElementById('eq-tipo-equipa').value=e.tipo_equipa||'';
+  populateSubregiaoSelect('eq-subregiao', e.subregiao||'');
+  document.getElementById('eq-concelho').value=e.concelho||'';
   document.getElementById('eq-cap').value=e.capacidade||'';
   document.getElementById('eq-origem').value=e.origem||'';
   document.getElementById('eq-notas').value=e.notas||'';
@@ -2835,7 +2931,16 @@ async function saveEquipa(){
   const nome=document.getElementById('eq-nome').value.trim();
   if(!nome){toast('Insira a designação.','err');return;}
   const editId=document.getElementById('eq-edit-id').value;
-  const payload={nome,tipo:document.getElementById('eq-tipo').value,capacidade:parseInt(document.getElementById('eq-cap').value)||0,origem:document.getElementById('eq-origem').value.trim(),notas:document.getElementById('eq-notas').value.trim()};
+  const payload={
+    nome,
+    tipo:document.getElementById('eq-tipo').value,
+    tipo_equipa:document.getElementById('eq-tipo-equipa').value,
+    subregiao:document.getElementById('eq-subregiao').value,
+    concelho:document.getElementById('eq-concelho').value.trim(),
+    capacidade:parseInt(document.getElementById('eq-cap').value)||0,
+    origem:document.getElementById('eq-origem').value.trim(),
+    notas:document.getElementById('eq-notas').value.trim()
+  };
   if(editId){
     const idx=db.equipas.findIndex(x=>x.id===editId);
     if(idx>-1) db.equipas[idx]={...db.equipas[idx],...payload};

@@ -220,8 +220,9 @@ app.get('/api/equipas', requireAuth('visualizador'), wrap(async (req, res) => {
 app.post('/api/equipas', requireAuth('gestor'), wrap(async (req, res) => {
   const b = req.body;
   const { rows } = await pool.query(
-    'INSERT INTO equipas (nome, tipo, capacidade, origem, notas) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-    [b.nome, b.tipo || null, b.capacidade || 0, b.origem || null, b.notas || null]
+    'INSERT INTO equipas (nome, tipo, tipo_equipa, subregiao, concelho, capacidade, origem, notas) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [b.nome, b.tipo || null, b.tipo_equipa || null, b.subregiao || null, b.concelho || null,
+     b.capacidade || 0, b.origem || null, b.notas || null]
   );
   res.json(rows[0]);
 }));
@@ -229,8 +230,10 @@ app.post('/api/equipas', requireAuth('gestor'), wrap(async (req, res) => {
 app.patch('/api/equipas/:id', requireAuth('gestor'), wrap(async (req, res) => {
   const b = req.body;
   await pool.query(
-    'UPDATE equipas SET nome=$1, tipo=$2, capacidade=$3, origem=$4, notas=$5 WHERE id=$6',
-    [b.nome, b.tipo || null, b.capacidade || 0, b.origem || null, b.notas || null, req.params.id]
+    `UPDATE equipas SET nome=$1, tipo=$2, tipo_equipa=$3, subregiao=$4, concelho=$5,
+     capacidade=$6, origem=$7, notas=$8 WHERE id=$9`,
+    [b.nome, b.tipo || null, b.tipo_equipa || null, b.subregiao || null, b.concelho || null,
+     b.capacidade || 0, b.origem || null, b.notas || null, req.params.id]
   );
   res.json({ ok: true });
 }));
