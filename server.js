@@ -102,11 +102,16 @@ app.patch('/api/ocorrencias/:id', requireAuth('gestor'), wrap(async (req, res) =
   const b = req.body;
   await pool.query(
     `UPDATE ocorrencias
-     SET local_ignicao=$1, codigo_ocorrencia=$2, subregiao=$3, concelho=$4,
-         obs=$5, inicio=$6, status=$7
+     SET local_ignicao      = COALESCE($1, local_ignicao),
+         codigo_ocorrencia  = COALESCE($2, codigo_ocorrencia),
+         subregiao          = COALESCE($3, subregiao),
+         concelho           = COALESCE($4, concelho),
+         obs                = COALESCE($5, obs),
+         inicio             = COALESCE($6, inicio),
+         status             = COALESCE($7, status)
      WHERE id=$8`,
-    [b.local_ignicao, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-     b.obs || null, b.inicio || null, b.status, req.params.id]
+    [b.local_ignicao || null, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
+     b.obs || null, b.inicio || null, b.status || null, req.params.id]
   );
   res.json({ ok: true });
 }));
