@@ -505,9 +505,6 @@
       <div class="nav-item auth-admin" data-page="utilizadores" onclick="navTo('utilizadores',this)" style="display:none;">
         <span class="nav-icon">👤</span><span>Utilizadores</span>
       </div>
-      <div class="nav-item" data-page="esquema" onclick="navTo('esquema',this)">
-        <span class="nav-icon">⌗</span><span>BD Schema</span>
-      </div>
     </nav>
     <div class="sidebar-footer">
       <span class="dot"></span>SISTEMA ATIVO<br>
@@ -754,15 +751,6 @@
         </div>
       </div>
 
-            <!-- ══════════ PAGE: SCHEMA ══════════ -->
-      <div class="page" id="page-esquema">
-        <div class="section-hdr">
-          <div class="section-title">PostgreSQL — Schema SQL</div>
-          <button class="btn btn-ghost btn-sm" onclick="copySchema()">⎘ Copiar SQL</button>
-        </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Execute este script na sua base de dados PostgreSQL.</p>
-        <div class="schema-block" id="schema-sql"></div>
-      </div>
 
     </div>
   </div>
@@ -1819,7 +1807,6 @@ function navTo(page,el){
     utilizadores:{title:'Utilizadores',sub:'Gestão de acessos e roles',btn:null},
     equipas:{title:'Meios Predefinidos',sub:'Catálogo de meios para atribuição rápida',btn:'+ Novo Meio',btnFn:'openNewEquipa()'},
     arquivo:{title:'Arquivo',sub:'Ocorrências fechadas — consulta e exportação',btn:null},
-    esquema:{title:'BD Schema',sub:'PostgreSQL — Estrutura de base de dados',btn:null},
   };
   const c=cfg[page];
   if(c){
@@ -1832,7 +1819,6 @@ function navTo(page,el){
   if(page==='ocorrencias') renderOcorrencias();
   if(page==='arquivo') renderArquivo();
   if(page==='equipas'){ renderEquipas(); renderOperacionais(); }
-  if(page==='esquema') renderSchema();
   if(page==='utilizadores') renderUsers();
 }
 
@@ -3037,30 +3023,6 @@ async function deleteOperacional(id){
   toast('Eliminado.','info'); renderOperacionais();
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  SCHEMA SQL
-// ══════════════════════════════════════════════════════════════════
-const SQL_SCHEMA=`-- Gestão Meios — Railway PostgreSQL Schema
--- Ver ficheiro schema.sql para o schema completo.
--- Execute schema.sql na consola do Railway PostgreSQL após provisionar a base de dados.
--- ─────────────────────────────────────────────────────────────────────────────
-
--- Tabelas principais:
---   utilizadores  (id, email, password_hash, nome, role, subregiao, ativo)
---   ocorrencias   (id, local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status)
---   meios         (id, ocorrencia_id, eq, tipo, matricula, concelho, setor, operacionais, ...)
---   meios_operativos  (id, meio_id, nome, ordem)
---   meios_eventos     (id, meio_id, ts, msg, user_id)
---   ocorrencias_eventos (id, ocorrencia_id, ts, tag, meio_label, msg, user_id)
---   equipas       (id, nome, tipo, capacidade, origem, notas)
---   operacionais_predefinidos (id, nome, categoria, contacto, notas)
---   sectores      (id, designacao)
-
--- Primeiro utilizador admin (executar após schema.sql):
--- node -e "require('bcrypt').hash('PASSWORD',12).then(console.log)"
--- INSERT INTO utilizadores (email, password_hash, nome, role, ativo)
--- VALUES ('admin@icnf.pt', '<hash>', 'Administrador', 'admin', true);
-`;
 
 // ══════════════════════════════════════════════════════════════════
 //  LOG EXPORT
@@ -3269,18 +3231,6 @@ function exportLog(){
   toast('Log exportado!','ok');
 }
 
-function renderSchema(){
-  const html=SQL_SCHEMA.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/(--[^\n]*)/g,'<span class="cm">$1</span>')
-    .replace(/\b(CREATE|TABLE|INDEX|TRIGGER|VIEW|FUNCTION|INSERT|INTO|VALUES|SELECT|FROM|LEFT|JOIN|WHERE|GROUP|BY|ON|DELETE|CASCADE|SET|NULL|IF|NOT|EXISTS|RETURNS|LANGUAGE|BEGIN|END|RETURN|NEW|BEFORE|UPDATE|FOR|EACH|ROW|EXECUTE|DEFAULT|PRIMARY|KEY|REFERENCES|UNIQUE|CHECK|IN|AS|WITH|AND|OR|COUNT|SUM|FILTER|EXTENSION)\b/g,'<span class="kw">$1</span>')
-    .replace(/'([^']*)'/g,"<span class='str'>'$1'</span>")
-    .replace(/\b(UUID|TEXT|INT|TIMESTAMPTZ|TIME|DATE|BOOLEAN|BIGINT|NUMERIC)\b/g,'<span class="type">$1</span>');
-  document.getElementById('schema-sql').innerHTML=html;
-}
-
-function copySchema(){
-  navigator.clipboard.writeText(SQL_SCHEMA).then(()=>toast('SQL copiado!','ok'));
-}
 
 // ══════════════════════════════════════════════════════════════════
 //  MODAL / TOAST
