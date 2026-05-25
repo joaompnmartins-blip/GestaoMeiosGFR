@@ -2675,7 +2675,13 @@ function applyPreset(id){
   const e=db.equipas.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('team-eq').value=e.nome;
-  document.getElementById('team-tipo').value=e.tipo;
+  const tipoSel=document.getElementById('team-tipo');
+  if(e.tipo && ![...tipoSel.options].some(o=>o.value===e.tipo)){
+    const opt=document.createElement('option');
+    opt.value=opt.textContent=e.tipo;
+    tipoSel.appendChild(opt);
+  }
+  tipoSel.value=e.tipo||'';
   document.getElementById('team-ops').value=e.capacidade||'';
   document.getElementById('team-concelho').value=e.concelho||e.origem||'';
   syncOpsFields(e.capacidade||0);
