@@ -226,6 +226,11 @@
     .team-card.estado-descanso{border-left:3px solid var(--warn);}
     .team-card.estado-transito{border-left:3px solid var(--icnf-blue-light);}
     .team-card.estado-desmobilizado{border-left:3px solid var(--inactive);opacity:.65;}
+    .team-card.estado-previsto{border-left:3px solid #9870d0;opacity:.88;}
+    .badge-previsto{background:rgba(152,112,208,.12);color:#b890e8;border:1px solid rgba(152,112,208,.3);}
+    .previsto-section{margin-bottom:28px;}
+    .previsto-section-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(152,112,208,.06);border:1px solid rgba(152,112,208,.22);border-radius:2px;}
+    .previsto-section-label{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#b890e8;}
     .team-card.closed-occ{opacity:.75;filter:saturate(.5);}
     .team-card.closed-occ .team-card-head{opacity:.85;}
     .team-card-head{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid var(--border);}
@@ -617,6 +622,7 @@
             <div class="info-row"><span class="info-label">Em operação</span><span class="info-val" id="d-ops2" style="color:var(--success)">—</span></div>
             <div class="info-row"><span class="info-label">Em descanso</span><span class="info-val" id="d-rest2" style="color:var(--warn)">—</span></div>
             <div class="info-row"><span class="info-label">Em trânsito</span><span class="info-val" id="d-transit" style="color:var(--accent3)">—</span></div>
+            <div class="info-row"><span class="info-label">Previstos</span><span class="info-val" id="d-previsto" style="color:#b890e8">—</span></div>
             <div class="info-row"><span class="info-label">Desmobilizados</span><span class="info-val" id="d-demob2" style="color:var(--muted)">—</span></div>
           </div>
         </div>
@@ -923,12 +929,21 @@
     <div class="form-grid">
       <div class="form-field">
         <label class="form-label">Estado</label>
-        <select class="form-select" id="team-estado">
+        <select class="form-select" id="team-estado" onchange="togglePrevistoFields(this.value)">
+          <option value="previsto">Previsto</option>
           <option value="transito">Em Trânsito</option>
           <option value="operacao">Em Operação</option>
           <option value="descanso">Em Descanso</option>
           <option value="desmobilizado">Desmobilizado</option>
         </select>
+      </div>
+      <div class="form-field" id="previsto-data-field" style="display:none;">
+        <label class="form-label">Data prevista disponibilidade</label>
+        <input class="form-input" id="team-previsto-data" type="date"/>
+      </div>
+      <div class="form-field" id="previsto-hora-field" style="display:none;">
+        <label class="form-label">Hora prevista</label>
+        <input class="form-input" id="team-previsto-hora" type="time"/>
       </div>
       <div class="form-field">
         <label class="form-label">Setor</label>
@@ -1659,7 +1674,7 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, eventos, created:r.created_at };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, eventos, created:r.created_at };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -1684,7 +1699,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -2254,7 +2269,7 @@ function renderTeams(){
   const occ=db.ocorrencias.find(x=>x.id===currentOccId);
   const isClosed = occ && occ.status==='closed';
   const teams=db.teams.filter(t=>t.ocorrencia_id===currentOccId);
-  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
+  const activeT=teams.filter(t=>t.estado!=='desmobilizado'&&t.estado!=='previsto');
   document.getElementById('team-count-label').textContent=`${activeT.length} meios`;
   document.getElementById('d-total').textContent=activeT.length;
   const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
@@ -2263,6 +2278,7 @@ function renderTeams(){
   document.getElementById('d-rest2').textContent=teams.filter(t=>t.estado==='descanso').length;
   document.getElementById('d-demob2').textContent=teams.filter(t=>t.estado==='desmobilizado').length;
   document.getElementById('d-transit').textContent=teams.filter(t=>t.estado==='transito').length;
+  document.getElementById('d-previsto').textContent=teams.filter(t=>t.estado==='previsto').length;
   // Alerts disabled for closed ocorrências
   if(isClosed) document.getElementById('alerts-row').innerHTML='';
   else renderAlerts(teams);
@@ -2288,34 +2304,57 @@ function renderAlerts(teams){
 // ─── SECTOR VIEW ───────────────────────────────────────────────
 function renderSectorView(teams, isClosed){
   const container=document.getElementById('view-sector');
-  // Group by sector; teams with no sector go to "Sem Setor"
+  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
+
+  const previstos=teams.filter(t=>t.estado==='previsto');
+  const ativos=teams.filter(t=>t.estado!=='previsto');
+
+  // Group active teams by sector
   const sectors={};
-  teams.forEach(t=>{
+  ativos.forEach(t=>{
     const s=t.setor||'(Sem Setor)';
     if(!sectors[s]) sectors[s]=[];
     sectors[s].push(t);
   });
-  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
-  const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
-  container.innerHTML=sorted.map(s=>{
-    const st=sectors[s];
-    const ops=st.filter(t=>t.estado==='operacao').length;
-    const rest=st.filter(t=>t.estado==='descanso').length;
-    const transit=st.filter(t=>t.estado==='transito').length;
-    const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
-    return `<div class="sector-group">
-      <div class="sector-header">
-        <span class="sector-label">${esc(s)}</span>
-        <div class="sector-stats">
-          <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
-          <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
-          <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
-          <span class="sector-stat">👥 ${totalOps} op.ais</span>
-        </div>
+
+  let html='';
+
+  // PREVISTOS block (top, separate)
+  if(previstos.length){
+    html+=`<div class="previsto-section">
+      <div class="previsto-section-hdr">
+        <span class="previsto-section-label">⏳ Previstos</span>
+        <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
       </div>
-      <div class="teams-grid">${st.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
+      <div class="teams-grid">${previstos.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
     </div>`;
-  }).join('');
+  }
+
+  // Regular sector groups
+  if(Object.keys(sectors).length){
+    const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
+    html+=sorted.map(s=>{
+      const st=sectors[s];
+      const ops=st.filter(t=>t.estado==='operacao').length;
+      const rest=st.filter(t=>t.estado==='descanso').length;
+      const transit=st.filter(t=>t.estado==='transito').length;
+      const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
+      return `<div class="sector-group">
+        <div class="sector-header">
+          <span class="sector-label">${esc(s)}</span>
+          <div class="sector-stats">
+            <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
+            <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
+            <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
+            <span class="sector-stat">👥 ${totalOps} op.ais</span>
+          </div>
+        </div>
+        <div class="teams-grid">${st.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  container.innerHTML=html;
 }
 
 // ─── CARDS VIEW ────────────────────────────────────────────────
@@ -2323,7 +2362,7 @@ function renderCardsView(teams, isClosed){
   const container=document.getElementById('view-cards');
   if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
   // Sort: operacao first, then transito, descanso, desmobilizado; within each sort by urgency
-  const order={operacao:0,transito:1,descanso:2,desmobilizado:3};
+  const order={operacao:0,transito:1,descanso:2,previsto:3,desmobilizado:4};
   const sorted=[...teams].sort((a,b)=>{
     const od=(order[a.estado]||0)-(order[b.estado]||0);
     if(od!==0) return od;
@@ -2337,7 +2376,7 @@ function renderCardsView(teams, isClosed){
 function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
   if(!teams.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios.</div></div></td></tr>';return;}
-  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'}};
+  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   tbody.innerHTML=teams.map(t=>{
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
@@ -2369,7 +2408,7 @@ function renderTableView(teams, isClosed){
 
 // ─── TEAM CARD HTML ────────────────────────────────────────────
 function teamCardHtml(t, isClosed){
-  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'}};
+  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
   const ti=(!isClosed && t.estado==='operacao')?timeInfo(t):null;
@@ -2404,10 +2443,11 @@ function teamCardHtml(t, isClosed){
 
   // Action buttons — hidden for closed ocorrências
   const actionsHtml = isClosed ? '' : `<div class="team-card-actions">
-      ${['admin','gestor','operacional'].includes(currentRole)&&t.estado!=='operacao'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
+      ${['admin','gestor','operacional'].includes(currentRole)&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
+      ${['admin','gestor','operacional'].includes(currentRole)&&t.estado!=='operacao'&&t.estado!=='previsto'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
       ${['admin','gestor','operacional'].includes(currentRole)&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
       ${['admin','gestor','operacional'].includes(currentRole)&&t.estado!=='desmobilizado'?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">✕ Desmob.</button>`:''}
-      ${['admin','gestor','operacional'].includes(currentRole)?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${['admin','gestor','operacional'].includes(currentRole)&&t.estado!=='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
       ${['admin','gestor','operacional'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
       ${['admin','gestor'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${['admin','gestor'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
@@ -2424,6 +2464,7 @@ function teamCardHtml(t, isClosed){
       <div class="team-card-row"><span class="lbl">Responsável</span><span class="val">${esc(t.responsavel||'—')}</span></div>
       ${t.contacto?`<div class="team-card-row"><span class="lbl">Contacto</span><span class="val">${esc(t.contacto)}</span></div>`:''}
       ${t.missao?`<div class="team-card-row"><span class="lbl">Missão</span><span class="val">${esc(t.missao)}</span></div>`:''}
+      ${t.estado==='previsto'&&(t.previstoData||t.previstoHora)?`<div class="team-card-row"><span class="lbl" style="color:#b890e8">Disponível em</span><span class="val" style="color:#b890e8">${fmtDateShort(t.previstoData)||''} ${t.previstoHora||'—'}</span></div>`:''}
       <div class="team-card-row"><span class="lbl">Chegada</span><span class="val">${fmtDateShort(t.dataChegada)} ${t.horaChegada||'—'}</span></div>
       ${t.dataDemob?`<div class="team-card-row"><span class="lbl">Desmob.</span><span class="val">${fmtDateShort(t.dataDemob)} ${t.horaDemob||''}</span></div>`:''}
       ${t.obs?`<div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.4">${esc(t.obs)}</div>`:''}
@@ -2445,7 +2486,20 @@ function quickAction(type, teamId){
   const body=document.getElementById('action-body');
   const footer=document.getElementById('action-footer');
 
-  if(type==='op'){
+  if(type==='transit'){
+    title.textContent=`Activar Trânsito — ${t.eq}`;
+    const now=new Date();
+    body.innerHTML=`
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma activação em <strong>trânsito</strong> para <strong>${esc(t.eq)}</strong>?</p>
+      <div class="form-grid" style="margin-top:14px;">
+        <div class="form-field"><label class="form-label">Data despacho</label><input class="form-input" id="qa-transit-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
+        <div class="form-field"><label class="form-label">Hora despacho</label><input class="form-input" id="qa-transit-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
+        <div class="form-field span2"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-transit-obs" rows="2" placeholder="Origem, destino, instruções…"></textarea></div>
+      </div>`;
+    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+      <button class="btn btn-info" style="border-color:rgba(152,112,208,.4);color:#b890e8" onclick="doQuickTransit('${teamId}')">▶ Confirmar Trânsito</button>`;
+  }
+  else if(type==='op'){
     title.textContent=`Activar Operação — ${t.eq}`;
     const now=new Date();
     const dateStr=now.toISOString().split('T')[0];
@@ -2515,6 +2569,24 @@ function quickAction(type, teamId){
       <button class="btn btn-primary" onclick="doQuickObs('${teamId}')">📝 Registar</button>`;
   }
   openModal('modal-action');
+}
+
+async function doQuickTransit(id){
+  const t=db.teams.find(x=>x.id===id);
+  if(!t) return;
+  const d=document.getElementById('qa-transit-date').value;
+  const h=document.getElementById('qa-transit-time').value;
+  const obs=document.getElementById('qa-transit-obs').value.trim();
+  t.estado='transito';
+  t.dataDespacho=d||null; t.horaDespacho=h||null;
+  t.previstoData=null; t.previstoHora=null;
+  const msg=`Activado em trânsito.${obs?' '+obs:''}`;
+  const row={...t, data_despacho:t.dataDespacho, hora_despacho:t.horaDespacho, previsto_data:null, previsto_hora:null};
+  await supaWriteOrQueue('meios','update',{id,row},id,msg);
+  await supaWriteOrQueue('meios_eventos','insert',{meio_id:id,ts:new Date().toISOString(),msg,user_id:currentUser?.id||null},null,msg);
+  await logOccEvento(currentOccId,msg,'estado',t.eq);
+  closeModal('modal-action');
+  cacheToIDB(); renderTeams(); toast(`${t.eq} — em trânsito.`,'ok');
 }
 
 async function doQuickOp(id){
@@ -2611,6 +2683,12 @@ function makeOpsItem(val, idx){
   return div;
 }
 
+function togglePrevistoFields(val){
+  const show=val==='previsto';
+  document.getElementById('previsto-data-field').style.display=show?'':'none';
+  document.getElementById('previsto-hora-field').style.display=show?'':'none';
+}
+
 function syncOpsFields(n){
   const count=parseInt(n)||0;
   const list=document.getElementById('ops-list');
@@ -2645,7 +2723,10 @@ function openAddTeam(){
   document.getElementById('team-setor').value='';
   document.getElementById('team-tipo').value='';
   document.getElementById('team-ops').value='';
-  document.getElementById('team-estado').value='transito';
+  document.getElementById('team-estado').value='previsto';
+  document.getElementById('team-previsto-data').value='';
+  document.getElementById('team-previsto-hora').value='';
+  togglePrevistoFields('previsto');
   document.getElementById('team-data-despacho').value='';
   document.getElementById('team-data-saida-entidade').value='';
   document.getElementById('team-data-chegada').value=new Date().toISOString().split('T')[0];
@@ -2702,6 +2783,9 @@ function editTeam(id){
   document.getElementById('team-km').value=t.km||'';
   document.getElementById('team-missao').value=t.missao||'';
   document.getElementById('team-estado').value=t.estado||'transito';
+  document.getElementById('team-previsto-data').value=t.previstoData||'';
+  document.getElementById('team-previsto-hora').value=t.previstoHora||'';
+  togglePrevistoFields(t.estado||'transito');
   document.getElementById('team-obs').value=t.obs||'';
   // Operatives
   const list=document.getElementById('ops-list');
@@ -2749,6 +2833,8 @@ async function saveTeam(){
     missao:document.getElementById('team-missao').value.trim(),
     estado:document.getElementById('team-estado').value,
     obs:document.getElementById('team-obs').value.trim(),
+    previstoData:document.getElementById('team-previsto-data').value||null,
+    previstoHora:document.getElementById('team-previsto-hora').value||null,
   };
   const id = await persistTeam(payload, editId||null);
   if(!id) return;

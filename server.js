@@ -131,6 +131,7 @@ const MEIO_COLS = [
   'data_chegada','hora_chegada','horas_max','limite_op','limite_op_date',
   'data_demob','hora_demob','data_chegada_entidade','hora_chegada_entidade',
   'km','missao','estado','obs',
+  'previsto_data','previsto_hora',
 ];
 
 app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
@@ -336,6 +337,25 @@ async function runMigrations() {
   await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS tipo_equipa TEXT`);
   await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS subregiao   TEXT`);
   await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS concelho    TEXT`);
+
+  // Previsto state: new columns + extend CHECK constraint
+  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS previsto_data DATE`);
+  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS previsto_hora TIME`);
+  // Drop old CHECK and re-add with 'previsto' included (idempotent via constraint name)
+  await pool.query(`
+    DO $$ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'meios_estado_check' AND conrelid = 'meios'::regclass
+      ) THEN
+        ALTER TABLE meios DROP CONSTRAINT meios_estado_check;
+      END IF;
+    END $$
+  `);
+  await pool.query(`
+    ALTER TABLE meios ADD CONSTRAINT meios_estado_check
+      CHECK (estado IN ('transito','operacao','descanso','desmobilizado','previsto'))
+  `);
 
   // Seed ICNF/ANEPC 2026 data if table is empty
   const { rows: cnt } = await pool.query('SELECT COUNT(*) FROM equipas');

@@ -88,7 +88,9 @@ CREATE TABLE IF NOT EXISTS meios (
     missao                  TEXT,
     obs                     TEXT,
     estado                  TEXT        DEFAULT 'transito'
-                                          CHECK (estado IN ('transito','operacao','descanso','desmobilizado')),
+                                          CHECK (estado IN ('transito','operacao','descanso','desmobilizado','previsto')),
+    previsto_data           DATE,
+    previsto_hora           TIME,
     created_by              UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
     created_at              TIMESTAMPTZ DEFAULT now(),
     updated_at              TIMESTAMPTZ DEFAULT now()
