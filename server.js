@@ -161,9 +161,13 @@ app.post('/api/meios', requireAuth('gestor'), wrap(async (req, res) => {
 
 app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) => {
   const b = req.body;
-  const sets = MEIO_COLS.map((c, i) => `${c}=$${i + 1}`).join(',');
-  const vals = [...MEIO_COLS.map(c => b[c] ?? null), req.params.id];
-  await pool.query(`UPDATE meios SET ${sets} WHERE id=$${MEIO_COLS.length + 1}`, vals);
+  // Only update columns present in the body — partial rows from quick actions
+  // must not null out NOT NULL columns like ocorrencia_id or eq.
+  const cols = MEIO_COLS.filter(c => c in b);
+  if (!cols.length) return res.json({ ok: true });
+  const sets = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
+  const vals = [...cols.map(c => b[c] ?? null), req.params.id];
+  await pool.query(`UPDATE meios SET ${sets} WHERE id=$${cols.length + 1}`, vals);
   res.json({ ok: true });
 }));
 
