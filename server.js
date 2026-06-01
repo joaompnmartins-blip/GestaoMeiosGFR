@@ -7,7 +7,7 @@ const path     = require('path');
 
 const app  = express();
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
@@ -375,6 +375,10 @@ async function runMigrations() {
 }
 
 // ─── Start ────────────────────────────────────────────────────────
-runMigrations()
-  .then(() => app.listen(PORT, () => console.log(`Gestão Meios a correr na porta ${PORT}`)))
-  .catch(err => { console.error('Erro na migração:', err.message); process.exit(1); });
+if (require.main === module) {
+  runMigrations()
+    .then(() => app.listen(PORT, () => console.log(`Gestão Meios a correr na porta ${PORT}`)))
+    .catch(err => { console.error('Erro na migração:', err.message); process.exit(1); });
+}
+
+module.exports = { app, pool };

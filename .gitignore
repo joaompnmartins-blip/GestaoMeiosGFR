@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.test
+*.odt
+*.docx
+*.ods
+*.xlsx
+OldVersions/
+fichas_de_incendios/
+passwords.odt
+test-results/
+playwright-report/
