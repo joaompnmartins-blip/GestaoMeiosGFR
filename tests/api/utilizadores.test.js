@@ -127,7 +127,7 @@ describe('PATCH /api/utilizadores/:id', () => {
 
     // Restaurar
     await testPool.query(
-      'UPDATE utilizadores SET subregiao=NULL WHERE id=$2',
+      'UPDATE utilizadores SET subregiao=NULL WHERE id=$1',
       [users.gestor.id]
     );
   });
