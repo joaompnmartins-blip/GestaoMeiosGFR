@@ -1951,14 +1951,14 @@ function renderOcorrencias(){
 }
 
 function updateStats(){
-  const active=db.ocorrencias.filter(o=>o.status==='active').length;
-  document.getElementById('s-active').textContent=active;
-  const activeTeams=db.teams.filter(t=>t.estado!=='desmobilizado');
+  const activeOccIds=new Set(db.ocorrencias.filter(o=>o.status==='active').map(o=>o.id));
+  document.getElementById('s-active').textContent=activeOccIds.size;
+  const activeTeams=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado!=='desmobilizado');
   document.getElementById('s-teams').textContent=activeTeams.length;
   document.getElementById('s-operacionais').textContent=activeTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  document.getElementById('s-ops').textContent=db.teams.filter(t=>t.estado==='operacao').length;
-  document.getElementById('s-rest').textContent=db.teams.filter(t=>t.estado==='descanso').length;
-  document.getElementById('s-demob').textContent=db.teams.filter(t=>t.estado==='desmobilizado').length;
+  document.getElementById('s-ops').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='operacao').length;
+  document.getElementById('s-rest').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='descanso').length;
+  document.getElementById('s-demob').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='desmobilizado').length;
 }
 
 // ══════════════════════════════════════════════════════════════════
