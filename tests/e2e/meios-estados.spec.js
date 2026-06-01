@@ -67,7 +67,8 @@ test.describe('Transições de estado de meios', () => {
   test('Activar Operação → toast com limite operacional', async ({ page }) => {
     await adicionarMeio(page, 'transito');
 
-    await page.locator('.team-card button:has-text("Em Operação")').first().click();
+    // Botão real: "▶ Activar Op."
+    await page.locator('.team-card button:has-text("Activar Op.")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
 
     const today = new Date().toISOString().split('T')[0];
@@ -81,7 +82,9 @@ test.describe('Transições de estado de meios', () => {
   });
 
   test('modal fecha após confirmar Descanso', async ({ page }) => {
-    await adicionarMeio(page, 'transito');
+    // Botão "⏸ Descanso" só aparece quando estado='operacao'
+    // Adicionamos o meio já em operação directamente pelo formulário
+    await adicionarMeio(page, 'operacao');
 
     await page.locator('.team-card button:has-text("Descanso")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
@@ -94,7 +97,8 @@ test.describe('Transições de estado de meios', () => {
   test('Desmobilizar → toast "Desmobilizado"', async ({ page }) => {
     await adicionarMeio(page, 'transito');
 
-    await page.locator('.team-card button:has-text("Desmobilizar")').first().click();
+    // Botão real: "✕ Desmob."
+    await page.locator('.team-card button:has-text("Desmob.")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
 
     const today = new Date().toISOString().split('T')[0];
