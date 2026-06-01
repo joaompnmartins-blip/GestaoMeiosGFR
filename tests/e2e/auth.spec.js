@@ -1,59 +1,53 @@
 'use strict';
 const { test, expect } = require('@playwright/test');
 
+// Helper reutilizável — login num página fresca
+async function login(page, email, password) {
+  await page.goto('/');
+  await page.fill('#auth-email', email);
+  await page.fill('#auth-pass', password);
+  await page.click('#auth-btn');
+}
+
 test.describe('Autenticação', () => {
   test('login com credenciais válidas entra na aplicação', async ({ page }) => {
-    await page.goto('/');
-    await page.fill('#login-email', 'admin@test.pt');
-    await page.fill('#login-password', 'test123');
-    await page.click('#login-btn');
+    await login(page, 'admin@test.pt', 'test123');
 
-    // Deve aparecer o dashboard (nav-items visíveis)
-    await expect(page.locator('#app')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('#user-info')).toContainText('Admin Teste');
+    // Auth overlay desaparece e topbar mostra o nome
+    await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
+    await expect(page.locator('#topbar-user')).toContainText('Admin Teste');
   });
 
   test('login com password errada mostra erro', async ({ page }) => {
-    await page.goto('/');
-    await page.fill('#login-email', 'admin@test.pt');
-    await page.fill('#login-password', 'errada');
-    await page.click('#login-btn');
+    await login(page, 'admin@test.pt', 'errada');
 
-    await expect(page.locator('#login-error')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('#auth-err')).not.toBeEmpty({ timeout: 3000 });
   });
 
   test('logout volta ao ecrã de login', async ({ page }) => {
-    await page.goto('/');
-    await page.fill('#login-email', 'admin@test.pt');
-    await page.fill('#login-password', 'test123');
-    await page.click('#login-btn');
-    await page.locator('#app').waitFor({ state: 'visible' });
+    await login(page, 'admin@test.pt', 'test123');
+    await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
 
-    await page.click('#logout-btn');
-    await expect(page.locator('#login-screen')).toBeVisible({ timeout: 3000 });
+    await page.click('#btn-logout');
+
+    await expect(page.locator('#auth-overlay')).not.toHaveClass(/hidden/, { timeout: 3000 });
   });
 
   test('reload mantém sessão (sessionStorage)', async ({ page }) => {
-    await page.goto('/');
-    await page.fill('#login-email', 'admin@test.pt');
-    await page.fill('#login-password', 'test123');
-    await page.click('#login-btn');
-    await page.locator('#app').waitFor({ state: 'visible' });
+    await login(page, 'admin@test.pt', 'test123');
+    await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
 
     await page.reload();
-    // Deve manter-se logado após reload
-    await expect(page.locator('#app')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('#login-screen')).toBeHidden();
+
+    await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
+    await expect(page.locator('#topbar-user')).not.toBeEmpty();
   });
 
-  test('perfil visualizador — botões de criar não visíveis', async ({ page }) => {
-    await page.goto('/');
-    await page.fill('#login-email', 'viz@test.pt');
-    await page.fill('#login-password', 'test123');
-    await page.click('#login-btn');
-    await page.locator('#app').waitFor({ state: 'visible' });
+  test('perfil visualizador — botão Nova Ocorrência não visível', async ({ page }) => {
+    await login(page, 'viz@test.pt', 'test123');
+    await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
 
-    // Botão "Nova Ocorrência" não deve estar visível para visualizador
-    await expect(page.locator('.btn-new-occ')).toBeHidden();
+    // #btnNew tem classe auth-gestor — não deve estar visível para visualizador
+    await expect(page.locator('#btnNew')).toBeHidden();
   });
 });

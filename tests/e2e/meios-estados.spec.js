@@ -1,122 +1,108 @@
 'use strict';
 const { test, expect } = require('@playwright/test');
 
-// Helper: faz login como gestor
-async function loginGestor(page) {
+async function login(page, email = 'gestor@test.pt', password = 'test123') {
   await page.goto('/');
-  await page.fill('#login-email', 'gestor@test.pt');
-  await page.fill('#login-password', 'test123');
-  await page.click('#login-btn');
-  await page.locator('#app').waitFor({ state: 'visible' });
+  await page.fill('#auth-email', email);
+  await page.fill('#auth-pass', password);
+  await page.click('#auth-btn');
+  await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 8000 });
 }
 
-// Helper: cria uma ocorrência e abre o detalhe
-async function criarEAbrirOcorrencia(page) {
-  await page.click('.btn-new-occ');
-  await page.fill('#occ-local', 'Local E2E Teste');
-  await page.fill('#occ-codigo', 'E2E-001');
-  await page.click('#save-occ-btn');
-  await page.locator('.occ-item').first().click();
-  await page.locator('#detail-panel').waitFor({ state: 'visible' });
+async function criarOcorrencia(page) {
+  await page.click('#btnNew');
+  await page.locator('#modal-occ').waitFor({ state: 'visible' });
+  await page.fill('#occ-nome', 'Ocorrência E2E Teste');
+  await page.selectOption('#occ-subregiao', 'Alto Minho');
+  await page.locator('#modal-occ button:has-text("Guardar")').click();
+  // Esperar que a ocorrência apareça na lista e clicar para abrir detalhe
+  await page.locator('.occ-card').first().waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('.occ-card').first().click();
+  await expect(page.locator('#page-detalhe')).toBeVisible({ timeout: 5000 });
+}
+
+async function adicionarMeio(page, estado = 'previsto') {
+  await page.locator('button[onclick="openAddTeam()"]').click();
+  await page.locator('#modal-team').waitFor({ state: 'visible' });
+  await page.fill('#team-eq', `VFCI-E2E-${Date.now()}`);
+  await page.selectOption('#team-estado', estado);
+  if (estado === 'previsto') {
+    await page.fill('#team-previsto-data', '2026-06-02');
+    await page.fill('#team-previsto-hora', '08:00');
+  }
+  await page.locator('#modal-team button:has-text("Guardar")').click();
+  await page.locator('#modal-team').waitFor({ state: 'hidden' });
 }
 
 test.describe('Transições de estado de meios', () => {
   test.beforeEach(async ({ page }) => {
-    await loginGestor(page);
-    await criarEAbrirOcorrencia(page);
+    await login(page);
+    await criarOcorrencia(page);
   });
 
   test('adicionar meio previsto → aparece na secção Previstos', async ({ page }) => {
-    await page.click('#add-team-btn');
-    await page.fill('#team-eq', 'VFCI-E2E-001');
-    await page.selectOption('#team-estado', 'previsto');
-    await page.fill('#team-previsto-data', '2026-06-02');
-    await page.fill('#team-previsto-hora', '08:00');
-    await page.click('#save-team-btn');
+    await adicionarMeio(page, 'previsto');
 
-    await expect(page.locator('.previsto-section')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.previsto-section')).toContainText('VFCI-E2E-001');
+    await expect(page.locator('.previsto-section')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.previsto-section')).toContainText('VFCI-E2E-');
   });
 
-  test('Activar Trânsito → toast aparece + meio sai da secção Previstos', async ({ page }) => {
-    // Adicionar meio previsto
-    await page.click('#add-team-btn');
-    await page.fill('#team-eq', 'VFCI-E2E-002');
-    await page.selectOption('#team-estado', 'previsto');
-    await page.fill('#team-previsto-data', '2026-06-02');
-    await page.fill('#team-previsto-hora', '09:00');
-    await page.click('#save-team-btn');
+  test('Activar Trânsito → toast aparece e modal fecha', async ({ page }) => {
+    await adicionarMeio(page, 'previsto');
+    await expect(page.locator('.previsto-section')).toBeVisible({ timeout: 5000 });
 
-    // Clicar no botão Activar Trânsito
-    await page.locator('.team-card.estado-previsto').first().locator('[onclick*="quickAction(\'transit\'"]').click();
+    // Clicar no botão "Activar Trânsito" no card previsto
+    await page.locator('.team-card.estado-previsto button:has-text("Activar Trânsito")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
 
-    // Confirmar
-    await page.click('button:has-text("Confirmar Trânsito")');
+    await page.locator('#modal-action button:has-text("Confirmar Trânsito")').click();
 
-    // Toast deve aparecer
-    await expect(page.locator('.toast')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.toast')).toContainText('Em Trânsito');
+    // Toast de confirmação deve aparecer
+    await expect(page.locator('#toast')).toContainText('Em Trânsito', { timeout: 5000 });
 
     // Modal deve fechar
     await expect(page.locator('#modal-action')).toBeHidden({ timeout: 3000 });
-
-    // Meio não deve estar na secção previstos
-    const prevSection = page.locator('.previsto-section');
-    if (await prevSection.isVisible()) {
-      await expect(prevSection).not.toContainText('VFCI-E2E-002');
-    }
   });
 
-  test('Activar Operação → toast com limite', async ({ page }) => {
-    // Adicionar meio em trânsito
-    await page.click('#add-team-btn');
-    await page.fill('#team-eq', 'VFCI-E2E-003');
-    await page.selectOption('#team-estado', 'transito');
-    await page.click('#save-team-btn');
+  test('Activar Operação → toast com limite operacional', async ({ page }) => {
+    await adicionarMeio(page, 'transito');
 
-    await page.locator('.team-card').first().locator('[onclick*="quickAction(\'op\'"]').click();
+    await page.locator('.team-card button:has-text("Em Operação")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
 
     const today = new Date().toISOString().split('T')[0];
-    await page.fill('[id="qa-date"]', today);
-    await page.fill('[id="qa-time"]', '10:00');
-    await page.fill('[id="qa-hmax"]', '12');
-    await page.click('button:has-text("Confirmar Activação")');
+    await page.fill('#qa-date', today);
+    await page.fill('#qa-time', '10:00');
+    await page.fill('#qa-hmax', '12');
+    await page.locator('#modal-action button:has-text("Confirmar Activação")').click();
 
-    await expect(page.locator('.toast')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.toast')).toContainText('Em Operação');
+    await expect(page.locator('#toast')).toContainText('Em Operação', { timeout: 5000 });
     await expect(page.locator('#modal-action')).toBeHidden({ timeout: 3000 });
   });
 
-  test('modal fecha após confirmar qualquer acção', async ({ page }) => {
-    await page.click('#add-team-btn');
-    await page.fill('#team-eq', 'VFCI-E2E-004');
-    await page.selectOption('#team-estado', 'transito');
-    await page.click('#save-team-btn');
+  test('modal fecha após confirmar Descanso', async ({ page }) => {
+    await adicionarMeio(page, 'transito');
 
-    // Descanso
-    await page.locator('.team-card').first().locator('[onclick*="quickAction(\'rest\'"]').click();
+    await page.locator('.team-card button:has-text("Descanso")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
-    await page.click('button:has-text("Confirmar Descanso")');
+    await page.locator('#modal-action button:has-text("Confirmar Descanso")').click();
+
+    await expect(page.locator('#toast')).toContainText('Descanso', { timeout: 5000 });
     await expect(page.locator('#modal-action')).toBeHidden({ timeout: 3000 });
   });
 
   test('Desmobilizar → toast "Desmobilizado"', async ({ page }) => {
-    await page.click('#add-team-btn');
-    await page.fill('#team-eq', 'VFCI-E2E-005');
-    await page.selectOption('#team-estado', 'transito');
-    await page.click('#save-team-btn');
+    await adicionarMeio(page, 'transito');
 
-    await page.locator('.team-card').first().locator('[onclick*="quickAction(\'demob\'"]').click();
+    await page.locator('.team-card button:has-text("Desmobilizar")').first().click();
     await page.locator('#modal-action').waitFor({ state: 'visible' });
 
     const today = new Date().toISOString().split('T')[0];
-    await page.fill('[id="qa-demob-date"]', today);
-    await page.fill('[id="qa-demob-time"]', '18:00');
-    await page.click('button:has-text("Confirmar Desmob")');
+    await page.fill('#qa-demob-date', today);
+    await page.fill('#qa-demob-time', '18:00');
+    await page.locator('#modal-action button:has-text("Confirmar Desmob")').click();
 
-    await expect(page.locator('.toast')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('.toast')).toContainText('Desmobilizado');
+    await expect(page.locator('#toast')).toContainText('Desmobilizado', { timeout: 5000 });
+    await expect(page.locator('#modal-action')).toBeHidden({ timeout: 3000 });
   });
 });

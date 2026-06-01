@@ -5,6 +5,7 @@ module.exports = defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
   retries: 1,
+  globalSetup: './tests/e2e/global-setup.js',
   use: {
     baseURL: 'http://localhost:3001',
     headless: true,
@@ -12,10 +13,14 @@ module.exports = defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command: 'TEST_DATABASE_URL=$TEST_DATABASE_URL PORT=3001 node server.js',
+    command: 'node server.js',
     url: 'http://localhost:3001',
     reuseExistingServer: false,
     timeout: 10000,
+    env: {
+      TEST_DATABASE_URL: process.env.TEST_DATABASE_URL || '',
+      PORT: '3001',
+    },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
