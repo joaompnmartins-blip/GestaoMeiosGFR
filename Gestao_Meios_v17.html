@@ -2580,15 +2580,17 @@ async function doQuickTransit(id){
   const d=document.getElementById('qa-transit-date').value;
   const h=document.getElementById('qa-transit-time').value;
   const obs=document.getElementById('qa-transit-obs').value.trim();
-  t.estado='transito';
-  t.dataDespacho=d||null; t.horaDespacho=h||null;
+  t.estado='transito'; t.dataDespacho=d||null; t.horaDespacho=h||null;
   t.previstoData=null; t.previstoHora=null;
   const msg=`Activado em trânsito${d?' — despacho: '+d+' '+h:''}${obs?' — '+obs:''}.`;
   addEventLog(t,msg);
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
-  await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito${d?' (despacho '+d+' '+h+')':''}.`,t.eq);
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
+    await persistEvento(t.id,msg);
+    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq);
+  } catch(e){ console.warn('doQuickTransit:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
 }
 
 async function doQuickOp(id){
@@ -2607,10 +2609,13 @@ async function doQuickOp(id){
   t.missao=document.getElementById('qa-missao').value.trim()||t.missao;
   const msg=`Activado em operação. Setor: ${t.setor||'—'}. Limite op.: ${limStr}.`;
   addEventLog(t,msg);
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}}, t.id, `Operação: ${t.eq}`);
-  await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`✓ ${t.eq} — Em Operação. Limite: ${limStr}.`,'ok');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
+    await persistEvento(t.id,msg);
+    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
+  } catch(e){ console.warn('doQuickOp:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Em Operação. Limite: ${limStr}.`,'ok');
 }
 
 async function doQuickRest(id){
@@ -2621,10 +2626,13 @@ async function doQuickRest(id){
   const msg=`Descanso activado${obs?' — '+obs:''}.`;
   addEventLog(t,msg);
   if(obs) t.obs=obs;
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}}, t.id, `Descanso: ${t.eq}`);
-  await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`✓ ${t.eq} — Em Descanso.`,'info');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}},t.id,`Descanso: ${t.eq}`);
+    await persistEvento(t.id,msg);
+    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
+  } catch(e){ console.warn('doQuickRest:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Em Descanso.`,'info');
 }
 
 async function doQuickDemob(id){
@@ -2637,10 +2645,13 @@ async function doQuickDemob(id){
   const msg='Desmobilizado '+t.dataDemob+' '+t.horaDemob+(obs?' — '+obs:'')+'.';
   addEventLog(t,msg);
   if(obs) t.obs=obs;
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}}, t.id, `Desmob: ${t.eq}`);
-  await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`✓ ${t.eq} — Desmobilizado.`,'info');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
+    await persistEvento(t.id,msg);
+    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
+  } catch(e){ console.warn('doQuickDemob:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Desmobilizado.`,'info');
 }
 
 async function doQuickSector(id){
@@ -2650,11 +2661,14 @@ async function doQuickSector(id){
   t.setor=document.getElementById('qa-new-sector').value.trim();
   const msg=`Mudança de setor: ${old} → ${t.setor||'—'}.`;
   addEventLog(t,msg);
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}}, t.id, `Setor: ${t.eq} → ${t.setor}`);
-  await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
-  updateSetorDatalist();
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`${t.eq} → Setor ${t.setor||'—'}.`,'ok');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}},t.id,`Setor: ${t.eq} → ${t.setor}`);
+    await persistEvento(t.id,msg);
+    await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
+    updateSetorDatalist();
+  } catch(e){ console.warn('doQuickSector:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Setor ${t.setor||'—'}.`,'ok');
 }
 
 async function doQuickObs(id){
@@ -2664,10 +2678,13 @@ async function doQuickObs(id){
   if(!txt){toast('Insira uma observação.','err');return;}
   addEventLog(t,txt);
   t.obs=txt;
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{obs:txt}}, t.id, `Obs: ${t.eq}`);
-  await persistEvento(t.id,txt);
-  await persistOccEvento(t.ocorrencia_id,'obs',`${t.eq} — observação: ${txt}`,t.eq);
-  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast('Observação registada.','ok');
+  try {
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{obs:txt}},t.id,`Obs: ${t.eq}`);
+    await persistEvento(t.id,txt);
+    await persistOccEvento(t.ocorrencia_id,'obs',`${t.eq} — observação: ${txt}`,t.eq);
+  } catch(e){ console.warn('doQuickObs:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Observação registada.`,'ok');
 }
 
 // ══════════════════════════════════════════════════════════════════
