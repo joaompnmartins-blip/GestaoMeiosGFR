@@ -846,6 +846,8 @@
     <button class="modal-close" onclick="closeModal('modal-team')">✕</button>
     <div class="modal-title" id="modal-team-title">Adicionar Meio</div>
     <input type="hidden" id="team-edit-id"/>
+    <input type="hidden" id="team-equipa-id"/>
+    <input type="hidden" id="team-transporte-id"/>
 
     <div class="modal-section">Identificação</div>
     <div class="form-grid-3">
@@ -873,7 +875,7 @@
       </div>
       <div class="form-field">
         <label class="form-label">Tipo</label>
-        <select class="form-select" id="team-tipo">
+        <select class="form-select" id="team-tipo" onchange="onTeamTipoChange()">
           <option value="">— Tipo —</option>
           <option>VLCI</option><option>VFCI</option><option>VAFR</option>
           <option>VGFR</option><option>MR</option><option>PM</option>
@@ -895,6 +897,29 @@
       <div class="form-field">
         <label class="form-label">Contacto</label>
         <input class="form-input" id="team-contacto" placeholder="9xx xxx xxx"/>
+      </div>
+    </div>
+
+    <div class="modal-section" id="mr-pm-section" style="display:none;">Transporte (PM associado)</div>
+    <div class="form-grid-3" id="mr-pm-block" style="display:none;">
+      <div class="form-field span2">
+        <label class="form-label">PM de transporte</label>
+        <select class="form-select" id="team-pm-pick" onchange="onPMPickChange()">
+          <option value="">— Seleccionar PM —</option>
+          <option value="__new__">+ Criar novo PM</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">&nbsp;</label>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);padding-top:6px;">Obrigatório para meios MR — pode mudar de estado independentemente do MR.</div>
+      </div>
+      <div class="form-field" id="pm-new-eq-field" style="display:none;">
+        <label class="form-label">Designação do novo PM</label>
+        <input class="form-input" id="team-pm-new-eq" placeholder="Ex: PM 12 FSBF"/>
+      </div>
+      <div class="form-field" id="pm-new-matricula-field" style="display:none;">
+        <label class="form-label">Matrícula do novo PM</label>
+        <input class="form-input" id="team-pm-new-matricula" placeholder="Ex: 00-AA-00" style="text-transform:uppercase;"/>
       </div>
     </div>
 
@@ -1728,7 +1753,7 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, eventos, created:r.created_at };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -1753,7 +1778,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, transporte_id:payload.transporteId||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -2488,6 +2513,20 @@ function teamCardHtml(t, isClosed){
     opsHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">👥 ${t.operacionais} operacionais</span>`;
   }
 
+  // MR / PM pairing
+  let mrPmHtml='';
+  if(t.tipo==='MR'){
+    if(t.transporteId){
+      const pm=db.teams.find(x=>x.id===t.transporteId);
+      if(pm){
+        const pmEst=estadoMap[pm.estado]||{l:pm.estado,cls:'badge-closed'};
+        mrPmHtml=`<div class="team-card-row"><span class="lbl">Transporte</span><span class="val">${esc(pm.eq)}${pm.matricula?' · '+esc(pm.matricula):''} <span class="badge ${pmEst.cls}" style="font-size:8px">${pmEst.l}</span></span></div>`;
+      }
+    } else {
+      mrPmHtml=`<div class="team-card-row"><span class="lbl" style="color:var(--danger)">⚠ Sem PM</span><span class="val">${!isClosed&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-warn btn-xs" onclick="editTeam('${t.id}')">+ Atribuir PM</button>`:'—'}</span></div>`;
+    }
+  }
+
   // Last event
   let lastEvt='';
   if(t.eventos&&t.eventos.length){
@@ -2520,6 +2559,7 @@ function teamCardHtml(t, isClosed){
       ${t.missao?`<div class="team-card-row${(t.estado==='operacao'||t.estado==='descanso')?' has-missao':''}"><span class="lbl">Missão</span><span class="val">${esc(t.missao)}</span></div>`:''}
       ${t.estado==='previsto'&&(t.previstoData||t.previstoHora)?`<div class="team-card-row"><span class="lbl" style="color:#b890e8">Disponível em</span><span class="val" style="color:#b890e8">${fmtDateShort(t.previstoData)||''} ${t.previstoHora||'—'}</span></div>`:''}
       <div class="team-card-row"><span class="lbl">Chegada</span><span class="val">${fmtDateShort(t.dataChegada)} ${t.horaChegada||'—'}</span></div>
+      ${mrPmHtml}
       ${t.dataDemob?`<div class="team-card-row"><span class="lbl">Desmob.</span><span class="val">${fmtDateShort(t.dataDemob)} ${t.horaDemob||''}</span></div>`:''}
       ${t.obs?`<div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.4">${esc(t.obs)}</div>`:''}
       ${opsHtml}
@@ -2700,6 +2740,14 @@ async function doQuickDemob(id){
     await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
     await persistEvento(t.id,msg);
     await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
+    // PM desmobilizado: liberta o transporte para que o MR possa receber outro PM
+    if(t.tipo==='PM'){
+      const mrs=db.teams.filter(x=>x.transporteId===t.id);
+      for(const mr of mrs){
+        mr.transporteId=null;
+        await supaWriteOrQueue('meios','update',{id:mr.id,row:{transporte_id:null}},mr.id,`Transporte removido: ${mr.eq}`);
+      }
+    }
   } catch(e){ console.warn('doQuickDemob:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Desmobilizado.`,'info');
@@ -2792,6 +2840,12 @@ function openAddTeam(){
   fields.forEach(id=>document.getElementById(id).value='');
   document.getElementById('team-setor').value='';
   document.getElementById('team-tipo').value='';
+  document.getElementById('team-equipa-id').value='';
+  document.getElementById('team-transporte-id').value='';
+  document.getElementById('team-pm-pick').value='';
+  document.getElementById('team-pm-new-eq').value='';
+  document.getElementById('team-pm-new-matricula').value='';
+  onTeamTipoChange();
   document.getElementById('team-ops').value='';
   document.getElementById('team-estado').value='previsto';
   document.getElementById('team-previsto-data').value='';
@@ -2821,7 +2875,40 @@ function applyPreset(id){
   tipoSel.value=e.tipo||'';
   document.getElementById('team-ops').value=e.capacidade||'';
   document.getElementById('team-concelho').value=e.concelho||e.origem||'';
+  document.getElementById('team-equipa-id').value=e.id;
   syncOpsFields(e.capacidade||0);
+  onTeamTipoChange();
+}
+
+// ── MR / PM pairing ──────────────────────────────────────────────
+function onTeamTipoChange(){
+  const isMR = document.getElementById('team-tipo').value==='MR';
+  document.getElementById('mr-pm-section').style.display = isMR?'':'none';
+  document.getElementById('mr-pm-block').style.display = isMR?'':'none';
+  if(isMR) populatePMPicker();
+}
+
+function populatePMPicker(){
+  const sel = document.getElementById('team-pm-pick');
+  const editId = document.getElementById('team-edit-id').value;
+  const current = document.getElementById('team-transporte-id').value;
+  // PM "livre" = é PM desta ocorrência e nenhum outro MR (além deste) o tem como transporte
+  const free = db.teams.filter(t=>{
+    if(t.ocorrencia_id!==currentOccId || t.tipo!=='PM' || t.id===editId) return false;
+    const ownerMR = db.teams.find(mr=>mr.transporteId===t.id);
+    return !ownerMR || ownerMR.id===editId;
+  });
+  sel.innerHTML = '<option value="">— Seleccionar PM —</option>' +
+    free.map(t=>`<option value="${t.id}">${esc(t.eq)}${t.matricula?' · '+esc(t.matricula):''}</option>`).join('') +
+    '<option value="__new__">+ Criar novo PM</option>';
+  if(current && free.some(t=>t.id===current)) sel.value = current;
+  onPMPickChange();
+}
+
+function onPMPickChange(){
+  const isNew = document.getElementById('team-pm-pick').value==='__new__';
+  document.getElementById('pm-new-eq-field').style.display = isNew?'':'none';
+  document.getElementById('pm-new-matricula-field').style.display = isNew?'':'none';
 }
 
 function editTeam(id){
@@ -2832,6 +2919,11 @@ function editTeam(id){
   refreshPresetSelect(null);
   document.getElementById('team-eq').value=t.eq||'';
   document.getElementById('team-tipo').value=t.tipo||'';
+  document.getElementById('team-equipa-id').value=t.equipaId||'';
+  document.getElementById('team-transporte-id').value=t.transporteId||'';
+  document.getElementById('team-pm-new-eq').value='';
+  document.getElementById('team-pm-new-matricula').value='';
+  onTeamTipoChange();
   document.getElementById('team-matricula').value=t.matricula||'';
   document.getElementById('team-concelho').value=t.concelho||'';
   document.getElementById('team-setor').value=t.setor||'';
@@ -2905,7 +2997,64 @@ async function saveTeam(){
     obs:document.getElementById('team-obs').value.trim(),
     previstoData:document.getElementById('team-previsto-data').value||null,
     previstoHora:document.getElementById('team-previsto-hora').value||null,
+    equipaId:document.getElementById('team-equipa-id').value||null,
   };
+
+  // Exclusividade entre ocorrências: um meio activo (trânsito/operação/descanso)
+  // numa ocorrência não pode ser usado noutra.
+  const ACTIVE_ESTADOS=['transito','operacao','descanso'];
+  if(ACTIVE_ESTADOS.includes(payload.estado)){
+    const conflict=db.teams.find(other=>{
+      if(other.id===editId) return false;
+      if(other.ocorrencia_id===currentOccId) return false;
+      if(!ACTIVE_ESTADOS.includes(other.estado)) return false;
+      if(payload.equipaId && other.equipaId) return other.equipaId===payload.equipaId;
+      return other.eq.trim().toLowerCase()===eq.toLowerCase()
+        && payload.matricula && other.matricula && other.matricula===payload.matricula;
+    });
+    if(conflict){
+      const occ=db.ocorrencias.find(o=>o.id===conflict.ocorrencia_id);
+      toast(`Este meio já está activo na ocorrência "${occ?occ.nome:'desconhecida'}".`,'err');
+      return;
+    }
+  }
+
+  // MR / PM: garantir que o MR tem sempre um PM de transporte associado.
+  if(payload.tipo==='MR'){
+    const pmPick=document.getElementById('team-pm-pick').value;
+    if(pmPick==='__new__'){
+      const pmEq=document.getElementById('team-pm-new-eq').value.trim();
+      if(!pmEq){toast('Indique a designação do novo PM de transporte.','err');return;}
+      const pmMatricula=document.getElementById('team-pm-new-matricula').value.trim().toUpperCase();
+      const pmEstado=payload.estado==='previsto'?'previsto':'transito';
+      const pmPayload={
+        ocorrencia_id:currentOccId, eq:pmEq, tipo:'PM', matricula:pmMatricula,
+        concelho:payload.concelho, setor:payload.setor, operacionais:0, operativos:[],
+        responsavel:payload.responsavel, contacto:payload.contacto,
+        dataDespacho:'', horaDespacho:'', dataSaidaEntidade:'', horaSaidaEntidade:'',
+        dataChegada:payload.dataChegada, horaChegada:'', horasMax:null, limiteOp:'',
+        dataDemob:'', horaDemob:'', dataChegadaEntidade:'', horaChegadaEntidade:'',
+        km:null, missao:'', estado:pmEstado, obs:'',
+        previstoData:payload.previstoData, previstoHora:payload.previstoHora,
+        equipaId:null, transporteId:null,
+      };
+      const pmId=await persistTeam(pmPayload, null);
+      if(!pmId){toast('Erro ao criar o PM de transporte.','err');return;}
+      const pmMsg=`Registado no sistema. Estado: ${pmEstado}.`;
+      db.teams.push({id:pmId,...pmPayload,created:Date.now(),eventos:[{ts:new Date().toISOString(),msg:pmMsg}]});
+      await persistEvento(pmId, pmMsg);
+      await persistOccEvento(currentOccId,'created',`Meio adicionado: ${pmEq} (PM) — transporte de ${eq}`,pmEq);
+      payload.transporteId=pmId;
+    } else if(pmPick){
+      payload.transporteId=pmPick;
+    } else {
+      toast('Seleccione ou crie o PM de transporte para este MR.','err');
+      return;
+    }
+  } else {
+    payload.transporteId=document.getElementById('team-transporte-id').value||null;
+  }
+
   const id = await persistTeam(payload, editId||null);
   if(!id) return;
   await persistOperativos(id, operativos);

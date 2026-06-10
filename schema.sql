@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS meios (
     id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     ocorrencia_id           UUID        NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
     equipa_id               UUID        REFERENCES equipas(id) ON DELETE SET NULL,
+    transporte_id           UUID        REFERENCES meios(id) ON DELETE SET NULL,
     eq                      TEXT        NOT NULL,
     tipo                    TEXT,
     matricula               TEXT,
@@ -135,6 +136,11 @@ INSERT INTO sectores(designacao) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ─── ÍNDICES ─────────────────────────────────────────────────────────────────
+-- Um mesmo meio predefinido não pode estar activo (trânsito/operação/descanso) em mais de uma ocorrência
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_equipa_active
+  ON meios(equipa_id)
+  WHERE equipa_id IS NOT NULL AND estado IN ('transito','operacao','descanso');
+
 CREATE INDEX IF NOT EXISTS idx_meios_ocorrencia    ON meios(ocorrencia_id);
 CREATE INDEX IF NOT EXISTS idx_meios_estado        ON meios(estado);
 CREATE INDEX IF NOT EXISTS idx_meios_eventos_meio  ON meios_eventos(meio_id);

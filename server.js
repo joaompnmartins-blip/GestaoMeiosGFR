@@ -132,7 +132,24 @@ const MEIO_COLS = [
   'data_demob','hora_demob','data_chegada_entidade','hora_chegada_entidade',
   'km','missao','estado','obs',
   'previsto_data','previsto_hora',
+  'equipa_id','transporte_id',
 ];
+
+// Estados que tornam um meio "indisponível" para outras ocorrências
+const ACTIVE_ESTADOS = ['transito','operacao','descanso'];
+
+// Devolve a ocorrência onde `equipaId` já está activo (se houver), excluindo `excludeId`
+async function findEquipaConflict(equipaId, estado, excludeId) {
+  if (!equipaId || !ACTIVE_ESTADOS.includes(estado)) return null;
+  const { rows } = await pool.query(
+    `SELECT o.local_ignicao FROM meios m
+     JOIN ocorrencias o ON o.id = m.ocorrencia_id
+     WHERE m.equipa_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     LIMIT 1`,
+    [equipaId, ACTIVE_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
+  );
+  return rows[0] || null;
+}
 
 app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
   const [{ rows: meios }, { rows: operativos }, { rows: eventos }] = await Promise.all([
@@ -149,7 +166,14 @@ app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
 }));
 
 app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
-  const b    = req.body;
+  const b = req.body;
+  if (b.tipo === 'MR' && !b.transporte_id) {
+    return res.status(400).json({ error: 'Um meio do tipo MR tem de ter um PM (transporte) associado.' });
+  }
+  const conflict = await findEquipaConflict(b.equipa_id, b.estado, null);
+  if (conflict) {
+    return res.status(409).json({ error: `Este meio já está activo na ocorrência "${conflict.local_ignicao}".` });
+  }
   const cols = [...MEIO_COLS, 'created_by'];
   const vals = [...MEIO_COLS.map(c => b[c] ?? null), req.user.id];
   const ph   = cols.map((_, i) => `$${i + 1}`).join(',');
@@ -165,9 +189,28 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   // must not null out NOT NULL columns like ocorrencia_id or eq.
   const cols = MEIO_COLS.filter(c => c in b);
   if (!cols.length) return res.json({ ok: true });
+
+  if ('estado' in b && ACTIVE_ESTADOS.includes(b.estado)) {
+    let equipaId = b.equipa_id;
+    if (equipaId === undefined) {
+      const { rows } = await pool.query('SELECT equipa_id FROM meios WHERE id=$1', [req.params.id]);
+      equipaId = rows[0]?.equipa_id;
+    }
+    const conflict = await findEquipaConflict(equipaId, b.estado, req.params.id);
+    if (conflict) {
+      return res.status(409).json({ error: `Este meio já está activo na ocorrência "${conflict.local_ignicao}".` });
+    }
+  }
+
   const sets = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
   const vals = [...cols.map(c => b[c] ?? null), req.params.id];
   await pool.query(`UPDATE meios SET ${sets} WHERE id=$${cols.length + 1}`, vals);
+
+  // PM desmobilizado: liberta o transporte para que possa ser reatribuído a outro MR/ocorrência
+  if (b.estado === 'desmobilizado') {
+    await pool.query('UPDATE meios SET transporte_id = NULL WHERE transporte_id = $1', [req.params.id]);
+  }
+
   res.json({ ok: true });
 }));
 
@@ -421,6 +464,16 @@ async function runMigrations() {
   await pool.query(`
     ALTER TABLE utilizadores ADD CONSTRAINT utilizadores_role_check
       CHECK (role IN ('admin','ofligacao','operacional','visualizador'))
+  `);
+
+  // MR/PM: ligação ao catálogo de equipas + transporte associado
+  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS equipa_id UUID REFERENCES equipas(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS transporte_id UUID REFERENCES meios(id) ON DELETE SET NULL`);
+  // Um mesmo meio predefinido não pode estar activo (trânsito/operação/descanso) em mais de uma ocorrência
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_equipa_active
+      ON meios(equipa_id)
+      WHERE equipa_id IS NOT NULL AND estado IN ('transito','operacao','descanso')
   `);
 
   // Fita do Tempo: tabela de entradas manuais da timeline
