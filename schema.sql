@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS utilizadores (
     password_hash TEXT        NOT NULL,
     nome          TEXT        NOT NULL,
     role          TEXT        NOT NULL DEFAULT 'visualizador'
-                                CHECK (role IN ('admin','gestor','operacional','visualizador')),
+                                CHECK (role IN ('admin','ofligacao','operacional','visualizador')),
     subregiao     TEXT,
     ativo         BOOLEAN     DEFAULT true,
     created_at    TIMESTAMPTZ DEFAULT now(),

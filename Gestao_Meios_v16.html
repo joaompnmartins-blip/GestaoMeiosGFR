@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestão Meios — ICNF</title>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -226,11 +226,6 @@
     .team-card.estado-descanso{border-left:3px solid var(--warn);}
     .team-card.estado-transito{border-left:3px solid var(--icnf-blue-light);}
     .team-card.estado-desmobilizado{border-left:3px solid var(--inactive);opacity:.65;}
-    .team-card.estado-previsto{border-left:3px solid #9870d0;opacity:.88;}
-    .badge-previsto{background:rgba(152,112,208,.12);color:#b890e8;border:1px solid rgba(152,112,208,.3);}
-    .previsto-section{margin-bottom:28px;}
-    .previsto-section-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(152,112,208,.06);border:1px solid rgba(152,112,208,.22);border-radius:2px;}
-    .previsto-section-label{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#b890e8;}
     .team-card.closed-occ{opacity:.75;filter:saturate(.5);}
     .team-card.closed-occ .team-card-head{opacity:.85;}
     .team-card-head{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid var(--border);}
@@ -423,35 +418,6 @@
       .detail-grid{grid-template-columns:1fr;}.form-grid,.form-grid-3{grid-template-columns:1fr;}.form-field.span2,.form-field.span3{grid-column:auto;}
       .teams-grid{grid-template-columns:1fr;}
     }
-
-  /* ═══ MODAL FOGOS.PT MAP ═════════════════════════════════════════ */
-  .modal-fogos { width: min(1200px, 95vw); max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-  .modal-fogos-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
-  .modal-fogos-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-  .fogos-list-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
-  .fogos-list-toolbar { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-  .fogos-list-toolbar input { flex: 1; }
-  .fogos-list-scroll { overflow-y: auto; flex: 1; }
-  .fogos-item { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
-  .fogos-item:hover { background: var(--surface2); }
-  .fogos-item.selected { background: var(--s-alpha); border-left: 3px solid var(--accent2); padding-left: 11px; }
-  .fogos-item-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-  .fogos-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .fogos-item-loc { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); flex: 1; line-height: 1.2; }
-  .fogos-item-meta { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); display: flex; gap: 10px; }
-  .fogos-item-meios { display: flex; gap: 8px; margin-top: 4px; }
-  .fogos-meio-tag { font-family: 'IBM Plex Mono', monospace; font-size: 9px; padding: 1px 5px; border-radius: 2px; border: 1px solid var(--border); color: var(--muted); }
-  .fogos-map-panel { flex: 1; min-width: 0; position: relative; }
-  #fogos-leaflet-map { width: 100%; height: 100%; min-height: 400px; }
-  .fogos-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--muted); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .fogos-count-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
-  .fogos-refresh-btn { font-size: 11px; }
-  /* Leaflet popup dark theme */
-  .leaflet-popup-content-wrapper { background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 2px !important; box-shadow: 0 4px 16px rgba(0,0,0,.4) !important; color: var(--text) !important; font-family: 'Barlow', sans-serif !important; }
-  .leaflet-popup-tip { background: var(--surface) !important; }
-  .fogos-popup-title { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
-  .fogos-popup-btn { display: block; width: 100%; margin-top: 10px; padding: 6px 10px; background: var(--accent2); color: #fff; border: none; border-radius: 2px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
-  .fogos-popup-btn:hover { opacity: .85; }
   </style>
 </head>
 <body>
@@ -462,19 +428,49 @@
     <div class="auth-tag" style="margin-bottom:20px;">🔥 ICNF / GFR — Gestão de Meios</div>
 
     <!-- tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Entrar</button>
+      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registar</button>
+    </div>
 
     <div class="auth-err" id="auth-err"></div>
 
     <!-- LOGIN panel -->
-    <div class="form-field" style="margin-bottom:12px;">
-      <label class="form-label">Email</label>
-      <input class="form-input" id="auth-email" type="email" placeholder="utilizador@icnf.pt" autocomplete="username"/>
+    <div class="auth-panel active" id="panel-login">
+      <div class="form-field" style="margin-bottom:12px;">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="auth-email" type="email" placeholder="utilizador@icnf.pt" autocomplete="username"/>
+      </div>
+      <div class="form-field" style="margin-bottom:20px;">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()" id="auth-btn">Entrar</button>
     </div>
-    <div class="form-field" style="margin-bottom:20px;">
-      <label class="form-label">Password</label>
-      <input class="form-input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+
+    <!-- REGISTER panel -->
+    <div class="auth-panel" id="panel-register">
+      <div class="auth-invite-info">
+        O registo requer um <strong>código de convite</strong> fornecido pelo administrador do sistema.
+      </div>
+      <div class="form-field" style="margin-bottom:10px;">
+        <label class="form-label">Nome completo</label>
+        <input class="form-input" id="reg-nome" placeholder="Nome Apelido"/>
+      </div>
+      <div class="form-field" style="margin-bottom:10px;">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="reg-email" type="email" placeholder="utilizador@icnf.pt"/>
+      </div>
+      <div class="form-field" style="margin-bottom:10px;">
+        <label class="form-label">Password</label>
+        <input class="form-input" id="reg-pass" type="password" placeholder="Mín. 8 caracteres" onkeydown="if(event.key==='Enter')doRegister()"/>
+      </div>
+      <div class="form-field" style="margin-bottom:20px;">
+        <label class="form-label">Código de convite</label>
+        <input class="form-input" id="reg-code" placeholder="Código fornecido pelo administrador"/>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doRegister()" id="reg-btn">Criar conta</button>
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()" id="auth-btn">Entrar</button>
 
     <div class="auth-footer" style="margin-top:16px;"><span class="dot"></span>SISTEMA OPERACIONAL · ACESSO RESTRITO</div>
   </div>
@@ -510,8 +506,8 @@
       <div class="nav-item auth-admin" data-page="utilizadores" onclick="navTo('utilizadores',this)" style="display:none;">
         <span class="nav-icon">👤</span><span>Utilizadores</span>
       </div>
-      <div class="nav-item" onclick="window.open('/manual_utilizador.html','_blank')" title="Abrir manual do utilizador">
-        <span class="nav-icon">📖</span><span>Manual</span>
+      <div class="nav-item" data-page="esquema" onclick="navTo('esquema',this)">
+        <span class="nav-icon">⌗</span><span>BD Schema</span>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -537,7 +533,6 @@
         <span class="role-badge" id="role-badge" style="display:none;"></span>
         <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);" id="topbar-user"></span>
         <button class="btn btn-ghost btn-sm" onclick="doLogout()" id="btn-logout" style="display:none;">⏻ Sair</button>
-        <button class="btn btn-ghost btn-sm auth-ofligacao" id="btnFogosMap" onclick="openFogosMap()" title="Ver ocorrências ativas fogos.pt">🗺 Fogos Ativos</button>
                 <button class="btn btn-primary auth-ofligacao" id="btnNew" onclick="openNewOcorrencia()">+ Nova Ocorrência</button>
       </div>
     </div>
@@ -625,7 +620,6 @@
             <div class="info-row"><span class="info-label">Em operação</span><span class="info-val" id="d-ops2" style="color:var(--success)">—</span></div>
             <div class="info-row"><span class="info-label">Em descanso</span><span class="info-val" id="d-rest2" style="color:var(--warn)">—</span></div>
             <div class="info-row"><span class="info-label">Em trânsito</span><span class="info-val" id="d-transit" style="color:var(--accent3)">—</span></div>
-            <div class="info-row"><span class="info-label">Previstos</span><span class="info-val" id="d-previsto" style="color:#b890e8">—</span></div>
             <div class="info-row"><span class="info-label">Desmobilizados</span><span class="info-val" id="d-demob2" style="color:var(--muted)">—</span></div>
           </div>
         </div>
@@ -688,20 +682,10 @@
           <div class="section-title">Meios Predefinidos</div>
           <button class="btn btn-primary btn-sm auth-ofligacao" onclick="openNewEquipa()">+ Novo Meio</button>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <input class="form-input" id="eq-filter-text" placeholder="🔍 Filtrar designação…" oninput="renderEquipas()" style="flex:1;min-width:140px;font-size:12px;padding:5px 8px;"/>
-          <select class="form-select" id="eq-filter-tipo-equipa" onchange="renderEquipas()" style="font-size:12px;padding:5px 8px;">
-            <option value="">Todos os tipos</option>
-          </select>
-          <select class="form-select" id="eq-filter-subregiao" onchange="renderEquipas()" style="font-size:12px;padding:5px 8px;">
-            <option value="">Todas as sub-regiões</option>
-          </select>
-          <input class="form-input" id="eq-filter-concelho" placeholder="Concelho…" oninput="renderEquipas()" style="width:130px;font-size:12px;padding:5px 8px;"/>
-        </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Designação</th><th>Tipo Veículo</th><th>Tipo Equipa</th><th>Sub-Região</th><th>Concelho</th><th></th></tr>
+              <tr><th>Designação</th><th>Tipo</th><th>Capacidade</th><th>Origem</th><th>Notas</th><th></th></tr>
             </thead>
             <tbody id="equipas-tbody"></tbody>
           </table>
@@ -728,7 +712,7 @@
           <div class="section-title">Gestão de Utilizadores</div>
           <button class="btn btn-primary btn-sm" onclick="openNewUser()">+ Novo Utilizador</button>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Utilizadores pré-carregados pelo administrador. O role define o nível de acesso no sistema.</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Os utilizadores são autenticados via Supabase Auth. O role define o nível de acesso no sistema.</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -760,6 +744,15 @@
         </div>
       </div>
 
+            <!-- ══════════ PAGE: SCHEMA ══════════ -->
+      <div class="page" id="page-esquema">
+        <div class="section-hdr">
+          <div class="section-title">PostgreSQL — Schema SQL</div>
+          <button class="btn btn-ghost btn-sm" onclick="copySchema()">⎘ Copiar SQL</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Execute este script na sua base de dados PostgreSQL.</p>
+        <div class="schema-block" id="schema-sql"></div>
+      </div>
 
     </div>
   </div>
@@ -824,16 +817,7 @@
     <div class="modal-section">Identificação</div>
     <div class="form-grid-3">
       <div class="form-field span3">
-        <label class="form-label">Filtrar meio predefinido</label>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
-          <select class="form-select" id="preset-filter-te" onchange="refreshPresetSelect()" style="flex:1;min-width:110px;font-size:11px;padding:4px 6px;">
-            <option value="">Tipo equipa…</option>
-          </select>
-          <select class="form-select" id="preset-filter-sr" onchange="refreshPresetSelect()" style="flex:1;min-width:130px;font-size:11px;padding:4px 6px;">
-            <option value="">Sub-região…</option>
-          </select>
-          <input class="form-input" id="preset-filter-cc" placeholder="Concelho…" oninput="refreshPresetSelect()" style="flex:1;min-width:100px;font-size:11px;padding:4px 6px;"/>
-        </div>
+        <label class="form-label">Meio predefinido</label>
         <div style="display:flex;gap:8px;align-items:center;">
           <select class="form-select" id="team-preset" onchange="applyPreset(this.value)" style="flex:1;">
             <option value="">— Selecionar meio predefinido —</option>
@@ -914,39 +898,18 @@
         <label class="form-label">Hora Saída TO</label>
         <input class="form-input" type="time" id="team-hora-demob"/>
       </div>
-      <div class="form-field">
-        <label class="form-label">Data Chegada Entidade</label>
-        <input class="form-input" type="date" id="team-data-chegada-entidade"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Hora Chegada Entidade</label>
-        <input class="form-input" type="time" id="team-hora-chegada-entidade"/>
-      </div>
-      <div class="form-field span2">
-        <label class="form-label">Km Percorridos</label>
-        <input class="form-input" type="number" id="team-km" min="0" placeholder="Ex: 120" title="Quilómetros percorridos pelo meio"/>
-      </div>
     </div>
 
     <div class="modal-section">Operação</div>
     <div class="form-grid">
       <div class="form-field">
         <label class="form-label">Estado</label>
-        <select class="form-select" id="team-estado" onchange="togglePrevistoFields(this.value)">
-          <option value="previsto">Previsto</option>
+        <select class="form-select" id="team-estado">
           <option value="transito">Em Trânsito</option>
           <option value="operacao">Em Operação</option>
           <option value="descanso">Em Descanso</option>
           <option value="desmobilizado">Desmobilizado</option>
         </select>
-      </div>
-      <div class="form-field" id="previsto-data-field" style="display:none;">
-        <label class="form-label">Data prevista disponibilidade</label>
-        <input class="form-input" id="team-previsto-data" type="date"/>
-      </div>
-      <div class="form-field" id="previsto-hora-field" style="display:none;">
-        <label class="form-label">Hora prevista</label>
-        <input class="form-input" id="team-previsto-hora" type="time"/>
       </div>
       <div class="form-field">
         <label class="form-label">Setor</label>
@@ -996,32 +959,16 @@
 <div class="modal-overlay" id="modal-equipa">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-equipa')">✕</button>
-    <div class="modal-title" id="modal-equipa-title">Novo Meio Predefinido</div>
+    <div class="modal-title">Novo Meio Predefinido</div>
     <input type="hidden" id="eq-edit-id"/>
     <div class="form-grid">
-      <div class="form-field span2"><label class="form-label">Designação</label><input class="form-input" id="eq-nome" placeholder="Ex: VLCI 22 FSBF"/></div>
-      <div class="form-field"><label class="form-label">Tipo Veículo</label>
+      <div class="form-field"><label class="form-label">Designação</label><input class="form-input" id="eq-nome" placeholder="Ex: VLCI 22 FSBF"/></div>
+      <div class="form-field"><label class="form-label">Tipo</label>
         <select class="form-select" id="eq-tipo">
-          <option value="">— Tipo veículo —</option>
-          <option>ESF</option><option>VLCI</option><option>VFCI</option><option>VT_ICNF</option>
-          <option>VTEC</option><option>VTEC_ICNF</option><option>MR</option><option>PM</option>
-          <option>VALE</option><option>TF</option><option>VAFR</option><option>VGFR</option>
-          <option>VASG</option><option>VAOP</option><option>BRG</option><option>Outro</option>
+          <option>VLCI</option><option>VFCI</option><option>VAFR</option><option>VGFR</option>
+          <option>MR</option><option>PM</option><option>CNAF</option><option>SF</option><option>VN</option><option>Outro</option>
         </select>
       </div>
-      <div class="form-field"><label class="form-label">Tipo Equipa</label>
-        <select class="form-select" id="eq-tipo-equipa">
-          <option value="">— Tipo equipa —</option>
-          <option>ESF</option><option>GFR</option><option>VN</option><option>FSBF</option>
-          <option>CNAF</option><option>UNM_FSBF</option><option>Outro</option>
-        </select>
-      </div>
-      <div class="form-field"><label class="form-label">Sub-Região</label>
-        <select class="form-select" id="eq-subregiao">
-          <option value="">— Sub-região —</option>
-        </select>
-      </div>
-      <div class="form-field"><label class="form-label">Concelho</label><input class="form-input" id="eq-concelho" placeholder="Ex: Lousã"/></div>
       <div class="form-field"><label class="form-label">Capacidade</label><input class="form-input" type="number" id="eq-cap" min="1" placeholder="4"/></div>
       <div class="form-field"><label class="form-label">Origem / Brigada</label><input class="form-input" id="eq-origem" placeholder="Ex: FSBF, LVT…"/></div>
       <div class="form-field span2"><label class="form-label">Notas</label><textarea class="form-textarea" id="eq-notas" placeholder="Equipamento, características…"></textarea></div>
@@ -1061,22 +1008,14 @@
 <div class="modal-overlay" id="modal-user">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
-    <div class="modal-title">Novo Utilizador</div>
+    <div class="modal-title">Gerar Convite</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.6;">
+      Gere um código de convite para o novo utilizador. O código é válido durante <strong>48 horas</strong>.
+      O utilizador usa-o no ecrã de registo para criar a conta.
+    </p>
     <div class="form-grid">
       <div class="form-field">
-        <label class="form-label">Nome</label>
-        <input class="form-input" id="new-user-nome" placeholder="Nome completo"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Email</label>
-        <input class="form-input" id="new-user-email" type="email" placeholder="utilizador@icnf.pt"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Password</label>
-        <input class="form-input" id="new-user-pass" type="password" placeholder="Mín. 8 caracteres"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Role</label>
+        <label class="form-label">Role a atribuir</label>
         <select class="form-select" id="user-role" onchange="toggleInviteSubregiao(this.value)">
           <option value="visualizador">Visualizador — só leitura</option>
           <option value="operacional">Operacional — ver + registar eventos</option>
@@ -1090,10 +1029,22 @@
           <option value="">— Selecionar sub-região —</option>
         </select>
       </div>
+      <div class="form-field">
+        <label class="form-label">Nota (opcional)</label>
+        <input class="form-input" id="user-note" placeholder="Ex: João Silva — Brigada Norte"/>
+      </div>
+    </div>
+    <div id="invite-result" style="display:none;margin-top:16px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Código gerado</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input class="form-input" id="invite-code-display" readonly style="font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:.1em;flex:1;"/>
+        <button class="btn btn-ghost btn-sm" onclick="copyInviteCode()">⎘ Copiar</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;" id="invite-expiry"></div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Cancelar</button>
-      <button class="btn btn-primary" onclick="createUser()">Criar utilizador</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Fechar</button>
+      <button class="btn btn-primary" onclick="generateInvite()">Gerar código</button>
     </div>
   </div>
 </div>
@@ -1122,70 +1073,15 @@
   </div>
 </div>
 
-<!-- ══════════ MODAL: MAPA FOGOS.PT ══════════ -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<div class="modal-overlay" id="modal-fogos">
-  <div class="modal modal-fogos">
-    <div class="modal-fogos-header">
-      <div>
-        <div class="modal-title" style="margin-bottom:2px;">Ocorrências Ativas — fogos.pt</div>
-        <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">Clique numa ocorrência para pré-preencher o formulário</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span class="fogos-count-badge" id="fogos-count-badge"></span>
-        <span class="fogos-count-badge" id="fogos-last-update"></span>
-        <button class="btn btn-ghost btn-sm fogos-refresh-btn" onclick="loadFogosData()">⟳ Actualizar</button>
-        <button class="modal-close" style="position:static;" onclick="closeModal('modal-fogos')">✕</button>
-      </div>
-    </div>
-    <div class="modal-fogos-body">
-      <div class="fogos-list-panel">
-        <div class="fogos-list-toolbar">
-          <input class="form-input" id="fogos-search" placeholder="🔍 Filtrar..." oninput="renderFogosList()" style="font-size:12px;padding:5px 8px;"/>
-        </div>
-        <div class="fogos-list-scroll" id="fogos-list">
-          <div class="fogos-loading">A carregar...</div>
-        </div>
-      </div>
-      <div class="fogos-map-panel">
-        <div id="fogos-leaflet-map"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 // ══════════════════════════════════════════════════════════════════
+//  SUPABASE CONFIG — substitua os valores abaixo pelos da sua project
 // ══════════════════════════════════════════════════════════════════
-//  API HELPER — substitui o cliente Supabase
-// ══════════════════════════════════════════════════════════════════
-async function apiFetch(path, options = {}){
-  const token = sessionStorage.getItem('gfr_token');
-  const headers = { 'Content-Type': 'application/json' };
-  if(token) headers['Authorization'] = 'Bearer ' + token;
-  try {
-    const res = await fetch(path, { ...options, headers: { ...headers, ...(options.headers||{}) } });
-    const body = await res.json();
-    if(!res.ok){
-      if(res.status === 401){ sessionStorage.removeItem('gfr_token'); showAuthOverlay(); }
-      return { data: null, error: { message: body.error || 'Erro desconhecido' } };
-    }
-    return { data: body, error: null };
-  } catch(e){
-    return { data: null, error: { message: e.message } };
-  }
-}
+const SUPABASE_URL  = 'https://jyrqyvfmvabvbqrbmhzx.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp5cnF5dmZtdmFidmJxcmJtaHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NDc0ODUsImV4cCI6MjA4OTUyMzQ4NX0.JTK05O06uECc8pG_edvxZIzeAEOSNm3LOnxI_OwNzCs';
 
-function showAuthOverlay(){
-  currentUser=null; currentRole=null; currentNome='';
-  document.getElementById('auth-overlay').classList.remove('hidden');
-  document.getElementById('btn-logout').style.display='none';
-  document.getElementById('topbar-user').textContent='';
-  const rb=document.getElementById('role-badge');
-  if(rb) rb.style.display='none';
-}
+// Inicializa o cliente Supabase (disponível globalmente via CDN como window.supabase)
+const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ══════════════════════════════════════════════════════════════════
 //  OFFLINE ENGINE — IndexedDB + sync queue
@@ -1319,7 +1215,7 @@ async function updateSyncBadge(){
   }
 }
 
-// ── Sync engine — replay queue against API ───────────────────────
+// ── Sync engine — replay queue against Supabase ──────────────────
 async function syncNow(){
   if(!isOnline || isSyncing) return;
   const q = await getQueue();
@@ -1329,55 +1225,56 @@ async function syncNow(){
   toast(`A sincronizar ${q.length} operação${q.length>1?'ões':''}…`,'info');
 
   let synced=0, failed=0;
-  const idMap = {};  // local temp-id → real server id (for chained inserts)
+  const idMap = {};  // local temp-id → real Supabase id (for chained inserts)
 
   for(const op of q){
     try {
+      // Remap any temp ids that were resolved in earlier steps
       const payload = remapIds(op.payload, idMap);
       let ok = false;
 
       if(op.table==='ocorrencias'){
         if(op.op==='insert'){
-          const { data, error } = await apiFetch('/api/ocorrencias',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          if(op.tempId) idMap[op.tempId]=data.id; ok=true;
+          const res = await _supa.from('ocorrencias').insert(payload).select().single();
+          if(!res.error){ idMap[op.tempId]=res.data.id; ok=true; }
+          else throw new Error(res.error.message);
         } else if(op.op==='update'){
-          const { error } = await apiFetch(`/api/ocorrencias/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          const res = await _supa.from('ocorrencias').update(payload.row).eq('id', payload.id);
+          if(!res.error) ok=true; else throw new Error(res.error.message);
         }
       } else if(op.table==='meios'){
         if(op.op==='insert'){
-          const { data, error } = await apiFetch('/api/meios',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          if(op.tempId) idMap[op.tempId]=data.id; ok=true;
+          const res = await _supa.from('meios').insert(payload).select().single();
+          if(!res.error){ idMap[op.tempId]=res.data.id; ok=true; }
+          else throw new Error(res.error.message);
         } else if(op.op==='update'){
-          const { error } = await apiFetch(`/api/meios/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          const res = await _supa.from('meios').update(payload.row).eq('id', payload.id);
+          if(!res.error) ok=true; else throw new Error(res.error.message);
         } else if(op.op==='delete'){
-          const { error } = await apiFetch(`/api/meios/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message); ok=true;
+          const res = await _supa.from('meios').delete().eq('id', payload.id);
+          if(!res.error) ok=true; else throw new Error(res.error.message);
         }
       } else if(op.table==='meios_operativos'){
-        const { error } = await apiFetch(`/api/meios/${payload.meio_id}/operativos`,{method:'PUT',body:JSON.stringify({rows:payload.rows})});
-        if(error) throw new Error(error.message); ok=true;
+        await _supa.from('meios_operativos').delete().eq('meio_id', payload.meio_id);
+        if(payload.rows.length){
+          const res = await _supa.from('meios_operativos').insert(payload.rows);
+          if(!res.error) ok=true; else throw new Error(res.error.message);
+        } else { ok=true; }
       } else if(op.table==='meios_eventos'){
-        const { error } = await apiFetch('/api/meios_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message); ok=true;
+        const res = await _supa.from('meios_eventos').insert(payload);
+        if(!res.error) ok=true; else throw new Error(res.error.message);
       } else if(op.table==='equipas'){
         if(op.op==='insert'){
-          const { data, error } = await apiFetch('/api/equipas',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          if(op.tempId) idMap[op.tempId]=data.id; ok=true;
+          const res=await _supa.from('equipas').insert(payload).select().single();
+          if(res?.error) throw res.error;
         } else if(op.op==='update'){
-          const { error } = await apiFetch(`/api/equipas/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          await _supa.from('equipas').update(payload.row).eq('id',payload.id);
         } else if(op.op==='delete'){
-          const { error } = await apiFetch(`/api/equipas/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message); ok=true;
+          await _supa.from('equipas').delete().eq('id',payload.id);
         }
       } else if(op.table==='ocorrencias_eventos'){
-        const { error } = await apiFetch('/api/ocorrencias_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message); ok=true;
+        const res = await _supa.from('ocorrencias_eventos').insert(payload);
+        if(!res.error) ok=true; else throw new Error(res.error.message);
       }
 
       if(ok){ await clearQueueItem(op.id); synced++; }
@@ -1396,6 +1293,7 @@ async function syncNow(){
   if(failed===0) toast(`✓ Sincronização completa (${synced} operaç${synced===1?'ão':'ões'}).`,'ok');
   else toast(`Sincronização: ${synced} ok, ${failed} falharam. Verifique o painel.`,'err');
 
+  // Reload from server to ensure consistency
   if(synced>0 && isOnline){ await loadAllData(); await cacheToIDB(); renderOcorrencias(); }
 }
 
@@ -1474,70 +1372,84 @@ _spinStyle.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform
 document.head.appendChild(_spinStyle);
 
 // ── Wrapped persist helpers (offline-aware) ──────────────────────
+// These replace the direct Supabase calls in persist* functions
 async function supaWriteOrQueue(table, op, payload, tempId, desc){
   if(isOnline){
+    // Try Supabase directly; if it fails, fall back to queue
     try {
       if(table==='ocorrencias'){
         if(op==='insert'){
-          const { data, error }=await apiFetch('/api/ocorrencias',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          return data.id;
+          const res=await _supa.from('ocorrencias').insert(payload).select().single();
+          if(res.error) throw res.error;
+          return res.data.id;
         } else if(op==='update'){
-          const { error }=await apiFetch(`/api/ocorrencias/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          const res=await _supa.from('ocorrencias').update(payload.row).eq('id',payload.id);
+          if(res.error) throw res.error;
           return payload.id;
         }
       } else if(table==='meios'){
         if(op==='insert'){
-          const { data, error }=await apiFetch('/api/meios',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          return data.id;
+          const res=await _supa.from('meios').insert(payload).select().single();
+          if(res.error) throw res.error;
+          return res.data.id;
         } else if(op==='update'){
-          const { error }=await apiFetch(`/api/meios/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          const res=await _supa.from('meios').update(payload.row).eq('id',payload.id);
+          if(res.error) throw res.error;
           return payload.id;
         } else if(op==='delete'){
-          const { error }=await apiFetch(`/api/meios/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message);
+          const res=await _supa.from('meios').delete().eq('id',payload.id);
+          if(res.error) throw res.error;
           return true;
         }
       } else if(table==='meios_operativos'){
-        const { error }=await apiFetch(`/api/meios/${payload.meio_id}/operativos`,{method:'PUT',body:JSON.stringify({rows:payload.rows})});
-        if(error) throw new Error(error.message);
+        await _supa.from('meios_operativos').delete().eq('meio_id',payload.meio_id);
+        if(payload.rows.length) await _supa.from('meios_operativos').insert(payload.rows);
         return true;
       } else if(table==='meios_eventos'){
-        const { error }=await apiFetch('/api/meios_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message);
+        await _supa.from('meios_eventos').insert(payload);
         return true;
       } else if(table==='equipas'){
         if(op==='insert'){
-          const { data, error }=await apiFetch('/api/equipas',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
-          return data.id;
+          const res=await _supa.from('equipas').insert(payload).select().single();
+          if(res.error) throw res.error;
+          return res.data.id;
         } else if(op==='update'){
-          const { error }=await apiFetch(`/api/equipas/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          const res=await _supa.from('equipas').update(payload.row).eq('id',payload.id);
+          if(res.error) throw res.error;
           return payload.id;
         } else if(op==='delete'){
-          const { error }=await apiFetch(`/api/equipas/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message);
+          const res=await _supa.from('equipas').delete().eq('id',payload.id);
+          if(res.error) throw res.error;
           return true;
         }
       } else if(table==='ocorrencias_eventos'){
-        await apiFetch('/api/ocorrencias_eventos',{method:'POST',body:JSON.stringify(payload)});
+        try {
+          await _supa.from('ocorrencias_eventos').insert(payload);
+        } catch(evtErr){
+          // Table may not exist yet — silently ignore, do NOT flip isOnline
+          console.warn('ocorrencias_eventos write skipped (table may not exist):', evtErr.message);
+        }
         return true;
       }
     } catch(e){
+      // Do not flip isOnline for 404s (missing tables) — only for real connectivity loss
+      const is404 = e.code==='PGRST116' || e.message?.includes('404') || e.message?.includes('does not exist') || e.message?.includes('relation');
+      if(is404){
+        console.warn(`supaWriteOrQueue: table missing (${table}), skipping:`, e.message);
+        return tempId || null;
+      }
       console.warn(`supaWriteOrQueue: online write failed (${table}/${op}), queuing:`, e.message);
       isOnline=false; updateSyncBadge();
+      // fall through to queue
     }
   }
+  // Offline — queue the operation
   await pushToQueue({ table, op, payload, tempId: tempId||null, desc: desc||table });
   return tempId || null;
 }
 
 // ── Estado global de auth ────────────────────────────────────────
-let currentUser = null;   // { id }
+let currentUser = null;   // auth.user do Supabase
 let currentRole = null;   // 'admin' | 'ofligacao' | 'operacional' | 'visualizador'
 let currentNome = '';
 let currentSubregiao = null; // sub-região do utilizador OfLigacao (null = admin, vê tudo)
@@ -1557,6 +1469,14 @@ let db = { ocorrencias:[], teams:[], equipas:[], operacionais:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
+// ── Atalho para queries com tratamento de erro ───────────────────
+async function supa(table){ return _supa.from(table); }
+
+async function dbErr(label, { error }){
+  if(error){ console.error(label, error); toast(`Erro: ${error.message}`,'err'); return true; }
+  return false;
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  AUTENTICAÇÃO
 // ══════════════════════════════════════════════════════════════════
@@ -1568,32 +1488,103 @@ async function doLogin(){
   errEl.classList.remove('show');
   if(!email||!pass){ errEl.textContent='Preencha email e password.'; errEl.classList.add('show'); return; }
   btn.textContent='A autenticar…'; btn.disabled=true;
-  let res, body;
-  try {
-    res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password: pass}) });
-    body = await res.json();
-  } catch(e){
-    btn.textContent='Entrar'; btn.disabled=false;
-    errEl.textContent='Sem ligação ao servidor.'; errEl.classList.add('show'); return;
-  }
+  const { data, error } = await _supa.auth.signInWithPassword({ email, password: pass });
   btn.textContent='Entrar'; btn.disabled=false;
-  if(!res.ok){ errEl.innerHTML = body.error || 'Erro de autenticação.'; errEl.classList.add('show'); return; }
-  sessionStorage.setItem('gfr_token', body.token);
-  await completeLogin(body);
+  if(error){ errEl.innerHTML = error.message==='Invalid login credentials'?'Credenciais inválidas. Verifique email e password.': error.message + '<br><small>Verifique se o projecto Supabase está correcto e se o utilizador existe em Authentication → Users.</small>'; errEl.classList.add('show'); return; }
+  await afterLogin(data.user);
 }
 
 async function doLogout(){
-  sessionStorage.removeItem('gfr_token');
-  showAuthOverlay();
+  await _supa.auth.signOut();
+  currentUser=null; currentRole=null; currentNome='';
+  document.getElementById('auth-overlay').classList.remove('hidden');
   document.getElementById('auth-email').value='';
   document.getElementById('auth-pass').value='';
+  document.getElementById('btn-logout').style.display='none';
+  document.getElementById('topbar-user').textContent='';
+  document.getElementById('role-badge').style.display='none';
 }
 
-async function completeLogin(authData){
-  currentUser      = { id: authData.id };
-  currentRole      = authData.role;
-  currentNome      = authData.nome;
-  currentSubregiao = authData.subregiao || null;
+async function afterLogin(user){
+  currentUser = user;
+
+  // ── Fetch profile from utilizadores ──────────────────────────
+  const { data: uData, error: uErr } = await _supa
+    .from('utilizadores')
+    .select('role,nome,ativo,subregiao')
+    .eq('id', user.id)
+    .maybeSingle();   // maybeSingle() returns null (not error) when row doesn't exist
+
+  // ── Diagnose failures ─────────────────────────────────────────
+  if(uErr){
+    // Real DB/RLS error — show it clearly
+    showAuthError(
+      'Erro ao aceder ao perfil: ' + uErr.message +
+      '<br><small>Verifique se a tabela <code>utilizadores</code> existe e se o RLS permite leitura pelo próprio utilizador.</small>'
+    );
+    await _supa.auth.signOut();
+    currentUser = null;
+    return;
+  }
+
+  if(!uData){
+    // Authenticated in Supabase Auth but no row in utilizadores yet
+    // Offer to auto-create as admin if this is the first user, otherwise block
+    const { count } = await _supa.from('utilizadores').select('*', { count:'exact', head:true });
+    if(count === 0 || count === null){
+      // First user ever — auto-create as admin
+      const { error: insErr } = await _supa
+        .from('utilizadores')
+        .insert({ id: user.id, nome: user.email.split('@')[0], role: 'admin', ativo: true });
+      if(insErr){
+        showAuthError(
+          'Autenticação ok, mas não foi possível criar o perfil automaticamente: ' + insErr.message +
+          '<br><small>Execute o SQL de setup e insira o utilizador admin manualmente.</small>'
+        );
+        await _supa.auth.signOut();
+        currentUser = null;
+        return;
+      }
+      // Re-fetch after insert
+      const { data: newData } = await _supa.from('utilizadores').select('role,nome,ativo,subregiao').eq('id', user.id).single();
+      return await completeLogin(user, newData || { role:'admin', nome: user.email.split('@')[0], ativo:true });
+    } else {
+      showAuthError(
+        'Utilizador autenticado mas sem perfil na aplicação.' +
+        '<br><small>Peça ao administrador para o adicionar na página de Utilizadores, ou execute:<br>' +
+        '<code>INSERT INTO utilizadores (id, nome, role, ativo) VALUES (\''+user.id+'\', \'Nome\', \'visualizador\', true);</code></small>'
+      );
+      await _supa.auth.signOut();
+      currentUser = null;
+      return;
+    }
+  }
+
+  if(!uData.ativo){
+    showAuthError('Conta inativa. Contacte o administrador.');
+    await _supa.auth.signOut();
+    currentUser = null;
+    return;
+  }
+
+  await completeLogin(user, uData);
+}
+
+function showAuthError(html){
+  // Show error on the login overlay (re-open it if needed)
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  const errEl = document.getElementById('auth-err');
+  errEl.innerHTML = html;
+  errEl.classList.add('show');
+  const btn = document.getElementById('auth-btn');
+  btn.textContent = 'Entrar'; btn.disabled = false;
+}
+
+async function completeLogin(user, uData){
+  currentRole = uData.role;
+  currentNome = uData.nome || user.email;
+  currentSubregiao = uData.subregiao || null;
+  // Hide login, update UI
   document.getElementById('auth-overlay').classList.add('hidden');
   document.getElementById('auth-err').classList.remove('show');
   document.getElementById('topbar-user').textContent = currentNome;
@@ -1628,9 +1619,10 @@ function applyRoleUI(){
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  LOAD ALL DATA FROM API
+//  LOAD ALL DATA FROM SUPABASE
 // ══════════════════════════════════════════════════════════════════
 async function loadAllData(){
+  // If offline, restore from IndexedDB cache
   if(!isOnline){
     const ok = await restoreFromIDB();
     if(!ok) toast('Sem ligação e sem cache local. Ligue-se à internet para carregar dados.','err');
@@ -1638,12 +1630,17 @@ async function loadAllData(){
     return;
   }
 
-  // Subregião filtering is handled server-side based on JWT role
+  // OfLigacao only sees their sub-região; admin/others see all
+  let occQuery = _supa.from('ocorrencias').select('*').order('created_at', { ascending: false });
+  if(currentRole === 'ofligacao' && currentSubregiao){
+    occQuery = occQuery.eq('subregiao', currentSubregiao);
+  }
+
   const [occRes, teamsRes, equipasRes, opsRes] = await Promise.all([
-    apiFetch('/api/ocorrencias'),
-    apiFetch('/api/meios'),
-    apiFetch('/api/equipas'),
-    apiFetch('/api/operacionais'),
+    occQuery,
+    _supa.from('meios').select('*, meios_operativos(*), meios_eventos(*)').order('created_at'),
+    _supa.from('equipas').select('*').order('nome'),
+    _supa.from('operacionais_predefinidos').select('*').order('nome'),
   ]);
   if(occRes.error)    console.warn('loadAllData ocorrencias:', occRes.error.message);
   else                db.ocorrencias = occRes.data.map(mapOcorrencia);
@@ -1654,10 +1651,14 @@ async function loadAllData(){
   if(opsRes.error)    console.warn('loadAllData operacionais:', opsRes.error.message);
   else                db.operacionais= opsRes.data || [];
   if(occRes.error||teamsRes.error||equipasRes.error)
-    toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
+    toast('Algumas tabelas não carregaram. Execute o script SQL de setup.','err');
 
+  // Load ocorrencias_eventos (fail silently if table doesn't exist yet)
   try {
-    const { data: occEvtData, error: occEvtErr } = await apiFetch('/api/ocorrencias_eventos');
+    const { data: occEvtData, error: occEvtErr } = await _supa
+      .from('ocorrencias_eventos')
+      .select('*')
+      .order('ts', { ascending: false });
     if(!occEvtErr && occEvtData){
       db_occEventos = {};
       occEvtData.forEach(r=>{
@@ -1665,8 +1666,9 @@ async function loadAllData(){
         db_occEventos[r.ocorrencia_id].push({ ts:r.ts, tag:r.tag||'occ', meio:r.meio_label||null, msg:r.msg });
       });
     }
-  } catch(e){ /* ignore */ }
+  } catch(e){ /* table not yet created */ }
 
+  // Cache to IndexedDB for offline use
   await cacheToIDB();
   updateSyncBadge();
 }
@@ -1677,10 +1679,10 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, eventos, created:r.created_at };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, missao:r.missao, estado:r.estado, obs:r.obs, eventos, created:r.created_at };
 }
 
-function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
+function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo, capacidade:r.capacidade, origem:r.origem, notas:r.notas }; }
 
 // ══════════════════════════════════════════════════════════════════
 //  SAVE HELPERS — offline-aware (queue when offline, Supabase when online)
@@ -1702,7 +1704,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, missao:payload.missao, estado:payload.estado, obs:payload.obs };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -1738,7 +1740,7 @@ async function persistOccEvento(occId, tag, msg, meioLabel){
 }
 
 async function persistEquipa(payload, editId){
-  const row = { nome:payload.nome, tipo:payload.tipo, tipo_equipa:payload.tipo_equipa||null, subregiao:payload.subregiao||null, concelho:payload.concelho||null, capacidade:payload.capacidade, origem:payload.origem, notas:payload.notas };
+  const row = { nome:payload.nome, tipo:payload.tipo, capacidade:payload.capacidade, origem:payload.origem, notas:payload.notas };
   if(editId){
     const id = await supaWriteOrQueue('equipas','update',{id:editId,row}, editId, `Editar equipa: ${payload.nome}`);
     if(id===null && isOnline) return null;
@@ -1753,11 +1755,11 @@ async function persistEquipa(payload, editId){
 async function persistOperacional(payload, editId){
   const row = { nome:payload.nome, categoria:payload.categoria, contacto:payload.contacto, notas:payload.notas };
   if(editId){
-    await apiFetch(`/api/operacionais/${editId}`,{method:'PATCH',body:JSON.stringify(row)});
+    await _supa.from('operacionais_predefinidos').update(row).eq('id', editId);
     return editId;
   } else {
-    const { data } = await apiFetch('/api/operacionais',{method:'POST',body:JSON.stringify(row)});
-    return data?.id;
+    const res = await _supa.from('operacionais_predefinidos').insert(row).select().single();
+    return res.data?.id;
   }
 }
 
@@ -1825,6 +1827,7 @@ function navTo(page,el){
     utilizadores:{title:'Utilizadores',sub:'Gestão de acessos e roles',btn:null},
     equipas:{title:'Meios Predefinidos',sub:'Catálogo de meios para atribuição rápida',btn:'+ Novo Meio',btnFn:'openNewEquipa()'},
     arquivo:{title:'Arquivo',sub:'Ocorrências fechadas — consulta e exportação',btn:null},
+    esquema:{title:'BD Schema',sub:'PostgreSQL — Estrutura de base de dados',btn:null},
   };
   const c=cfg[page];
   if(c){
@@ -1837,6 +1840,7 @@ function navTo(page,el){
   if(page==='ocorrencias') renderOcorrencias();
   if(page==='arquivo') renderArquivo();
   if(page==='equipas'){ renderEquipas(); renderOperacionais(); }
+  if(page==='esquema') renderSchema();
   if(page==='utilizadores') renderUsers();
 }
 
@@ -1951,14 +1955,14 @@ function renderOcorrencias(){
 }
 
 function updateStats(){
-  const activeOccIds=new Set(db.ocorrencias.filter(o=>o.status==='active').map(o=>o.id));
-  document.getElementById('s-active').textContent=activeOccIds.size;
-  const activeTeams=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado!=='desmobilizado');
+  const active=db.ocorrencias.filter(o=>o.status==='active').length;
+  document.getElementById('s-active').textContent=active;
+  const activeTeams=db.teams.filter(t=>t.estado!=='desmobilizado');
   document.getElementById('s-teams').textContent=activeTeams.length;
   document.getElementById('s-operacionais').textContent=activeTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  document.getElementById('s-ops').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='operacao').length;
-  document.getElementById('s-rest').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='descanso').length;
-  document.getElementById('s-demob').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='desmobilizado').length;
+  document.getElementById('s-ops').textContent=db.teams.filter(t=>t.estado==='operacao').length;
+  document.getElementById('s-rest').textContent=db.teams.filter(t=>t.estado==='descanso').length;
+  document.getElementById('s-demob').textContent=db.teams.filter(t=>t.estado==='desmobilizado').length;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2170,14 +2174,12 @@ async function toggleCloseOcorrencia(){
   const o=db.ocorrencias.find(x=>x.id===currentOccId);
   if(!o) return;
   if(o.status==='active'){
-    if(!confirm('Fechar esta ocorrência? Será arquivada e removida da lista de ativas.\n\nSerá gerada automaticamente uma tabela Excel com o resumo de todos os meios.')) return;
+    if(!confirm('Fechar esta ocorrência? Será arquivada e removida da lista de ativas.')) return;
     o.status='closed';
     await supaWriteOrQueue('ocorrencias','update',{id:o.id, row:{status:'closed'}}, o.id, `Fechar: ${o.nome}`);
     await persistOccEvento(o.id,'occ','Ocorrência fechada.');
     await cacheToIDB();
-    // Generate Excel summary on close
-    exportMeiosExcel(o);
-    toast('Ocorrência fechada e arquivada. Excel gerado!','info');
+    toast('Ocorrência fechada e arquivada.','info');
     navTo('arquivo', document.querySelector('[data-page="arquivo"]'));
   } else {
     o.status='active';
@@ -2187,74 +2189,6 @@ async function toggleCloseOcorrencia(){
     toast('Ocorrência reaberta.','info');
     openDetalhe(currentOccId);
   }
-}
-
-// ══════════════════════════════════════════════════════════════════
-//  EXCEL EXPORT — Tabela Resumo Meios (on close)
-// ══════════════════════════════════════════════════════════════════
-function exportMeiosExcel(occ){
-  const teams = db.teams.filter(t => t.ocorrencia_id === occ.id);
-  const occNome = occ.nome || 'ocorrencia';
-
-  // ── Build CSV content (wide compatibility, no external lib needed) ──
-  const headers = [
-    'Tipo','Matrícula','Designação','N.º Operacionais','Função',
-    'Data Despacho','Hora Despacho',
-    'Data Saída Entidade','Hora Saída Entidade',
-    'Data Chegada TO','Hora Chegada TO',
-    'Data Saída TO','Hora Saída TO',
-    'Data Chegada Entidade','Hora Chegada Entidade',
-    'Km Percorridos'
-  ];
-
-  const escCsv = v => {
-    if(v===null||v===undefined) return '';
-    const s = String(v);
-    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
-  };
-
-  const rows = teams.map(t => [
-    t.tipo||'',
-    t.matricula||'',
-    t.eq||'',
-    t.operacionais||'',
-    t.missao||'',
-    t.dataDespacho||'',
-    t.horaDespacho||'',
-    t.dataSaidaEntidade||'',
-    t.horaSaidaEntidade||'',
-    t.dataChegada||'',
-    t.horaChegada||'',
-    t.dataDemob||'',
-    t.horaDemob||'',
-    t.dataChegadaEntidade||'',
-    t.horaChegadaEntidade||'',
-    t.km!=null ? t.km : ''
-  ]);
-
-  // Add occurrence info header rows
-  const nowStr = new Date().toLocaleString('pt-PT');
-  const metaLines = [
-    `Ocorrência:,${escCsv(occ.nome)}`,
-    `Código:,${escCsv(occ.ref||'—')}`,
-    `Concelho:,${escCsv(occ.concelho||'—')}`,
-    `Início:,${escCsv(occ.inicio ? new Date(occ.inicio).toLocaleString('pt-PT') : '—')}`,
-    `Exportado em:,${escCsv(nowStr)}`,
-    '',
-    headers.map(escCsv).join(','),
-    ...rows.map(r => r.map(escCsv).join(','))
-  ];
-
-  const csv = '\uFEFF' + metaLines.join('\r\n'); // BOM for Excel UTF-8
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const safeName = occNome.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,40);
-  const dateTag = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
-  a.href = url;
-  a.download = `GestaoMeios_resumo_${safeName}_${dateTag}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 const SECTORES_PREDEFINIDOS=['PC','ALFA','BRAVO','CHARLIE','DELTA','FOXTROT','GOLF','HOTEL','INDIA'];
@@ -2272,7 +2206,7 @@ function renderTeams(){
   const occ=db.ocorrencias.find(x=>x.id===currentOccId);
   const isClosed = occ && occ.status==='closed';
   const teams=db.teams.filter(t=>t.ocorrencia_id===currentOccId);
-  const activeT=teams.filter(t=>t.estado!=='desmobilizado'&&t.estado!=='previsto');
+  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
   document.getElementById('team-count-label').textContent=`${activeT.length} meios`;
   document.getElementById('d-total').textContent=activeT.length;
   const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
@@ -2281,7 +2215,6 @@ function renderTeams(){
   document.getElementById('d-rest2').textContent=teams.filter(t=>t.estado==='descanso').length;
   document.getElementById('d-demob2').textContent=teams.filter(t=>t.estado==='desmobilizado').length;
   document.getElementById('d-transit').textContent=teams.filter(t=>t.estado==='transito').length;
-  document.getElementById('d-previsto').textContent=teams.filter(t=>t.estado==='previsto').length;
   // Alerts disabled for closed ocorrências
   if(isClosed) document.getElementById('alerts-row').innerHTML='';
   else renderAlerts(teams);
@@ -2307,57 +2240,34 @@ function renderAlerts(teams){
 // ─── SECTOR VIEW ───────────────────────────────────────────────
 function renderSectorView(teams, isClosed){
   const container=document.getElementById('view-sector');
-  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
-
-  const previstos=teams.filter(t=>t.estado==='previsto');
-  const ativos=teams.filter(t=>t.estado!=='previsto');
-
-  // Group active teams by sector
+  // Group by sector; teams with no sector go to "Sem Setor"
   const sectors={};
-  ativos.forEach(t=>{
+  teams.forEach(t=>{
     const s=t.setor||'(Sem Setor)';
     if(!sectors[s]) sectors[s]=[];
     sectors[s].push(t);
   });
-
-  let html='';
-
-  // PREVISTOS block (top, separate)
-  if(previstos.length){
-    html+=`<div class="previsto-section">
-      <div class="previsto-section-hdr">
-        <span class="previsto-section-label">⏳ Previstos</span>
-        <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
-      </div>
-      <div class="teams-grid">${previstos.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
-    </div>`;
-  }
-
-  // Regular sector groups
-  if(Object.keys(sectors).length){
-    const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
-    html+=sorted.map(s=>{
-      const st=sectors[s];
-      const ops=st.filter(t=>t.estado==='operacao').length;
-      const rest=st.filter(t=>t.estado==='descanso').length;
-      const transit=st.filter(t=>t.estado==='transito').length;
-      const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
-      return `<div class="sector-group">
-        <div class="sector-header">
-          <span class="sector-label">${esc(s)}</span>
-          <div class="sector-stats">
-            <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
-            <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
-            <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
-            <span class="sector-stat">👥 ${totalOps} op.ais</span>
-          </div>
+  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
+  const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
+  container.innerHTML=sorted.map(s=>{
+    const st=sectors[s];
+    const ops=st.filter(t=>t.estado==='operacao').length;
+    const rest=st.filter(t=>t.estado==='descanso').length;
+    const transit=st.filter(t=>t.estado==='transito').length;
+    const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
+    return `<div class="sector-group">
+      <div class="sector-header">
+        <span class="sector-label">${esc(s)}</span>
+        <div class="sector-stats">
+          <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
+          <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
+          <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
+          <span class="sector-stat">👥 ${totalOps} op.ais</span>
         </div>
-        <div class="teams-grid">${st.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
-      </div>`;
-    }).join('');
-  }
-
-  container.innerHTML=html;
+      </div>
+      <div class="teams-grid">${st.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
+    </div>`;
+  }).join('');
 }
 
 // ─── CARDS VIEW ────────────────────────────────────────────────
@@ -2365,7 +2275,7 @@ function renderCardsView(teams, isClosed){
   const container=document.getElementById('view-cards');
   if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
   // Sort: operacao first, then transito, descanso, desmobilizado; within each sort by urgency
-  const order={operacao:0,transito:1,descanso:2,previsto:3,desmobilizado:4};
+  const order={operacao:0,transito:1,descanso:2,desmobilizado:3};
   const sorted=[...teams].sort((a,b)=>{
     const od=(order[a.estado]||0)-(order[b.estado]||0);
     if(od!==0) return od;
@@ -2379,7 +2289,7 @@ function renderCardsView(teams, isClosed){
 function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
   if(!teams.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios.</div></div></td></tr>';return;}
-  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
+  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'}};
   tbody.innerHTML=teams.map(t=>{
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
@@ -2411,7 +2321,7 @@ function renderTableView(teams, isClosed){
 
 // ─── TEAM CARD HTML ────────────────────────────────────────────
 function teamCardHtml(t, isClosed){
-  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
+  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'}};
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
   const ti=(!isClosed && t.estado==='operacao')?timeInfo(t):null;
@@ -2446,11 +2356,10 @@ function teamCardHtml(t, isClosed){
 
   // Action buttons — hidden for closed ocorrências
   const actionsHtml = isClosed ? '' : `<div class="team-card-actions">
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='operacao'&&t.estado!=='previsto'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
+      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='operacao'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='desmobilizado'?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">✕ Desmob.</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${['admin','ofligacao','operacional'].includes(currentRole)?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
@@ -2467,7 +2376,6 @@ function teamCardHtml(t, isClosed){
       <div class="team-card-row"><span class="lbl">Responsável</span><span class="val">${esc(t.responsavel||'—')}</span></div>
       ${t.contacto?`<div class="team-card-row"><span class="lbl">Contacto</span><span class="val">${esc(t.contacto)}</span></div>`:''}
       ${t.missao?`<div class="team-card-row"><span class="lbl">Missão</span><span class="val">${esc(t.missao)}</span></div>`:''}
-      ${t.estado==='previsto'&&(t.previstoData||t.previstoHora)?`<div class="team-card-row"><span class="lbl" style="color:#b890e8">Disponível em</span><span class="val" style="color:#b890e8">${fmtDateShort(t.previstoData)||''} ${t.previstoHora||'—'}</span></div>`:''}
       <div class="team-card-row"><span class="lbl">Chegada</span><span class="val">${fmtDateShort(t.dataChegada)} ${t.horaChegada||'—'}</span></div>
       ${t.dataDemob?`<div class="team-card-row"><span class="lbl">Desmob.</span><span class="val">${fmtDateShort(t.dataDemob)} ${t.horaDemob||''}</span></div>`:''}
       ${t.obs?`<div style="margin-top:4px;font-size:10px;color:var(--muted);line-height:1.4">${esc(t.obs)}</div>`:''}
@@ -2489,20 +2397,7 @@ function quickAction(type, teamId){
   const body=document.getElementById('action-body');
   const footer=document.getElementById('action-footer');
 
-  if(type==='transit'){
-    title.textContent=`Activar Trânsito — ${t.eq}`;
-    const now=new Date();
-    body.innerHTML=`
-      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma activação em <strong>trânsito</strong> para <strong>${esc(t.eq)}</strong>?</p>
-      <div class="form-grid" style="margin-top:14px;">
-        <div class="form-field"><label class="form-label">Data despacho</label><input class="form-input" id="qa-transit-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
-        <div class="form-field"><label class="form-label">Hora despacho</label><input class="form-input" id="qa-transit-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
-        <div class="form-field span2"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-transit-obs" rows="2" placeholder="Origem, destino, instruções…"></textarea></div>
-      </div>`;
-    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
-      <button class="btn btn-info" style="border-color:rgba(152,112,208,.4);color:#b890e8" onclick="doQuickTransit('${teamId}')">▶ Confirmar Trânsito</button>`;
-  }
-  else if(type==='op'){
+  if(type==='op'){
     title.textContent=`Activar Operação — ${t.eq}`;
     const now=new Date();
     const dateStr=now.toISOString().split('T')[0];
@@ -2574,25 +2469,6 @@ function quickAction(type, teamId){
   openModal('modal-action');
 }
 
-async function doQuickTransit(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
-  const d=document.getElementById('qa-transit-date').value;
-  const h=document.getElementById('qa-transit-time').value;
-  const obs=document.getElementById('qa-transit-obs').value.trim();
-  t.estado='transito'; t.dataDespacho=d||null; t.horaDespacho=h||null;
-  t.previstoData=null; t.previstoHora=null;
-  const msg=`Activado em trânsito${d?' — despacho: '+d+' '+h:''}${obs?' — '+obs:''}.`;
-  addEventLog(t,msg);
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq);
-  } catch(e){ console.warn('doQuickTransit:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
-}
-
 async function doQuickOp(id){
   const t=db.teams.find(x=>x.id===id);
   if(!t) return;
@@ -2609,13 +2485,10 @@ async function doQuickOp(id){
   t.missao=document.getElementById('qa-missao').value.trim()||t.missao;
   const msg=`Activado em operação. Setor: ${t.setor||'—'}. Limite op.: ${limStr}.`;
   addEventLog(t,msg);
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
-  } catch(e){ console.warn('doQuickOp:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Em Operação. Limite: ${limStr}.`,'ok');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}}, t.id, `Operação: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`${t.eq} em operação. Limite: ${limStr}.`,'ok');
 }
 
 async function doQuickRest(id){
@@ -2626,13 +2499,10 @@ async function doQuickRest(id){
   const msg=`Descanso activado${obs?' — '+obs:''}.`;
   addEventLog(t,msg);
   if(obs) t.obs=obs;
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}},t.id,`Descanso: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
-  } catch(e){ console.warn('doQuickRest:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Em Descanso.`,'info');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}}, t.id, `Descanso: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(t.eq+' em descanso.','info');
 }
 
 async function doQuickDemob(id){
@@ -2645,13 +2515,10 @@ async function doQuickDemob(id){
   const msg='Desmobilizado '+t.dataDemob+' '+t.horaDemob+(obs?' — '+obs:'')+'.';
   addEventLog(t,msg);
   if(obs) t.obs=obs;
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
-  } catch(e){ console.warn('doQuickDemob:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Desmobilizado.`,'info');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}}, t.id, `Desmob: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(t.eq+' desmobilizado.','info');
 }
 
 async function doQuickSector(id){
@@ -2661,14 +2528,11 @@ async function doQuickSector(id){
   t.setor=document.getElementById('qa-new-sector').value.trim();
   const msg=`Mudança de setor: ${old} → ${t.setor||'—'}.`;
   addEventLog(t,msg);
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}},t.id,`Setor: ${t.eq} → ${t.setor}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
-    updateSetorDatalist();
-  } catch(e){ console.warn('doQuickSector:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Setor ${t.setor||'—'}.`,'ok');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}}, t.id, `Setor: ${t.eq} → ${t.setor}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
+  updateSetorDatalist();
+  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast(`${t.eq} → Setor ${t.setor||'—'}.`,'ok');
 }
 
 async function doQuickObs(id){
@@ -2678,13 +2542,10 @@ async function doQuickObs(id){
   if(!txt){toast('Insira uma observação.','err');return;}
   addEventLog(t,txt);
   t.obs=txt;
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{obs:txt}},t.id,`Obs: ${t.eq}`);
-    await persistEvento(t.id,txt);
-    await persistOccEvento(t.ocorrencia_id,'obs',`${t.eq} — observação: ${txt}`,t.eq);
-  } catch(e){ console.warn('doQuickObs:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Observação registada.`,'ok');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{obs:txt}}, t.id, `Obs: ${t.eq}`);
+  await persistEvento(t.id,txt);
+  await persistOccEvento(t.ocorrencia_id,'obs',`${t.eq} — observação: ${txt}`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams(); toast('Observação registada.','ok');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2700,12 +2561,6 @@ function makeOpsItem(val, idx){
   div.className='ops-item';
   div.innerHTML=`<input class="form-input" placeholder="Nome operacional ${idx+1}" value="${esc(val||'')}" list="ops-datalist"/><button class="btn btn-danger btn-xs" onclick="this.parentElement.remove();recountOps()">✕</button>`;
   return div;
-}
-
-function togglePrevistoFields(val){
-  const show=val==='previsto';
-  document.getElementById('previsto-data-field').style.display=show?'':'none';
-  document.getElementById('previsto-hora-field').style.display=show?'':'none';
 }
 
 function syncOpsFields(n){
@@ -2737,15 +2592,12 @@ function recountOps(){
 function openAddTeam(){
   document.getElementById('team-edit-id').value='';
   document.getElementById('modal-team-title').textContent='Adicionar Meio';
-  const fields=['team-eq','team-matricula','team-concelho','team-resp','team-contacto','team-data-despacho','team-hora-despacho','team-data-saida-entidade','team-hora-saida-entidade','team-hora-chegada','team-limite-op','team-hora-demob','team-data-chegada-entidade','team-hora-chegada-entidade','team-km','team-missao','team-obs','team-horas-max'];
+  const fields=['team-eq','team-matricula','team-concelho','team-resp','team-contacto','team-data-despacho','team-hora-despacho','team-data-saida-entidade','team-hora-saida-entidade','team-hora-chegada','team-limite-op','team-hora-demob','team-missao','team-obs','team-horas-max'];
   fields.forEach(id=>document.getElementById(id).value='');
   document.getElementById('team-setor').value='';
   document.getElementById('team-tipo').value='';
   document.getElementById('team-ops').value='';
-  document.getElementById('team-estado').value='previsto';
-  document.getElementById('team-previsto-data').value='';
-  document.getElementById('team-previsto-hora').value='';
-  togglePrevistoFields('previsto');
+  document.getElementById('team-estado').value='transito';
   document.getElementById('team-data-despacho').value='';
   document.getElementById('team-data-saida-entidade').value='';
   document.getElementById('team-data-chegada').value=new Date().toISOString().split('T')[0];
@@ -2761,16 +2613,10 @@ function applyPreset(id){
   const e=db.equipas.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('team-eq').value=e.nome;
-  const tipoSel=document.getElementById('team-tipo');
-  if(e.tipo && ![...tipoSel.options].some(o=>o.value===e.tipo)){
-    const opt=document.createElement('option');
-    opt.value=opt.textContent=e.tipo;
-    tipoSel.appendChild(opt);
-  }
-  tipoSel.value=e.tipo||'';
-  document.getElementById('team-ops').value=e.capacidade||'';
-  document.getElementById('team-concelho').value=e.concelho||e.origem||'';
-  syncOpsFields(e.capacidade||0);
+  document.getElementById('team-tipo').value=e.tipo;
+  document.getElementById('team-ops').value=e.capacidade;
+  document.getElementById('team-concelho').value=e.origem||'';
+  syncOpsFields(e.capacidade);
 }
 
 function editTeam(id){
@@ -2797,14 +2643,8 @@ function editTeam(id){
   document.getElementById('team-limite-op').value=t.limiteOp||'';
   document.getElementById('team-data-demob').value=t.dataDemob||'';
   document.getElementById('team-hora-demob').value=t.horaDemob||'';
-  document.getElementById('team-data-chegada-entidade').value=t.dataChegadaEntidade||'';
-  document.getElementById('team-hora-chegada-entidade').value=t.horaChegadaEntidade||'';
-  document.getElementById('team-km').value=t.km||'';
   document.getElementById('team-missao').value=t.missao||'';
   document.getElementById('team-estado').value=t.estado||'transito';
-  document.getElementById('team-previsto-data').value=t.previstoData||'';
-  document.getElementById('team-previsto-hora').value=t.previstoHora||'';
-  togglePrevistoFields(t.estado||'transito');
   document.getElementById('team-obs').value=t.obs||'';
   // Operatives
   const list=document.getElementById('ops-list');
@@ -2846,14 +2686,9 @@ async function saveTeam(){
     limiteOp:document.getElementById('team-limite-op').value,
     dataDemob:document.getElementById('team-data-demob').value,
     horaDemob:document.getElementById('team-hora-demob').value,
-    dataChegadaEntidade:document.getElementById('team-data-chegada-entidade').value,
-    horaChegadaEntidade:document.getElementById('team-hora-chegada-entidade').value,
-    km:parseInt(document.getElementById('team-km').value)||null,
     missao:document.getElementById('team-missao').value.trim(),
     estado:document.getElementById('team-estado').value,
     obs:document.getElementById('team-obs').value.trim(),
-    previstoData:document.getElementById('team-previsto-data').value||null,
-    previstoHora:document.getElementById('team-previsto-hora').value||null,
   };
   const id = await persistTeam(payload, editId||null);
   if(!id) return;
@@ -2915,40 +2750,13 @@ async function deleteTeam(id){
 // ══════════════════════════════════════════════════════════════════
 function renderEquipas(){
   const tbody=document.getElementById('equipas-tbody');
-
-  // Populate filter selects on first render
-  const teSel = document.getElementById('eq-filter-tipo-equipa');
-  const srSel = document.getElementById('eq-filter-subregiao');
-  if(teSel && teSel.options.length <= 1){
-    const tipos = [...new Set(db.equipas.map(e=>e.tipo_equipa).filter(Boolean))].sort();
-    teSel.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-  }
-  if(srSel && srSel.options.length <= 1){
-    const subs = [...new Set(db.equipas.map(e=>e.subregiao).filter(Boolean))].sort();
-    srSel.innerHTML = '<option value="">Todas as sub-regiões</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  }
-
-  // Apply filters
-  const q = (document.getElementById('eq-filter-text')?.value||'').toLowerCase();
-  const fTE = document.getElementById('eq-filter-tipo-equipa')?.value||'';
-  const fSR = document.getElementById('eq-filter-subregiao')?.value||'';
-  const fCC = (document.getElementById('eq-filter-concelho')?.value||'').toLowerCase();
-
-  const list = db.equipas.filter(e=>{
-    if(q && !e.nome.toLowerCase().includes(q)) return false;
-    if(fTE && e.tipo_equipa !== fTE) return false;
-    if(fSR && e.subregiao !== fSR) return false;
-    if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
-    return true;
-  });
-
-  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios predefinidos.</div></div></td></tr>';return;}
-  tbody.innerHTML=list.map(e=>`<tr>
+  if(!db.equipas.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios predefinidos.</div></div></td></tr>';return;}
+  tbody.innerHTML=db.equipas.map(e=>`<tr>
     <td><strong>${esc(e.nome)}</strong></td>
-    <td><span class="badge badge-y" style="font-size:9px">${esc(e.tipo)}</span></td>
-    <td><span class="badge" style="font-size:9px;border-color:var(--accent2);color:var(--accent2)">${esc(e.tipo_equipa||'—')}</span></td>
-    <td style="font-size:11px">${esc(e.subregiao||'—')}</td>
-    <td style="font-size:11px">${esc(e.concelho||'—')}</td>
+    <td><span class="badge badge-y">${esc(e.tipo)}</span></td>
+    <td style="text-align:center;font-family:'IBM Plex Mono',monospace">${e.capacidade||'—'}</td>
+    <td class="mono">${esc(e.origem||'—')}</td>
+    <td style="font-size:11px;color:var(--muted)">${esc(e.notas||'')}</td>
     <td><div style="display:flex;gap:4px;">
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-ghost btn-sm" onclick="editEquipa('${e.id}')">✎</button>`:''}
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-sm" onclick="deleteEquipa('${e.id}')">✕</button>`:''}
@@ -2963,48 +2771,18 @@ function openNewEquipaFromTeam(){
 let _equipa_from_team=false;
 
 function refreshPresetSelect(selectedId){
-  const sel = document.getElementById('team-preset');
+  const sel=document.getElementById('team-preset');
   if(!sel) return;
-
-  // Populate filter dropdowns on first call
-  const teSel = document.getElementById('preset-filter-te');
-  const srSel = document.getElementById('preset-filter-sr');
-  if(teSel && teSel.options.length <= 1){
-    const tipos = [...new Set(db.equipas.map(e=>e.tipo_equipa).filter(Boolean))].sort();
-    teSel.innerHTML = '<option value="">Tipo equipa…</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
-  }
-  if(srSel && srSel.options.length <= 1){
-    const subs = [...new Set(db.equipas.map(e=>e.subregiao).filter(Boolean))].sort();
-    srSel.innerHTML = '<option value="">Sub-região…</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
-  }
-
-  // Apply filters
-  const fTE = teSel?.value || '';
-  const fSR = srSel?.value || '';
-  const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
-
-  const filtered = db.equipas.filter(e => {
-    if(fTE && e.tipo_equipa !== fTE) return false;
-    if(fSR && e.subregiao !== fSR) return false;
-    if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
-    return true;
-  });
-
-  sel.innerHTML = '<option value="">— Selecionar meio predefinido —</option>' +
-    filtered.map(e=>`<option value="${e.id}"${e.id===selectedId?' selected':''}>` +
-      `${esc(e.nome)}${e.tipo?' ('+esc(e.tipo)+')':''}${e.concelho?' · '+esc(e.concelho):''}` +
-      `</option>`).join('');
+  sel.innerHTML='<option value="">— Selecionar meio predefinido —</option>'+
+    db.equipas.map(e=>`<option value="${e.id}"${e.id===selectedId?' selected':''}>${esc(e.nome)} (${e.tipo})</option>`).join('');
   if(selectedId) applyPreset(selectedId);
 }
 
 function openNewEquipa(){
   document.getElementById('eq-edit-id').value='';
-  document.getElementById('modal-equipa-title').textContent='Novo Meio Predefinido';
-  ['eq-nome','eq-origem','eq-notas','eq-concelho'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('eq-tipo').value='';
-  document.getElementById('eq-tipo-equipa').value='';
+  ['eq-nome','eq-origem','eq-notas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('eq-tipo').value='VLCI';
   document.getElementById('eq-cap').value='';
-  populateSubregiaoSelect('eq-subregiao','');
   openModal('modal-equipa');
 }
 
@@ -3012,12 +2790,8 @@ function editEquipa(id){
   const e=db.equipas.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('eq-edit-id').value=e.id;
-  document.getElementById('modal-equipa-title').textContent='Editar Meio Predefinido';
   document.getElementById('eq-nome').value=e.nome||'';
-  document.getElementById('eq-tipo').value=e.tipo||'';
-  document.getElementById('eq-tipo-equipa').value=e.tipo_equipa||'';
-  populateSubregiaoSelect('eq-subregiao', e.subregiao||'');
-  document.getElementById('eq-concelho').value=e.concelho||'';
+  document.getElementById('eq-tipo').value=e.tipo||'VLCI';
   document.getElementById('eq-cap').value=e.capacidade||'';
   document.getElementById('eq-origem').value=e.origem||'';
   document.getElementById('eq-notas').value=e.notas||'';
@@ -3028,16 +2802,7 @@ async function saveEquipa(){
   const nome=document.getElementById('eq-nome').value.trim();
   if(!nome){toast('Insira a designação.','err');return;}
   const editId=document.getElementById('eq-edit-id').value;
-  const payload={
-    nome,
-    tipo:document.getElementById('eq-tipo').value,
-    tipo_equipa:document.getElementById('eq-tipo-equipa').value,
-    subregiao:document.getElementById('eq-subregiao').value,
-    concelho:document.getElementById('eq-concelho').value.trim(),
-    capacidade:parseInt(document.getElementById('eq-cap').value)||0,
-    origem:document.getElementById('eq-origem').value.trim(),
-    notas:document.getElementById('eq-notas').value.trim()
-  };
+  const payload={nome,tipo:document.getElementById('eq-tipo').value,capacidade:parseInt(document.getElementById('eq-cap').value)||0,origem:document.getElementById('eq-origem').value.trim(),notas:document.getElementById('eq-notas').value.trim()};
   if(editId){
     const idx=db.equipas.findIndex(x=>x.id===editId);
     if(idx>-1) db.equipas[idx]={...db.equipas[idx],...payload};
@@ -3058,7 +2823,7 @@ async function saveEquipa(){
 
 async function deleteEquipa(id){
   if(!confirm('Eliminar este meio predefinido?')) return;
-  await apiFetch(`/api/equipas/${id}`,{method:'DELETE'});
+  await _supa.from('equipas').delete().eq('id',id);
   db.equipas=db.equipas.filter(x=>x.id!==id);
   toast('Eliminado.','info'); renderEquipas();
 }
@@ -3123,11 +2888,332 @@ async function saveOperacional(){
 
 async function deleteOperacional(id){
   if(!confirm('Eliminar este operacional predefinido?')) return;
-  await apiFetch(`/api/operacionais/${id}`,{method:'DELETE'});
+  await _supa.from('operacionais_predefinidos').delete().eq('id',id);
   db.operacionais=db.operacionais.filter(x=>x.id!==id);
   toast('Eliminado.','info'); renderOperacionais();
 }
 
+// ══════════════════════════════════════════════════════════════════
+//  SCHEMA SQL
+// ══════════════════════════════════════════════════════════════════
+const SQL_SCHEMA=`-- Gestão Meios v3 — PostgreSQL Schema
+-- Execute este script no SQL Editor do Supabase ou no seu servidor PostgreSQL
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ─── UTILIZADORES (perfis ligados ao auth.users do Supabase) ─────────────────
+CREATE TABLE IF NOT EXISTS utilizadores (
+    id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    nome        TEXT NOT NULL,
+    role        TEXT NOT NULL DEFAULT 'visualizador'
+                  CHECK (role IN ('admin','ofligacao','operacional','visualizador')),
+    subregiao   TEXT,                           -- obrigatório para role='ofligacao'
+    ativo       BOOLEAN DEFAULT true,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─── EQUIPAS (meios predefinidos) ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS equipas (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome        TEXT NOT NULL,
+    tipo        TEXT,
+    capacidade  INT DEFAULT 0,
+    origem      TEXT,
+    notas       TEXT,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─── OPERACIONAIS PREDEFINIDOS ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS operacionais_predefinidos (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome        TEXT NOT NULL,
+    categoria   TEXT,
+    contacto    TEXT,
+    notas       TEXT,
+    created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─── OCORRÊNCIAS ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ocorrencias (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    local_ignicao       TEXT NOT NULL,
+    codigo_ocorrencia   TEXT,
+    subregiao           TEXT,
+    concelho            TEXT,
+    obs                 TEXT,
+    inicio              TIMESTAMPTZ,
+    status              TEXT DEFAULT 'active' CHECK (status IN ('active','closed')),
+    created_by          UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ DEFAULT now(),
+    updated_at          TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─── MEIOS ───────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS meios (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ocorrencia_id   UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    equipa_id       UUID REFERENCES equipas(id) ON DELETE SET NULL,
+    eq              TEXT NOT NULL,
+    tipo            TEXT,
+    concelho        TEXT,
+    setor           TEXT,
+    operacionais    INT DEFAULT 0,
+    responsavel     TEXT,
+    contacto        TEXT,
+    data_chegada    DATE,
+    hora_chegada    TIME,
+    horas_max       INT,
+    limite_op       TIME,
+    limite_op_date  DATE,
+    data_demob      DATE,
+    hora_demob      TIME,
+    missao          TEXT,
+    obs             TEXT,
+    estado          TEXT DEFAULT 'transito'
+                      CHECK (estado IN ('transito','operacao','descanso','desmobilizado')),
+    created_by      UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+-- ─── MEIOS OPERATIVOS (nomes dos elementos) ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS meios_operativos (
+    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meio_id  UUID NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
+    nome     TEXT NOT NULL,
+    ordem    INT DEFAULT 0
+);
+
+-- ─── MEIOS EVENTOS (log de ocorrências por meio) ─────────────────────────────
+CREATE TABLE IF NOT EXISTS meios_eventos (
+    id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meio_id  UUID NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
+    ts       TIMESTAMPTZ DEFAULT now(),
+    msg      TEXT NOT NULL,
+    user_id  UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+);
+
+-- ─── OCORRÊNCIAS EVENTOS (histórico completo da ocorrência) ──────────────────
+CREATE TABLE IF NOT EXISTS ocorrencias_eventos (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ocorrencia_id   UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    ts              TIMESTAMPTZ DEFAULT now(),
+    tag             TEXT DEFAULT 'occ',   -- created|estado|sector|ops|obs|occ|edit
+    meio_label      TEXT,                  -- designação do meio (snapshot)
+    msg             TEXT NOT NULL,
+    user_id         UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_occ_eventos_occ ON ocorrencias_eventos(ocorrencia_id);
+CREATE INDEX IF NOT EXISTS idx_occ_eventos_ts  ON ocorrencias_eventos(ts);
+
+-- ─── SECTORES PREDEFINIDOS ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS sectores (
+    id          SERIAL PRIMARY KEY,
+    designacao  TEXT NOT NULL UNIQUE
+);
+INSERT INTO sectores(designacao) VALUES
+  ('PC'),('ALFA'),('BRAVO'),('CHARLIE'),('DELTA'),
+  ('FOXTROT'),('GOLF'),('HOTEL'),('INDIA')
+ON CONFLICT DO NOTHING;
+
+-- ─── ÍNDICES ─────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_meios_ocorrencia    ON meios(ocorrencia_id);
+CREATE INDEX IF NOT EXISTS idx_meios_estado        ON meios(estado);
+CREATE INDEX IF NOT EXISTS idx_meios_setor         ON meios(setor);
+CREATE INDEX IF NOT EXISTS idx_meios_eventos_meio  ON meios_eventos(meio_id);
+CREATE INDEX IF NOT EXISTS idx_meios_operativos    ON meios_operativos(meio_id);
+CREATE INDEX IF NOT EXISTS idx_ocorrencias_status  ON ocorrencias(status);
+
+-- ─── TRIGGERS updated_at ─────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$;
+CREATE OR REPLACE TRIGGER trg_utilizadores_upd BEFORE UPDATE ON utilizadores FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE OR REPLACE TRIGGER trg_ocorrencias_upd  BEFORE UPDATE ON ocorrencias  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE OR REPLACE TRIGGER trg_meios_upd        BEFORE UPDATE ON meios        FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE OR REPLACE TRIGGER trg_equipas_upd      BEFORE UPDATE ON equipas      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- ─── ROW LEVEL SECURITY ───────────────────────────────────────────────────────
+ALTER TABLE utilizadores          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ocorrencias           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meios                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE equipas               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE operacionais_predefinidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meios_operativos      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meios_eventos         ENABLE ROW LEVEL SECURITY;
+
+-- Helper: role do utilizador autenticado
+CREATE OR REPLACE FUNCTION user_role()
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT role FROM utilizadores WHERE id = auth.uid()
+$$;
+
+-- UTILIZADORES: cada um vê o seu próprio perfil; admin vê todos
+CREATE POLICY "util_select" ON utilizadores FOR SELECT TO authenticated
+  USING (id = auth.uid() OR user_role() = 'admin');
+CREATE POLICY "util_update" ON utilizadores FOR UPDATE TO authenticated
+  USING (user_role() = 'admin');
+CREATE POLICY "util_insert" ON utilizadores FOR INSERT TO authenticated
+  WITH CHECK (user_role() = 'admin');
+
+-- ─── FUNÇÃO: register_with_invite ────────────────────────────────────────────
+-- Chamada via RPC durante o registo. SECURITY DEFINER bypassa o RLS.
+-- Valida o convite internamente — não confia em dados vindos do cliente.
+CREATE OR REPLACE FUNCTION register_with_invite(
+    p_invite_code TEXT,
+    p_nome        TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_invite  convites%ROWTYPE;
+    v_uid     UUID := auth.uid();
+BEGIN
+    IF v_uid IS NULL THEN
+        RETURN json_build_object('error', 'Nao autenticado.');
+    END IF;
+
+    SELECT * INTO v_invite
+    FROM convites
+    WHERE code = upper(trim(p_invite_code))
+      AND used = false
+      AND expires_at > now();
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('error', 'Codigo de convite invalido, ja utilizado ou expirado.');
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM utilizadores WHERE id = v_uid) THEN
+        RETURN json_build_object('error', 'Perfil ja existe para este utilizador.');
+    END IF;
+
+    INSERT INTO utilizadores (id, nome, role, subregiao, ativo)
+    VALUES (v_uid, trim(p_nome), v_invite.role, v_invite.subregiao, true);
+
+    UPDATE convites
+    SET used = true, used_by = v_uid, used_at = now()
+    WHERE id = v_invite.id;
+
+    RETURN json_build_object('ok', true, 'role', v_invite.role);
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('error', SQLERRM);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION register_with_invite(TEXT, TEXT) TO authenticated;
+
+-- OCORRÊNCIAS: todos autenticados lêem; ofligacao+ cria/edita; admin apaga
+CREATE POLICY "occ_select" ON ocorrencias FOR SELECT TO authenticated
+  USING (
+    user_role() IN ('admin','operacional','visualizador')
+    OR (user_role() = 'ofligacao' AND subregiao = (
+        SELECT subregiao FROM utilizadores WHERE id = auth.uid()
+    ))
+  );
+CREATE POLICY "occ_insert" ON ocorrencias FOR INSERT TO authenticated
+  WITH CHECK (
+    user_role() = 'admin'
+    OR (user_role() = 'ofligacao' AND subregiao = (
+        SELECT subregiao FROM utilizadores WHERE id = auth.uid()
+    ))
+  );
+CREATE POLICY "occ_update" ON ocorrencias FOR UPDATE TO authenticated
+  USING (user_role() IN ('admin','ofligacao'));
+CREATE POLICY "occ_delete" ON ocorrencias FOR DELETE TO authenticated
+  USING (user_role() = 'admin');
+
+-- MEIOS: todos lêem; operacional+ pode inserir/atualizar; ofligacao+ apaga
+CREATE POLICY "meios_select" ON meios FOR SELECT TO authenticated USING (true);
+CREATE POLICY "meios_insert" ON meios FOR INSERT TO authenticated
+  WITH CHECK (user_role() IN ('admin','ofligacao'));
+CREATE POLICY "meios_update" ON meios FOR UPDATE TO authenticated
+  USING (user_role() IN ('admin','ofligacao','operacional'));
+CREATE POLICY "meios_delete" ON meios FOR DELETE TO authenticated
+  USING (user_role() IN ('admin','ofligacao'));
+
+-- MEIOS_OPERATIVOS e MEIOS_EVENTOS: seguem permissões de meios
+CREATE POLICY "mo_all"  ON meios_operativos FOR ALL TO authenticated USING (true) WITH CHECK (user_role() IN ('admin','ofligacao','operacional'));
+CREATE POLICY "me_sel"  ON meios_eventos    FOR SELECT TO authenticated USING (true);
+CREATE POLICY "me_ins"  ON meios_eventos    FOR INSERT TO authenticated WITH CHECK (user_role() IN ('admin','ofligacao','operacional'));
+
+-- OCORRÊNCIAS_EVENTOS: todos lêem; operacional+ insere
+ALTER TABLE ocorrencias_eventos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "oe_sel"  ON ocorrencias_eventos FOR SELECT TO authenticated USING (true);
+CREATE POLICY "oe_ins"  ON ocorrencias_eventos FOR INSERT TO authenticated WITH CHECK (user_role() IN ('admin','ofligacao','operacional'));
+
+-- EQUIPAS e OPERACIONAIS: todos lêem; ofligacao+ edita
+CREATE POLICY "eq_select"  ON equipas FOR SELECT TO authenticated USING (true);
+CREATE POLICY "eq_write"   ON equipas FOR ALL    TO authenticated USING (user_role() IN ('admin','ofligacao')) WITH CHECK (user_role() IN ('admin','ofligacao'));
+CREATE POLICY "op_select"  ON operacionais_predefinidos FOR SELECT TO authenticated USING (true);
+CREATE POLICY "op_write"   ON operacionais_predefinidos FOR ALL    TO authenticated USING (user_role() IN ('admin','ofligacao')) WITH CHECK (user_role() IN ('admin','ofligacao'));
+
+-- ─── CONVITES (sistema de registo por código) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS convites (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    code        TEXT        NOT NULL UNIQUE,
+    role        TEXT        NOT NULL DEFAULT 'visualizador'
+                                CHECK (role IN ('admin','ofligacao','operacional','visualizador')),
+    note        TEXT,                           -- nota do admin (ex: "João Silva")
+    subregiao   TEXT,                           -- sub-região para ofligacao
+    expires_at  TIMESTAMPTZ NOT NULL,
+    used        BOOLEAN     NOT NULL DEFAULT false,
+    used_by     UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    used_at     TIMESTAMPTZ,
+    created_by  UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- RLS para convites
+ALTER TABLE convites ENABLE ROW LEVEL SECURITY;
+
+-- Qualquer utilizador autenticado pode ler convites não usados (para validar o código no registo)
+DROP POLICY IF EXISTS "conv_read_unused" ON convites;
+CREATE POLICY "conv_read_unused" ON convites
+    FOR SELECT TO authenticated
+    USING (used = false AND expires_at > now());
+
+-- Só admin pode criar/revogar convites
+DROP POLICY IF EXISTS "conv_insert" ON convites;
+CREATE POLICY "conv_insert" ON convites
+    FOR INSERT TO authenticated
+    WITH CHECK (user_role() = 'admin');
+
+DROP POLICY IF EXISTS "conv_update" ON convites;
+CREATE POLICY "conv_update" ON convites
+    FOR UPDATE TO authenticated
+    USING (true);  -- needed so register flow can mark code as used
+
+-- ─── MIGRAÇÕES (se as tabelas já existem, corra só estes ALTERs) ───────────────
+-- ALTER TABLE utilizadores ADD COLUMN IF NOT EXISTS subregiao TEXT;
+-- ALTER TABLE ocorrencias   ADD COLUMN IF NOT EXISTS subregiao TEXT;
+-- ALTER TABLE convites      ADD COLUMN IF NOT EXISTS subregiao TEXT;
+
+-- ─── SEED INICIAL DE MEIOS ────────────────────────────────────────────────────
+-- Execute após criar as tabelas para popular os meios predefinidos:
+/*
+INSERT INTO equipas (nome,tipo,capacidade,origem) VALUES
+  ('MR 10','MR',1,'ICNF'),('MR 16','MR',1,'ICNF'),('MR 24','MR',1,'ICNF'),
+  ('CNAF 40','CNAF',3,'ICNF'),('CNAF 56','CNAF',2,'ICNF'),('CNAF 57','CNAF',5,'ICNF'),
+  ('VLCI 12','VLCI',4,'ICNF'),('VLCI 16 FSBF','VLCI',4,'FSBF'),('VLCI 22 FSBF','VLCI',4,'FSBF'),
+  ('VLCI 11 SANTAREM','VLCI',4,'Santarém'),('VFCI 04 FSBF','VFCI',5,'FSBF'),
+  ('VAFR 01 FSBF','VAFR',1,'FSBF'),('VAFR 03','VAFR',1,'ICNF'),
+  ('VAFR 04 LVT','VAFR',2,'LVT'),('VAFR 06 LVT','VAFR',1,'LVT'),
+  ('VAFR 09 FSBF','VAFR',1,'FSBF'),('VAFR 24 FSBF','VAFR',1,'FSBF'),
+  ('VGFR 01 ALG','VGFR',2,'Algarve'),('VGFR 04 ALE','VGFR',1,'Alentejo'),
+  ('VGFR 05 ALE','VGFR',2,'Alentejo'),('PM 07','PM',1,'ICNF'),
+  ('PM 08','PM',1,'ICNF'),('PM 09','PM',1,'ICNF'),
+  ('SF 06-181','SF',4,'ICNF'),('SF 07-181','SF',4,'ICNF'),('SF 11-150','SF',4,'ICNF'),
+  ('VN 07','VN',2,'ICNF'),('VN 23','VN',2,'ICNF'),('VN 29','VN',2,'ICNF');
+*/`;
 
 // ══════════════════════════════════════════════════════════════════
 //  LOG EXPORT
@@ -3336,6 +3422,18 @@ function exportLog(){
   toast('Log exportado!','ok');
 }
 
+function renderSchema(){
+  const html=SQL_SCHEMA.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/(--[^\n]*)/g,'<span class="cm">$1</span>')
+    .replace(/\b(CREATE|TABLE|INDEX|TRIGGER|VIEW|FUNCTION|INSERT|INTO|VALUES|SELECT|FROM|LEFT|JOIN|WHERE|GROUP|BY|ON|DELETE|CASCADE|SET|NULL|IF|NOT|EXISTS|RETURNS|LANGUAGE|BEGIN|END|RETURN|NEW|BEFORE|UPDATE|FOR|EACH|ROW|EXECUTE|DEFAULT|PRIMARY|KEY|REFERENCES|UNIQUE|CHECK|IN|AS|WITH|AND|OR|COUNT|SUM|FILTER|EXTENSION)\b/g,'<span class="kw">$1</span>')
+    .replace(/'([^']*)'/g,"<span class='str'>'$1'</span>")
+    .replace(/\b(UUID|TEXT|INT|TIMESTAMPTZ|TIME|DATE|BOOLEAN|BIGINT|NUMERIC)\b/g,'<span class="type">$1</span>');
+  document.getElementById('schema-sql').innerHTML=html;
+}
+
+function copySchema(){
+  navigator.clipboard.writeText(SQL_SCHEMA).then(()=>toast('SQL copiado!','ok'));
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  MODAL / TOAST
@@ -3400,18 +3498,26 @@ async function renderUsers(){
   if(!tbody) return;
   tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">A carregar…</td></tr>';
 
-  const { data: users, error } = await apiFetch('/api/utilizadores');
-  if(error){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Erro ao carregar utilizadores.</div></td></tr>'; return; }
+  const [usersRes, invitesRes] = await Promise.all([
+    _supa.from('utilizadores').select('id,nome,role,ativo,subregiao,created_at').order('created_at'),
+    _supa.from('convites').select('id,code,role,note,expires_at,used,created_at').eq('used',false).order('created_at',{ascending:false}).limit(20),
+  ]);
+
+  if(usersRes.error){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Erro ao carregar utilizadores.</div></td></tr>'; return; }
 
   const roleCls={admin:'role-admin',ofligacao:'role-ofligacao',operacional:'role-operacional',visualizador:'role-visualizador'};
+  const users = usersRes.data || [];
+  const invites = invitesRes.data || [];
+  const now = new Date();
 
-  const html = (users||[]).map(u=>`<tr>
+  let html = users.map(u=>`<tr>
     <td><strong>${esc(u.nome)}</strong></td>
-    <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">${esc(u.email)}</td>
+    <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">${u.id.slice(0,8)}…</td>
     <td><span class="role-badge ${roleCls[u.role]||''}">${esc(u.role)}</span></td>
     <td style="font-size:11px;color:var(--muted)">${esc(u.subregiao||'—')}</td>
     <td>${u.ativo?'<span class="badge badge-ok">Ativo</span>':'<span class="badge badge-closed">Inativo</span>'}</td>
-    <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <td style="font-size:11px;color:var(--muted)">${fmtDate(u.created_at)}</td>
+    <td><div style="display:flex;gap:6px;">
       <select class="user-role-sel" onchange="changeUserRole('${u.id}',this.value)">
         ${['admin','ofligacao','operacional','visualizador'].map(r=>`<option value="${r}"${r===u.role?' selected':''}>${r}</option>`).join('')}
       </select>
@@ -3420,324 +3526,246 @@ async function renderUsers(){
         ${SUBREGIOES.map(s=>`<option value="${s}"${s===u.subregiao?' selected':''}>${s}</option>`).join('')}
       </select>
       <button class="btn btn-ghost btn-xs" onclick="toggleUserAtivo('${u.id}',${!u.ativo})">${u.ativo?'Desativar':'Ativar'}</button>
-      <button class="btn btn-danger btn-xs" onclick="deleteUser('${u.id}')">✕</button>
     </div></td>
   </tr>`).join('');
 
-  tbody.innerHTML = html || '<tr><td colspan="6"><div class="empty"><span class="empty-icon">👤</span><div class="empty-text">Sem utilizadores registados.</div></div></td></tr>';
+  // Pending invites section
+  const activeInvites = invites.filter(i => new Date(i.expires_at) > now);
+  if(activeInvites.length){
+    html += `<tr><td colspan="6" style="padding:10px 14px 4px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border-top:2px solid var(--border);">Convites pendentes (${activeInvites.length})</td></tr>`;
+    html += activeInvites.map(i=>`<tr style="opacity:.8;">
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.1em;color:var(--accent);">${esc(i.code)}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(i.note||'—')}</td>
+      <td><span class="role-badge ${roleCls[i.role]||''}">${esc(i.role)}</span></td>
+      <td><span class="badge badge-warn">Pendente</span></td>
+      <td style="font-size:11px;color:var(--muted)">Expira ${fmtDate(i.expires_at)}</td>
+      <td><button class="btn btn-danger btn-xs" onclick="revokeInvite('${i.id}')">Revogar</button></td>
+    </tr>`).join('');
+  }
+
+  tbody.innerHTML = html || '<tr><td colspan="6"><div class="empty"><span class="empty-icon">👤</span><div class="empty-text">Sem utilizadores. Gere um convite para começar.</div></div></td></tr>';
 }
 
+async function revokeInvite(id){
+  if(!confirm('Revogar este convite?')) return;
+  await _supa.from('convites').update({ used:true }).eq('id',id);
+  toast('Convite revogado.','info'); renderUsers();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AUTH TAB SWITCH
+// ══════════════════════════════════════════════════════════════════
+function switchAuthTab(tab){
+  document.getElementById('panel-login').classList.toggle('active', tab==='login');
+  document.getElementById('panel-register').classList.toggle('active', tab==='register');
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  document.getElementById('auth-err').classList.remove('show');
+  // Pre-fill code from URL hash if present (e.g. app.html#invite=CODE)
+  if(tab==='register'){
+    const hash = new URLSearchParams(window.location.hash.replace('#','?').slice(1));
+    const code = hash.get('invite');
+    if(code) document.getElementById('reg-code').value = code;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INVITE CODE SYSTEM
+//  Codes stored in Supabase table `convites` (see SQL below).
+//  Each code is a random 8-char string tied to a role + expiry.
+//  No service key needed — uses signUp() which works with anon key.
+// ══════════════════════════════════════════════════════════════════
 function openNewUser(){
-  document.getElementById('new-user-nome').value='';
-  document.getElementById('new-user-email').value='';
-  document.getElementById('new-user-pass').value='';
   document.getElementById('user-role').value='visualizador';
+  document.getElementById('user-note').value='';
+  document.getElementById('invite-result').style.display='none';
+  document.getElementById('invite-code-display').value='';
   populateSubregiaoSelect('invite-subregiao', '');
   document.getElementById('invite-subregiao-field').style.display='none';
   openModal('modal-user');
 }
 
 function toggleInviteSubregiao(role){
-  document.getElementById('invite-subregiao-field').style.display = role==='ofligacao' ? '' : 'none';
+  const field = document.getElementById('invite-subregiao-field');
+  field.style.display = role==='ofligacao' ? '' : 'none';
 }
 
-async function createUser(){
-  const nome     = document.getElementById('new-user-nome').value.trim();
-  const email    = document.getElementById('new-user-email').value.trim();
-  const pass     = document.getElementById('new-user-pass').value;
-  const role     = document.getElementById('user-role').value;
-  const subregiao= document.getElementById('invite-subregiao').value || null;
-  if(!nome||!email||!pass){ toast('Preencha nome, email e password.','err'); return; }
-  if(pass.length<8){ toast('Password mínimo 8 caracteres.','err'); return; }
-  if(role==='ofligacao'&&!subregiao){ toast('Selecione a sub-região para o OfLigacao.','err'); return; }
-  const { data, error } = await apiFetch('/api/utilizadores',{method:'POST',body:JSON.stringify({nome,email,password:pass,role,subregiao})});
-  if(error){ toast('Erro: '+error.message,'err'); return; }
-  closeModal('modal-user'); toast('Utilizador criado!','ok'); renderUsers();
+async function generateInvite(){
+  const role = document.getElementById('user-role').value;
+  const note = document.getElementById('user-note').value.trim();
+  // Generate a readable 8-char code
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for(let i=0;i<8;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  const expiresAt = new Date(Date.now() + 48*3600*1000).toISOString();
+  const subregiao = document.getElementById('invite-subregiao').value || null;
+  if(role==='ofligacao' && !subregiao){ toast('Selecione a sub-região para o OfLigacao.','err'); return; }
+  const { error } = await _supa.from('convites').insert({
+    code, role, note, expires_at: expiresAt, subregiao,
+    created_by: currentUser?.id || null, used: false
+  });
+  if(error){
+    toast('Erro ao guardar convite: '+error.message,'err');
+    return;
+  }
+  document.getElementById('invite-code-display').value = code;
+  document.getElementById('invite-expiry').textContent =
+    'Válido até: ' + new Date(expiresAt).toLocaleString('pt-PT') +
+    (note ? ' · ' + note : '');
+  document.getElementById('invite-result').style.display='';
+  toast('Código gerado!','ok');
+}
+
+function copyInviteCode(){
+  const code = document.getElementById('invite-code-display').value;
+  navigator.clipboard.writeText(code).then(()=>toast('Código copiado!','ok'));
+}
+
+// ── REGISTER with invite code ──────────────────────────────────────
+async function doRegister(){
+  const nome  = document.getElementById('reg-nome').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass  = document.getElementById('reg-pass').value;
+  const code  = document.getElementById('reg-code').value.trim().toUpperCase();
+  const errEl = document.getElementById('auth-err');
+  const btn   = document.getElementById('reg-btn');
+  errEl.classList.remove('show');
+
+  if(!nome)       { errEl.innerHTML='Insira o seu nome.';         errEl.classList.add('show'); return; }
+  if(!email)      { errEl.innerHTML='Insira o email.';            errEl.classList.add('show'); return; }
+  if(pass.length<8){ errEl.innerHTML='Password mínimo 8 caracteres.'; errEl.classList.add('show'); return; }
+  if(!code)       { errEl.innerHTML='Insira o código de convite.'; errEl.classList.add('show'); return; }
+
+  btn.textContent='A verificar…'; btn.disabled=true;
+
+  // 1. Validate invite code
+  const { data: invite, error: invErr } = await _supa
+    .from('convites')
+    .select('id,role,expires_at,used')
+    .eq('code', code)
+    .eq('used', false)
+    .maybeSingle();
+
+  if(invErr||!invite){
+    errEl.innerHTML='Código de convite inválido ou já utilizado.';
+    errEl.classList.add('show'); btn.textContent='Criar conta'; btn.disabled=false; return;
+  }
+  if(new Date(invite.expires_at) < new Date()){
+    errEl.innerHTML='Código de convite expirado. Peça um novo ao administrador.';
+    errEl.classList.add('show'); btn.textContent='Criar conta'; btn.disabled=false; return;
+  }
+
+  btn.textContent='A criar conta…';
+
+  // 2. Create user in Supabase Auth using signUp (works with anon key)
+  const { data: signUpData, error: signUpErr } = await _supa.auth.signUp({ email, password: pass });
+  if(signUpErr){
+    const msg = signUpErr.message || '';
+    let friendly;
+    if(msg === 'User already registered')
+      friendly = 'Este email já está registado. Use o separador <strong>Entrar</strong>.';
+    else if(msg.includes('rate limit') || msg.includes('429') || msg.includes('Too Many'))
+      friendly = 'Demasiadas tentativas. Aguarde alguns minutos e tente novamente.';
+    else if(msg.includes('invalid') && msg.includes('email'))
+      friendly = 'Endereço de email inválido.';
+    else if(msg.includes('Password'))
+      friendly = 'Password demasiado fraca. Use pelo menos 8 caracteres.';
+    else
+      friendly = 'Erro no registo: ' + msg;
+    errEl.innerHTML = friendly;
+    errEl.classList.add('show'); btn.textContent='Criar conta'; btn.disabled=false; return;
+  }
+
+  const userId = signUpData.user?.id;
+  if(!userId){
+    errEl.innerHTML='Erro ao criar conta. Tente novamente.';
+    errEl.classList.add('show'); btn.textContent='Criar conta'; btn.disabled=false; return;
+  }
+
+  // 3. Insert profile + mark invite used via SECURITY DEFINER RPC function
+  // This bypasses RLS safely — the function validates the invite server-side
+  // Requires the user to have a session first (signUp returns one if email confirm is off)
+  const session = signUpData.session;
+  let rpcClient = _supa;
+
+  if(session){
+    // Use the new session's JWT so the RPC knows who auth.uid() is
+    rpcClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+      global: { headers: { Authorization: 'Bearer ' + session.access_token } }
+    });
+  }
+
+  const { data: rpcResult, error: rpcErr } = await rpcClient
+    .rpc('register_with_invite', { p_invite_code: code, p_nome: nome });
+
+  btn.textContent='Criar conta'; btn.disabled=false;
+
+  if(rpcErr){
+    errEl.innerHTML='Erro ao guardar perfil: ' + rpcErr.message;
+    errEl.classList.add('show'); return;
+  }
+  if(rpcResult?.error){
+    errEl.innerHTML=rpcResult.error;
+    errEl.classList.add('show'); return;
+  }
+
+  // 4. Done
+  errEl.classList.remove('show');
+  if(session){
+    // Email confirm disabled — log in directly
+    await afterLogin(signUpData.user);
+  } else {
+    // Email confirm enabled — ask user to check inbox
+    errEl.style.background='rgba(109,184,109,.08)';
+    errEl.style.borderColor='rgba(109,184,109,.3)';
+    errEl.style.color='var(--success)';
+    errEl.innerHTML='✓ Conta criada com sucesso! Verifique o email para confirmar e depois entre normalmente.';
+    errEl.classList.add('show');
+    switchAuthTab('login');
+  }
 }
 
 async function changeUserRole(userId, newRole){
-  const { error } = await apiFetch(`/api/utilizadores/${userId}`,{method:'PATCH',body:JSON.stringify({role:newRole})});
+  const { error } = await _supa.from('utilizadores').update({ role:newRole }).eq('id',userId);
   if(error){ toast('Erro ao alterar role.','err'); return; }
-  toast('Role actualizado.','ok');
+  toast('Role actualizado.','ok'); renderUsers();
 }
 
 async function changeUserSubregiao(userId, newSub){
-  const { error } = await apiFetch(`/api/utilizadores/${userId}`,{method:'PATCH',body:JSON.stringify({subregiao:newSub||null})});
+  const { error } = await _supa.from('utilizadores').update({ subregiao: newSub||null }).eq('id',userId);
   if(error){ toast('Erro ao alterar sub-região.','err'); return; }
   toast('Sub-região actualizada.','ok');
 }
 
 async function toggleUserAtivo(userId, newAtivo){
-  const { error } = await apiFetch(`/api/utilizadores/${userId}`,{method:'PATCH',body:JSON.stringify({ativo:newAtivo})});
+  const { error } = await _supa.from('utilizadores').update({ ativo:newAtivo }).eq('id',userId);
   if(error){ toast('Erro.','err'); return; }
   renderUsers(); toast(newAtivo?'Utilizador ativado.':'Utilizador desativado.','info');
 }
 
-async function deleteUser(userId){
-  if(!confirm('Eliminar este utilizador? Esta acção é irreversível.')) return;
-  const { error } = await apiFetch(`/api/utilizadores/${userId}`,{method:'DELETE'});
-  if(error){ toast('Erro: '+error.message,'err'); return; }
-  toast('Utilizador eliminado.','info'); renderUsers();
-}
-
 // ══════════════════════════════════════════════════════════════════
-//  INIT — check JWT then show app or login
+//  INIT — check session then show app or login
 // ══════════════════════════════════════════════════════════════════
 (async function init(){
+  // Init IndexedDB first (needed for offline cache)
   try { await openIDB(); } catch(e){ console.warn('IndexedDB unavailable:', e); }
   updateSyncBadge();
 
-  const token = sessionStorage.getItem('gfr_token');
-  if(token){
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      if(payload.exp * 1000 > Date.now()){
-        await completeLogin({ id: payload.id, role: payload.role, nome: payload.nome, subregiao: payload.subregiao });
-        return;
-      }
-    } catch(e){ /* invalid token */ }
-    sessionStorage.removeItem('gfr_token');
+  // First check for an existing session (page refresh / returning user)
+  const { data:{ session } } = await _supa.auth.getSession();
+  if(session){
+    await afterLogin(session.user);
   }
-  document.getElementById('auth-overlay').classList.remove('hidden');
+  // Then listen for future auth state changes (login / logout in this tab)
+  _supa.auth.onAuthStateChange(async (event, session) => {
+    if(event==='SIGNED_IN' && session && !currentUser){
+      await afterLogin(session.user);
+    }
+    if(event==='SIGNED_OUT'){
+      currentUser=null; currentRole=null; currentNome='';
+    }
+  });
 })();
-
-// ══════════════════════════════════════════════════════════════════
-//  MAPA FOGOS.PT
-// ══════════════════════════════════════════════════════════════════
-let fogosData = [];
-let fogosMap = null;
-let fogosMarkers = [];
-let fogosSelectedId = null;
-
-// fogos.pt sub_regiao → SUBREGIOES (normalização de diferenças menores)
-const FOGOS_SUBREGIAO_MAP = {
-  'Tâmega e Sousa':           'Tâmega e Sousa',
-  'Viseu Dão Lafões':         'Viseu Dão-Lafões',
-  'Viseu Dão-Lafões':         'Viseu Dão-Lafões',
-  'Beiras e Serra da Estrela':'Beiras e Serra da Estrela',
-  'Área Metropolitana do Porto':'Área Metropolitana do Porto',
-  'Alentejo Litoral':         'Alentejo Litoral',
-  'Baixo Alentejo':           'Baixo Alentejo',
-  'Alto Alentejo':            'Alto Alentejo',
-  'Alentejo Central':         'Alentejo Central',
-  'Médio Tejo':               'Médio Tejo',
-  'Lezíria do Tejo':          'Lezíria do Tejo',
-  'Grande Lisboa':            'Grande Lisboa',
-  'Península de Setúbal':     'Península de Setúbal',
-  'Alto Minho':               'Alto Minho',
-  'Cávado':                   'Cávado',
-  'Ave':                      'Ave',
-  'Alto Tâmega e Barroso':    'Alto Tâmega e Barroso',
-  'Douro':                    'Douro',
-  'Terras de Trás-os-Montes': 'Terras de Trás-os-Montes',
-  'Algarve':                  'Algarve',
-  'Região de Aveiro':         'Região de Aveiro',
-  'Região de Coimbra':        'Região de Coimbra',
-  'Região de Leiria':         'Região de Leiria',
-  'Beira Baixa':              'Beira Baixa',
-  'Oeste':                    'Oeste',
-};
-
-function fogosSubregiaoMatch(apiSubRegiao) {
-  if(!apiSubRegiao) return '';
-  return FOGOS_SUBREGIAO_MAP[apiSubRegiao] || apiSubRegiao;
-}
-
-async function openFogosMap() {
-  openModal('modal-fogos');
-  // Init map only once
-  if(!fogosMap) {
-    // Defer slightly so the modal is visible and has dimensions
-    setTimeout(initFogosLeafletMap, 80);
-  } else {
-    fogosMap.invalidateSize();
-  }
-  if(fogosData.length === 0) {
-    await loadFogosData();
-  } else {
-    renderFogosList();
-    renderFogosMarkers();
-  }
-}
-
-async function loadFogosData() {
-  document.getElementById('fogos-list').innerHTML = '<div class="fogos-loading">A carregar fogos.pt...</div>';
-  document.getElementById('fogos-count-badge').textContent = '';
-  try {
-    const { data: json, error } = await apiFetch('/api/fogos/active');
-    if(error) throw new Error(error.message);
-    if(!json.success) throw new Error('API error');
-    fogosData = (json.data || []).filter(d => d.coords && d.lat && d.lng);
-    // Sort: "Em Curso" first, then by statusCode asc (lower = more active)
-    fogosData.sort((a,b) => {
-      const priority = s => s.statusCode <= 5 ? 0 : s.statusCode <= 6 ? 1 : s.statusCode <= 7 ? 2 : 3;
-      return priority(a) - priority(b) || a.date < b.date ? 1 : -1;
-    });
-    const now = new Date();
-    document.getElementById('fogos-last-update').textContent =
-      now.toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'});
-    document.getElementById('fogos-count-badge').textContent = fogosData.length + ' ocorrências';
-    renderFogosList();
-    if(fogosMap) renderFogosMarkers();
-  } catch(e) {
-    document.getElementById('fogos-list').innerHTML =
-      '<div class="fogos-loading" style="color:var(--danger)">Erro ao carregar fogos.pt</div>';
-  }
-}
-
-function initFogosLeafletMap() {
-  if(fogosMap) return;
-  const isDark = !document.documentElement.classList.contains('theme-light');
-  fogosMap = L.map('fogos-leaflet-map', { zoomControl: true }).setView([39.5, -8.0], 6);
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-  L.tileLayer(tileUrl, {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd', maxZoom: 19
-  }).addTo(fogosMap);
-  if(fogosData.length) renderFogosMarkers();
-}
-
-function renderFogosMarkers() {
-  if(!fogosMap) return;
-  fogosMarkers.forEach(m => fogosMap.removeLayer(m));
-  fogosMarkers = [];
-  fogosData.forEach(inc => {
-    const color = '#' + (inc.statusColor || 'BDBDBD');
-    const isSelected = inc.id === fogosSelectedId;
-    const markerHtml = `<div style="
-      width:${isSelected?16:11}px;height:${isSelected?16:11}px;
-      border-radius:50%;background:${color};
-      border:2px solid ${isSelected?'#fff':color};
-      box-shadow:0 0 ${isSelected?'8px 2px':'4px 1px'} ${color}88;
-      transition:all .15s;
-    "></div>`;
-    const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [isSelected?16:11, isSelected?16:11], iconAnchor: [isSelected?8:5, isSelected?8:5] });
-    const marker = L.marker([inc.lat, inc.lng], { icon })
-      .addTo(fogosMap)
-      .bindPopup(buildFogosPopup(inc), { maxWidth: 260 });
-    marker.on('click', () => selectFogosItem(inc.id, false));
-    fogosMarkers.push(marker);
-  });
-}
-
-function buildFogosPopup(inc) {
-  const meios = [];
-  if(inc.man)    meios.push(`👷 ${inc.man} operacionais`);
-  if(inc.terrain) meios.push(`🚒 ${inc.terrain} terrestres`);
-  if(inc.aerial)  meios.push(`🚁 ${inc.aerial} aéreos`);
-  return `<div>
-    <div class="fogos-popup-title">${esc(inc.location||inc.localidade||'—')}</div>
-    <div style="font-size:11px;color:#aaa;margin-bottom:4px;">${esc(inc.natureza||'')} · ${esc(inc.date||'')} ${esc(inc.hour||'')}</div>
-    <div style="font-size:11px;display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#${inc.statusColor||'aaa'};"></span>
-      <b>${esc(inc.status||'')}</b>
-    </div>
-    ${meios.length ? `<div style="font-size:10px;color:#999;margin-bottom:6px;">${meios.join(' · ')}</div>` : ''}
-    <button class="fogos-popup-btn" onclick="selectFogosItem('${inc.id}', true)">+ Criar Ocorrência GFR</button>
-  </div>`;
-}
-
-function renderFogosList() {
-  const q = (document.getElementById('fogos-search')?.value||'').toLowerCase();
-  const list = fogosData.filter(inc => {
-    if(!q) return true;
-    return (inc.location||'').toLowerCase().includes(q) ||
-           (inc.distrito||inc.district||'').toLowerCase().includes(q) ||
-           (inc.concelho||'').toLowerCase().includes(q) ||
-           (inc.natureza||'').toLowerCase().includes(q) ||
-           (inc.status||'').toLowerCase().includes(q);
-  });
-  if(!list.length) {
-    document.getElementById('fogos-list').innerHTML =
-      '<div class="fogos-loading">Sem resultados</div>';
-    return;
-  }
-  document.getElementById('fogos-list').innerHTML = list.map(inc => {
-    const color = '#' + (inc.statusColor || 'BDBDBD');
-    const isSelected = inc.id === fogosSelectedId;
-    const meiosTags = [];
-    if(inc.man)    meiosTags.push(`👷 ${inc.man}`);
-    if(inc.terrain) meiosTags.push(`🚒 ${inc.terrain}`);
-    if(inc.aerial)  meiosTags.push(`🚁 ${inc.aerial}`);
-    return `<div class="fogos-item${isSelected?' selected':''}" onclick="selectFogosItem('${inc.id}', false)" data-id="${inc.id}">
-      <div class="fogos-item-top">
-        <span class="fogos-status-dot" style="background:${color};box-shadow:0 0 4px ${color}88;"></span>
-        <span class="fogos-item-loc">${esc(inc.location||inc.localidade||'—')}</span>
-      </div>
-      <div class="fogos-item-meta">
-        <span>${esc(inc.status||'')}</span>
-        <span>${esc(inc.natureza||'')}</span>
-        <span>${esc(inc.hour||'')}</span>
-      </div>
-      ${meiosTags.length ? `<div class="fogos-item-meios">${meiosTags.map(t=>`<span class="fogos-meio-tag">${t}</span>`).join('')}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function selectFogosItem(id, openForm) {
-  fogosSelectedId = id;
-  renderFogosList();
-  renderFogosMarkers();
-
-  const inc = fogosData.find(d => d.id === id);
-  if(!inc) return;
-
-  // Pan map to marker
-  if(fogosMap && inc.lat && inc.lng) {
-    fogosMap.setView([inc.lat, inc.lng], Math.max(fogosMap.getZoom(), 11), { animate: true });
-    const markerIdx = fogosData.findIndex(d => d.id === id);
-    if(fogosMarkers[markerIdx]) fogosMarkers[markerIdx].openPopup();
-  }
-
-  // Scroll list item into view
-  const el = document.querySelector(`[data-id="${id}"]`);
-  if(el) el.scrollIntoView({ block: 'nearest' });
-
-  if(openForm) createOcorrenciaFromFogos(inc);
-}
-
-function createOcorrenciaFromFogos(inc) {
-  closeModal('modal-fogos');
-  // Reset + pre-fill Nova Ocorrência
-  document.getElementById('occ-edit-id').value = '';
-  document.getElementById('modal-occ-title').textContent = 'Nova Ocorrência';
-  document.getElementById('occ-nome').value = inc.location || inc.localidade || '';
-  document.getElementById('occ-ref').value  = inc.sadoId || inc.id || '';
-  document.getElementById('occ-concelho').value = titleCase(inc.concelho || '');
-  document.getElementById('occ-obs').value = [
-    inc.natureza ? 'Natureza: ' + inc.natureza : '',
-    inc.status   ? 'Estado fogos.pt: ' + inc.status : '',
-    (inc.man||inc.terrain||inc.aerial) ? `Meios: ${inc.man||0} operacionais, ${inc.terrain||0} terrestres, ${inc.aerial||0} aéreos` : '',
-  ].filter(Boolean).join('\n');
-
-  // Data/hora
-  const dt = inc.dateTime?.sec
-    ? new Date(inc.dateTime.sec * 1000).toISOString().slice(0,16)
-    : new Date().toISOString().slice(0,16);
-  document.getElementById('occ-inicio').value = dt;
-
-  // Sub-região
-  const subregiao = fogosSubregiaoMatch(inc.sub_regiao || '');
-  populateSubregiaoSelect('occ-subregiao', currentSubregiao || subregiao);
-  const sel  = document.getElementById('occ-subregiao');
-  const lock = document.getElementById('occ-subregiao-lock');
-  if(currentRole === 'ofligacao' && currentSubregiao) {
-    sel.value = currentSubregiao;
-    sel.style.pointerEvents = 'none'; sel.style.opacity = '0.75'; sel.style.cursor = 'not-allowed';
-    if(lock) lock.style.display = '';
-  } else {
-    if(subregiao) sel.value = subregiao;
-    sel.style.pointerEvents = ''; sel.style.opacity = ''; sel.style.cursor = '';
-    if(lock) lock.style.display = 'none';
-  }
-  openModal('modal-occ');
-}
-
-function titleCase(str) {
-  return str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
-}
 </script>
 </body>
 </html>

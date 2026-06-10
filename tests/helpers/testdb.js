@@ -39,13 +39,13 @@ async function createTestUsers() {
     ),
     testPool.query(
       `INSERT INTO utilizadores (email, nome, password_hash, role, ativo)
-       VALUES ($1,$2,$3,'gestor',true) RETURNING *`,
-      ['gestor@test.pt', 'Gestor Teste', hash]
+       VALUES ($1,$2,$3,'ofligacao',true) RETURNING *`,
+      ['ofligacao@test.pt', 'OfLigacao Teste', hash]
     ),
     testPool.query(
       `INSERT INTO utilizadores (email, nome, password_hash, role, subregiao, ativo)
-       VALUES ($1,$2,$3,'gestor',$4,true) RETURNING *`,
-      ['gestor.sr@test.pt', 'Gestor Sub-Região', hash, 'Sub-Região Norte']
+       VALUES ($1,$2,$3,'ofligacao',$4,true) RETURNING *`,
+      ['ofligacao.sr@test.pt', 'OfLigacao Sub-Região', hash, 'Sub-Região Norte']
     ),
     testPool.query(
       `INSERT INTO utilizadores (email, nome, password_hash, role, ativo)
@@ -61,8 +61,8 @@ async function createTestUsers() {
 
   return {
     admin:      a.rows[0],
-    gestor:     g.rows[0],
-    gestorSR:   gs.rows[0],
+    ofligacao:     g.rows[0],
+    ofligacaoSR:   gs.rows[0],
     operacional: o.rows[0],
     visualizador: v.rows[0],
   };

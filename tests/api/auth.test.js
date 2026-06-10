@@ -80,9 +80,9 @@ describe('Autenticação obrigatória nos endpoints protegidos', () => {
     expect(res.status).toBe(401);
   });
 
-  test('GET /api/utilizadores com perfil gestor → 403', async () => {
+  test('GET /api/utilizadores com perfil ofligacao → 403', async () => {
     const { makeToken } = require('../helpers/testdb');
-    const token = makeToken(users.gestor);
+    const token = makeToken(users.ofligacao);
     const res = await request(app)
       .get('/api/utilizadores')
       .set('Authorization', `Bearer ${token}`);
@@ -99,9 +99,9 @@ describe('Autenticação obrigatória nos endpoints protegidos', () => {
     expect(res.status).toBe(403);
   });
 
-  test('DELETE /api/ocorrencias/:id com perfil gestor → 403', async () => {
+  test('DELETE /api/ocorrencias/:id com perfil ofligacao → 403', async () => {
     const { makeToken } = require('../helpers/testdb');
-    const token = makeToken(users.gestor);
+    const token = makeToken(users.ofligacao);
     const res = await request(app)
       .delete('/api/ocorrencias/00000000-0000-0000-0000-000000000000')
       .set('Authorization', `Bearer ${token}`);

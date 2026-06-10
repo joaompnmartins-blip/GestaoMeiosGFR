@@ -47,7 +47,7 @@ test.describe('Autenticação', () => {
     await login(page, 'viz@test.pt', 'test123');
     await expect(page.locator('#auth-overlay')).toHaveClass(/hidden/, { timeout: 5000 });
 
-    // #btnNew tem classe auth-gestor — não deve estar visível para visualizador
+    // #btnNew tem classe auth-ofligacao — não deve estar visível para visualizador
     await expect(page.locator('#btnNew')).toBeHidden();
   });
 });

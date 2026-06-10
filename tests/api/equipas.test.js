@@ -4,13 +4,13 @@ const { app, pool } = require('../../server');
 const { setupSchema, truncateAll, createTestUsers, makeToken, authHeader, testPool } = require('../helpers/testdb');
 const { equipaBase } = require('../helpers/fixtures');
 
-let users, gestorToken, vizToken;
+let users, ofligacaoToken, vizToken;
 
 beforeAll(async () => {
   await setupSchema();
   await truncateAll();
   users = await createTestUsers();
-  gestorToken = makeToken(users.gestor);
+  ofligacaoToken = makeToken(users.ofligacao);
   vizToken    = makeToken(users.visualizador);
 });
 
@@ -25,7 +25,7 @@ beforeEach(async () => {
 async function criarEquipa(payload = {}) {
   const res = await request(app)
     .post('/api/equipas')
-    .set(authHeader(gestorToken))
+    .set(authHeader(ofligacaoToken))
     .send({ ...equipaBase, ...payload });
   return res.body;
 }
@@ -51,10 +51,10 @@ describe('GET /api/equipas', () => {
 });
 
 describe('POST /api/equipas', () => {
-  test('gestor cria equipa → 200 + registo', async () => {
+  test('ofligacao cria equipa → 200 + registo', async () => {
     const res = await request(app)
       .post('/api/equipas')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(equipaBase);
     expect(res.status).toBe(200);
     expect(res.body.id).toBeTruthy();
@@ -74,11 +74,11 @@ describe('POST /api/equipas', () => {
 });
 
 describe('PATCH /api/equipas/:id', () => {
-  test('gestor edita equipa → 200', async () => {
+  test('ofligacao edita equipa → 200', async () => {
     const eq = await criarEquipa();
     const res = await request(app)
       .patch(`/api/equipas/${eq.id}`)
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ ...equipaBase, nome: 'Nome Actualizado', capacidade: 5 });
     expect(res.status).toBe(200);
 
@@ -89,11 +89,11 @@ describe('PATCH /api/equipas/:id', () => {
 });
 
 describe('DELETE /api/equipas/:id', () => {
-  test('gestor elimina equipa → 200', async () => {
+  test('ofligacao elimina equipa → 200', async () => {
     const eq = await criarEquipa();
     const res = await request(app)
       .delete(`/api/equipas/${eq.id}`)
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(200);
 
     const { rows } = await testPool.query('SELECT * FROM equipas WHERE id=$1', [eq.id]);

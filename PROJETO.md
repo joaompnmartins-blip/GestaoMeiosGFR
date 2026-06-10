@@ -30,19 +30,19 @@
 
 ### Autenticação e perfis
 - Login com email/password → JWT → `sessionStorage` (`gfr_token`)
-- 4 perfis hierárquicos: `visualizador` < `operacional` < `gestor` < `admin`
-- Gestor pode ter sub-região atribuída (vê só as suas ocorrências)
+- 4 perfis hierárquicos: `visualizador` < `operacional` < `ofligacao` < `admin`
+- OfLigacao pode ter sub-região atribuída (vê só as suas ocorrências)
 - Admin cria utilizadores na UI (sem auto-registo)
-- Elementos de UI ocultados por classe CSS (`.auth-admin`, `.auth-gestor`, `.auth-op`); controlo real no servidor via `requireAuth(minRole)`
+- Elementos de UI ocultados por classe CSS (`.auth-admin`, `.auth-ofligacao`, `.auth-op`); controlo real no servidor via `requireAuth(minRole)`
 
 ### Ocorrências
 - CRUD completo (criar, editar, fechar, reabrir, eliminar)
 - Fechar → move para Arquivo; Reabrir → volta à lista activa
-- Filtro por sub-região (gestor: automático; admin: dropdown)
+- Filtro por sub-região (ofligacao: automático; admin: dropdown)
 - Importação de ocorrência a partir do **mapa fogos.pt** (pré-preenche formulário)
 
 ### Mapa fogos.pt
-- Botão "🗺 Fogos Ativos" na barra superior (perfil ≥ gestor)
+- Botão "🗺 Fogos Ativos" na barra superior (perfil ≥ ofligacao)
 - Painel split: lista + mapa Leaflet (OpenStreetMap/CartoDB)
 - Dados obtidos via proxy `/api/fogos/active` no servidor (Cloudflare bloqueava pedidos directos do browser)
 - Clicar num incêndio → "Usar esta ocorrência" → pré-preenche formulário Nova Ocorrência
@@ -88,20 +88,20 @@
 | Método | Rota | Mín. perfil | Descrição |
 |---|---|---|---|
 | POST | `/api/login` | — | Autenticação, retorna JWT |
-| GET | `/api/ocorrencias` | visualizador | Lista (filtrada por sub-região para gestores) |
-| POST | `/api/ocorrencias` | gestor | Criar |
-| PATCH | `/api/ocorrencias/:id` | gestor | Editar / fechar (COALESCE para campos parciais) |
+| GET | `/api/ocorrencias` | visualizador | Lista (filtrada por sub-região para ofligacao) |
+| POST | `/api/ocorrencias` | ofligacao | Criar |
+| PATCH | `/api/ocorrencias/:id` | ofligacao | Editar / fechar (COALESCE para campos parciais) |
 | DELETE | `/api/ocorrencias/:id` | admin | Eliminar |
 | GET | `/api/meios` | visualizador | Lista com operativos e eventos |
-| POST | `/api/meios` | gestor | Criar |
+| POST | `/api/meios` | ofligacao | Criar |
 | PATCH | `/api/meios/:id` | operacional | Editar parcial (só actualiza colunas presentes no body) |
-| DELETE | `/api/meios/:id` | gestor | Eliminar |
+| DELETE | `/api/meios/:id` | ofligacao | Eliminar |
 | PUT | `/api/meios/:id/operativos` | operacional | Substituir lista de operativos |
 | POST | `/api/meios_eventos` | operacional | Adicionar evento a meio |
 | GET | `/api/ocorrencias_eventos` | visualizador | Log de ocorrência |
 | POST | `/api/ocorrencias_eventos` | operacional | Adicionar entrada ao log |
-| GET/POST/PATCH/DELETE | `/api/equipas` | visualizador/gestor | Catálogo de meios predefinidos |
-| GET/POST/DELETE | `/api/operacionais` | visualizador/gestor | Operacionais predefinidos |
+| GET/POST/PATCH/DELETE | `/api/equipas` | visualizador/ofligacao | Catálogo de meios predefinidos |
+| GET/POST/DELETE | `/api/operacionais` | visualizador/ofligacao | Operacionais predefinidos |
 | GET/POST/PATCH/DELETE | `/api/utilizadores` | admin | Gestão de utilizadores |
 | GET | `/api/fogos/active` | visualizador | Proxy para `api.fogos.pt/v2/incidents/active` |
 

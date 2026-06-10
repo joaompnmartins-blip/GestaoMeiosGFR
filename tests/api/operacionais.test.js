@@ -4,13 +4,13 @@ const { app, pool } = require('../../server');
 const { setupSchema, truncateAll, createTestUsers, makeToken, authHeader, testPool } = require('../helpers/testdb');
 const { operacionalBase } = require('../helpers/fixtures');
 
-let gestorToken, vizToken;
+let ofligacaoToken, vizToken;
 
 beforeAll(async () => {
   await setupSchema();
   await truncateAll();
   const users = await createTestUsers();
-  gestorToken = makeToken(users.gestor);
+  ofligacaoToken = makeToken(users.ofligacao);
   vizToken    = makeToken(users.visualizador);
 });
 
@@ -26,7 +26,7 @@ describe('GET /api/operacionais', () => {
   test('visualizador lista → 200', async () => {
     await request(app)
       .post('/api/operacionais')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(operacionalBase);
 
     const res = await request(app)
@@ -39,10 +39,10 @@ describe('GET /api/operacionais', () => {
 });
 
 describe('POST /api/operacionais', () => {
-  test('gestor cria operacional → 200', async () => {
+  test('ofligacao cria operacional → 200', async () => {
     const res = await request(app)
       .post('/api/operacionais')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(operacionalBase);
     expect(res.status).toBe(200);
     expect(res.body.id).toBeTruthy();
@@ -59,15 +59,15 @@ describe('POST /api/operacionais', () => {
 });
 
 describe('DELETE /api/operacionais/:id', () => {
-  test('gestor elimina → 200', async () => {
+  test('ofligacao elimina → 200', async () => {
     const cr = await request(app)
       .post('/api/operacionais')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(operacionalBase);
 
     const res = await request(app)
       .delete(`/api/operacionais/${cr.body.id}`)
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(200);
 
     const { rows } = await testPool.query(

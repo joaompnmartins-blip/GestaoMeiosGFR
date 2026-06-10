@@ -52,21 +52,21 @@ tests/
 | 4 | GET `/api/ocorrencias` sem JWT | 401 |
 | 5 | GET `/api/ocorrencias` com JWT expirado | 401 |
 | 6 | POST `/api/ocorrencias` com perfil `visualizador` | 403 |
-| 7 | POST `/api/meios` com perfil `operacional` | 403 (requer gestor) |
-| 8 | DELETE `/api/ocorrencias/:id` com perfil `gestor` | 403 (requer admin) |
+| 7 | POST `/api/meios` com perfil `operacional` | 403 (requer ofligacao) |
+| 8 | DELETE `/api/ocorrencias/:id` com perfil `ofligacao` | 403 (requer admin) |
 
 ### ocorrencias.test.js
 | # | Caso de teste | Resultado esperado |
 |---|---|---|
 | 1 | GET `/api/ocorrencias` (admin) → lista todas | 200 + array |
-| 2 | GET `/api/ocorrencias` (gestor com sub-região) → só as suas | 200 + filtrado |
+| 2 | GET `/api/ocorrencias` (ofligacao com sub-região) → só as suas | 200 + filtrado |
 | 3 | POST criar ocorrência com campos obrigatórios | 201 + registo criado |
 | 4 | POST criar ocorrência sem `local_ignicao` | 400 ou NOT NULL erro |
 | 5 | PATCH fechar ocorrência (`status: 'closed'`) sem outros campos | 200, `local_ignicao` preservado |
 | 6 | PATCH reabrir ocorrência (`status: 'active'`) | 200 |
 | 7 | PATCH editar campos da ocorrência | 200 + campos actualizados |
 | 8 | DELETE ocorrência (admin) | 200 + registo removido |
-| 9 | DELETE ocorrência (gestor) | 403 |
+| 9 | DELETE ocorrência (ofligacao) | 403 |
 | 10 | GET lista após fechar → ocorrência não aparece na lista activa | 200 + ausente |
 
 ### meios.test.js
@@ -81,7 +81,7 @@ tests/
 | 7 | PATCH `{estado:'transito', previsto_data:null, previsto_hora:null}` limpa campos previsto | 200 |
 | 8 | PATCH body vazio → retorna ok sem UPDATE | 200, sem erro |
 | 9 | PUT `/api/meios/:id/operativos` substitui lista | 200 |
-| 10 | DELETE meio (gestor) | 200 |
+| 10 | DELETE meio (ofligacao) | 200 |
 | 11 | DELETE meio (operacional) | 403 |
 | 12 | POST `/api/meios_eventos` adiciona evento | 201 |
 
@@ -91,9 +91,9 @@ tests/
 | 1 | GET `/api/equipas` → lista catálogo | 200 + array (≥ 868 se seed correu) |
 | 2 | GET `/api/equipas?tipo_equipa=GFR` → filtrado | 200 + só GFR |
 | 3 | GET `/api/equipas?subregiao=X` → filtrado | 200 + filtrado |
-| 4 | POST criar equipa (gestor) | 201 |
+| 4 | POST criar equipa (ofligacao) | 201 |
 | 5 | PATCH editar equipa | 200 |
-| 6 | DELETE equipa (gestor) | 200 |
+| 6 | DELETE equipa (ofligacao) | 200 |
 | 7 | Seed automático: tabela vazia no início → 868 registos após migração | verificar count |
 
 ### operacionais.test.js
@@ -101,13 +101,13 @@ tests/
 |---|---|---|
 | 1 | GET `/api/operacionais` | 200 + array |
 | 2 | POST criar operacional | 201 |
-| 3 | DELETE operacional (gestor) | 200 |
+| 3 | DELETE operacional (ofligacao) | 200 |
 
 ### utilizadores.test.js
 | # | Caso de teste | Resultado esperado |
 |---|---|---|
 | 1 | GET `/api/utilizadores` (admin) | 200 + lista |
-| 2 | GET `/api/utilizadores` (gestor) | 403 |
+| 2 | GET `/api/utilizadores` (ofligacao) | 403 |
 | 3 | POST criar utilizador (admin) | 201 |
 | 4 | PATCH desactivar utilizador | 200 |
 | 5 | Login com utilizador desactivado (`ativo: false`) | 401 |

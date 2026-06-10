@@ -4,15 +4,15 @@ const { app, pool } = require('../../server');
 const { setupSchema, truncateAll, createTestUsers, makeToken, authHeader } = require('../helpers/testdb');
 const { ocorrenciaBase } = require('../helpers/fixtures');
 
-let users, adminToken, gestorToken, gestorSRToken, vizToken;
+let users, adminToken, ofligacaoToken, ofligacaoSRToken, vizToken;
 
 beforeAll(async () => {
   await setupSchema();
   await truncateAll();
   users = await createTestUsers();
   adminToken  = makeToken(users.admin);
-  gestorToken = makeToken(users.gestor);
-  gestorSRToken = makeToken(users.gestorSR);
+  ofligacaoToken = makeToken(users.ofligacao);
+  ofligacaoSRToken = makeToken(users.ofligacaoSR);
   vizToken    = makeToken(users.visualizador);
 });
 
@@ -34,13 +34,13 @@ describe('GET /api/ocorrencias', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  test('gestor com sub-região vê só as suas', async () => {
+  test('ofligacao com sub-região vê só as suas', async () => {
     const { testPool } = require('../helpers/testdb');
-    // Criar uma ocorrência na sub-região do gestor
+    // Criar uma ocorrência na sub-região do ofligacao
     await testPool.query(
       `INSERT INTO ocorrencias (local_ignicao, subregiao, status, created_by)
        VALUES ('Local A', 'Sub-Região Norte', 'active', $1)`,
-      [users.gestorSR.id]
+      [users.ofligacaoSR.id]
     );
     // Criar uma ocorrência noutra sub-região
     await testPool.query(
@@ -51,13 +51,13 @@ describe('GET /api/ocorrencias', () => {
 
     const res = await request(app)
       .get('/api/ocorrencias')
-      .set(authHeader(gestorSRToken));
+      .set(authHeader(ofligacaoSRToken));
     expect(res.status).toBe(200);
     expect(res.body.every(o => o.subregiao === 'Sub-Região Norte')).toBe(true);
     expect(res.body.length).toBe(1);
   });
 
-  test('gestor sem sub-região vê todas', async () => {
+  test('ofligacao sem sub-região vê todas', async () => {
     const { testPool } = require('../helpers/testdb');
     await testPool.query(
       `INSERT INTO ocorrencias (local_ignicao, subregiao, status, created_by)
@@ -67,17 +67,17 @@ describe('GET /api/ocorrencias', () => {
     );
     const res = await request(app)
       .get('/api/ocorrencias')
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(200);
     expect(res.body.length).toBe(2);
   });
 });
 
 describe('POST /api/ocorrencias', () => {
-  test('gestor cria ocorrência → 200 + registo', async () => {
+  test('ofligacao cria ocorrência → 200 + registo', async () => {
     const res = await request(app)
       .post('/api/ocorrencias')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(ocorrenciaBase);
     expect(res.status).toBe(200);
     expect(res.body.id).toBeTruthy();
@@ -100,7 +100,7 @@ describe('PATCH /api/ocorrencias/:id', () => {
   beforeEach(async () => {
     const res = await request(app)
       .post('/api/ocorrencias')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(ocorrenciaBase);
     occId = res.body.id;
   });
@@ -109,7 +109,7 @@ describe('PATCH /api/ocorrencias/:id', () => {
     // PATCH com só status — bug crítico que foi corrigido
     await request(app)
       .patch(`/api/ocorrencias/${occId}`)
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ status: 'closed' });
 
     const { testPool } = require('../helpers/testdb');
@@ -121,7 +121,7 @@ describe('PATCH /api/ocorrencias/:id', () => {
   test('editar campos da ocorrência', async () => {
     const res = await request(app)
       .patch(`/api/ocorrencias/${occId}`)
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ obs: 'Observação actualizada', concelho: 'Novo Concelho' });
     expect(res.status).toBe(200);
 
@@ -135,12 +135,12 @@ describe('PATCH /api/ocorrencias/:id', () => {
   test('reabrir ocorrência fechada', async () => {
     await request(app)
       .patch(`/api/ocorrencias/${occId}`)
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ status: 'closed' });
 
     const res = await request(app)
       .patch(`/api/ocorrencias/${occId}`)
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ status: 'active' });
     expect(res.status).toBe(200);
 
@@ -154,7 +154,7 @@ describe('DELETE /api/ocorrencias/:id', () => {
   test('admin elimina → 200', async () => {
     const cr = await request(app)
       .post('/api/ocorrencias')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(ocorrenciaBase);
     const id = cr.body.id;
 
@@ -168,15 +168,15 @@ describe('DELETE /api/ocorrencias/:id', () => {
     expect(rows.length).toBe(0);
   });
 
-  test('gestor não pode eliminar → 403', async () => {
+  test('ofligacao não pode eliminar → 403', async () => {
     const cr = await request(app)
       .post('/api/ocorrencias')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send(ocorrenciaBase);
 
     const res = await request(app)
       .delete(`/api/ocorrencias/${cr.body.id}`)
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(403);
   });
 });

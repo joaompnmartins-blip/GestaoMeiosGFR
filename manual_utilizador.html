@@ -335,7 +335,7 @@
       display: inline-block;
     }
     .role-admin       { background:rgba(66,154,189,.14);  color:var(--icnf-blue-light); border:1px solid rgba(66,154,189,.35); }
-    .role-gestor      { background:rgba(140,150,28,.12);  color:var(--accent);           border:1px solid rgba(140,150,28,.3); }
+    .role-ofligacao      { background:rgba(140,150,28,.12);  color:var(--accent);           border:1px solid rgba(140,150,28,.3); }
     .role-operacional { background:rgba(90,184,214,.10);  color:var(--accent3);          border:1px solid rgba(90,184,214,.25); }
     .role-visualizador{ background:rgba(89,99,0,.15);     color:var(--muted);            border:1px solid var(--border); }
 
@@ -509,7 +509,7 @@
     <div class="cover-bar"></div>
     <div class="cover-meta">
       <strong>Versão</strong> 17 &nbsp;·&nbsp;
-      <strong>Audiência</strong> Operacionais, Gestores e Administradores &nbsp;·&nbsp;
+      <strong>Audiência</strong> Operacionais, OfLigacao e Administradores &nbsp;·&nbsp;
       <strong>Sistema</strong> GFR / ICNF<br>
       <strong>Idioma</strong> Português (Portugal)
     </div>
@@ -616,20 +616,20 @@
             <td>Não pode criar/editar/eliminar ocorrências ou meios, nem gerir utilizadores.</td>
           </tr>
           <tr>
-            <td><span class="role-badge role-gestor">gestor</span></td>
+            <td><span class="role-badge role-ofligacao">ofligacao</span></td>
             <td>Tudo o do Operacional, mais: criar e fechar ocorrências, adicionar/editar/eliminar meios, gerir o catálogo de meios predefinidos. Restrito à sua sub-região se tiver uma atribuída.</td>
             <td>Não pode eliminar ocorrências nem gerir utilizadores.</td>
           </tr>
           <tr>
             <td><span class="role-badge role-admin">admin</span></td>
-            <td>Acesso total: tudo o do Gestor, mais: eliminar ocorrências, criar e gerir utilizadores, ver todas as sub-regiões.</td>
+            <td>Acesso total: tudo o do OfLigacao, mais: eliminar ocorrências, criar e gerir utilizadores, ver todas as sub-regiões.</td>
             <td>—</td>
           </tr>
         </tbody>
       </table>
       <div class="info-box">
-        <div class="info-box-title">Sub-região (Gestor)</div>
-        Um Gestor com sub-região atribuída vê e gere apenas as ocorrências da sua sub-região. O Administrador vê tudo e pode filtrar por sub-região.
+        <div class="info-box-title">Sub-região (OfLigacao)</div>
+        Um OfLigacao com sub-região atribuída vê e gere apenas as ocorrências da sua sub-região. O Administrador vê tudo e pode filtrar por sub-região.
       </div>
     </div>
 
@@ -676,7 +676,7 @@
 
     <div class="subsection" id="sec-occ-nova">
       <div class="subsection-title">2.1 — Criar Nova Ocorrência</div>
-      <p>Requer perfil <span class="role-badge role-gestor">gestor</span> ou superior.</p>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">01</div>
@@ -704,7 +704,7 @@
 
     <div class="subsection" id="sec-occ-fogos">
       <div class="subsection-title">2.2 — Importar de Fogos.pt</div>
-      <p>Requer perfil <span class="role-badge role-gestor">gestor</span> ou superior.</p>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior.</p>
       <p>
         O botão <kbd>🗺 Fogos Ativos</kbd> na barra superior abre um painel com o mapa em tempo real de ocorrências activas de <strong>fogos.pt</strong>. Os dados são obtidos através do servidor da aplicação (proxy), pelo que requerem ligação ao servidor.
       </p>
@@ -743,7 +743,7 @@
       <div class="two-col">
         <div class="card">
           <div class="card-title">Painel de Informação</div>
-          <p style="font-size:13px;">Local de ignição, código de ocorrência, sub-região, concelho, hora de início e observações. Os campos podem ser editados por Gestores.</p>
+          <p style="font-size:13px;">Local de ignição, código de ocorrência, sub-região, concelho, hora de início e observações. Os campos podem ser editados por OfLigacao.</p>
         </div>
         <div class="card">
           <div class="card-title">Estatísticas em Tempo Real</div>
@@ -756,7 +756,7 @@
 
     <div class="subsection" id="sec-occ-fechar">
       <div class="subsection-title">2.4 — Fechar e Reabrir Ocorrência</div>
-      <p>Requer perfil <span class="role-badge role-gestor">gestor</span> ou superior.</p>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">01</div>
@@ -793,7 +793,7 @@
 
     <div class="subsection" id="sec-meios-add">
       <div class="subsection-title">3.1 — Adicionar Meio</div>
-      <p>Requer perfil <span class="role-badge role-gestor">gestor</span> ou superior.</p>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior.</p>
       <div class="steps">
         <div class="step">
           <div class="step-num">01</div>
@@ -865,7 +865,7 @@
           <tr><td><kbd>✕ Desmob.</kbd></td><td>Transita para <em>Desmobilizado</em></td><td>Estado ≠ Desmobilizado</td></tr>
           <tr><td><kbd>⊞ Setor</kbd></td><td>Altera o sector do meio</td><td>Sempre</td></tr>
           <tr><td><kbd>📝 Obs.</kbd></td><td>Adiciona uma observação ao log</td><td>Sempre</td></tr>
-          <tr><td><kbd>✎ Editar</kbd></td><td>Abre o formulário de edição completo</td><td>Perfil ≥ Gestor</td></tr>
+          <tr><td><kbd>✎ Editar</kbd></td><td>Abre o formulário de edição completo</td><td>Perfil ≥ OfLigacao</td></tr>
         </tbody>
       </table>
       <div class="info-box ok">
@@ -881,7 +881,7 @@
       </p>
       <div class="info-box warn">
         <div class="info-box-title">Alerta de Limite</div>
-        Quando um meio ultrapassa o limite operacional, o cartão é assinalado visualmente. A responsabilidade de desmobilizar ou renovar a autorização é do Gestor.
+        Quando um meio ultrapassa o limite operacional, o cartão é assinalado visualmente. A responsabilidade de desmobilizar ou renovar a autorização é do OfLigacao.
       </div>
     </div>
 
@@ -925,7 +925,7 @@
 
     <div class="subsection">
       <div class="subsection-title">Criar / Editar Entradas</div>
-      <p>Requer perfil <span class="role-badge role-gestor">gestor</span> ou superior. Clicar em <kbd>+ Novo Meio</kbd> abre o formulário. As alterações ao catálogo não afectam meios já mobilizados em ocorrências — apenas os novos despachos.</p>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior. Clicar em <kbd>+ Novo Meio</kbd> abre o formulário. As alterações ao catálogo não afectam meios já mobilizados em ocorrências — apenas os novos despachos.</p>
     </div>
   </div>
 
@@ -967,8 +967,8 @@
         <div class="step">
           <div class="step-num">02</div>
           <div class="step-body">
-            <strong>Atribuir Sub-Região (opcional, para Gestores)</strong>
-            <p>Se o perfil for <em>gestor</em>, aparece o selector de sub-região. Um Gestor com sub-região só vê e gere as ocorrências dessa sub-região.</p>
+            <strong>Atribuir Sub-Região (opcional, para OfLigacao)</strong>
+            <p>Se o perfil for <em>ofligacao</em>, aparece o selector de sub-região. Um OfLigacao com sub-região só vê e gere as ocorrências dessa sub-região.</p>
           </div>
         </div>
         <div class="step">

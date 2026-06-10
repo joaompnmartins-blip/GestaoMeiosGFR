@@ -4,7 +4,7 @@ const { app, pool } = require('../../server');
 const { setupSchema, truncateAll, createTestUsers, makeToken, authHeader, testPool } = require('../helpers/testdb');
 const { ocorrenciaBase, meioBase, meioPrevistoBase } = require('../helpers/fixtures');
 
-let users, adminToken, gestorToken, opToken, vizToken;
+let users, adminToken, ofligacaoToken, opToken, vizToken;
 let occId;
 
 beforeAll(async () => {
@@ -12,14 +12,14 @@ beforeAll(async () => {
   await truncateAll();
   users = await createTestUsers();
   adminToken  = makeToken(users.admin);
-  gestorToken = makeToken(users.gestor);
+  ofligacaoToken = makeToken(users.ofligacao);
   opToken     = makeToken(users.operacional);
   vizToken    = makeToken(users.visualizador);
 
   // Criar ocorrência base para todos os testes
   const res = await request(app)
     .post('/api/ocorrencias')
-    .set(authHeader(gestorToken))
+    .set(authHeader(ofligacaoToken))
     .send(ocorrenciaBase);
   occId = res.body.id;
 });
@@ -35,7 +35,7 @@ beforeEach(async () => {
 async function criarMeio(payload = {}) {
   const res = await request(app)
     .post('/api/meios')
-    .set(authHeader(gestorToken))
+    .set(authHeader(ofligacaoToken))
     .send({ ...meioBase, ocorrencia_id: occId, ...payload });
   return res.body;
 }
@@ -56,10 +56,10 @@ describe('GET /api/meios', () => {
 });
 
 describe('POST /api/meios', () => {
-  test('gestor cria meio em trânsito', async () => {
+  test('ofligacao cria meio em trânsito', async () => {
     const res = await request(app)
       .post('/api/meios')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ ...meioBase, ocorrencia_id: occId });
     expect(res.status).toBe(200);
     expect(res.body.id).toBeTruthy();
@@ -67,10 +67,10 @@ describe('POST /api/meios', () => {
     expect(res.body.ocorrencia_id).toBe(occId);
   });
 
-  test('gestor cria meio previsto com data/hora', async () => {
+  test('ofligacao cria meio previsto com data/hora', async () => {
     const res = await request(app)
       .post('/api/meios')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ ...meioPrevistoBase, ocorrencia_id: occId });
     expect(res.status).toBe(200);
     expect(res.body.estado).toBe('previsto');
@@ -248,11 +248,11 @@ describe('POST /api/meios_eventos', () => {
 });
 
 describe('DELETE /api/meios/:id', () => {
-  test('gestor elimina meio → 200', async () => {
+  test('ofligacao elimina meio → 200', async () => {
     const meio = await criarMeio();
     const res = await request(app)
       .delete(`/api/meios/${meio.id}`)
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(200);
 
     const { rows } = await testPool.query('SELECT * FROM meios WHERE id=$1', [meio.id]);

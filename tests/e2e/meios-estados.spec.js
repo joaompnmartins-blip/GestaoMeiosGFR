@@ -1,7 +1,7 @@
 'use strict';
 const { test, expect } = require('@playwright/test');
 
-async function login(page, email = 'gestor@test.pt', password = 'test123') {
+async function login(page, email = 'ofligacao@test.pt', password = 'test123') {
   await page.goto('/');
   await page.fill('#auth-email', email);
   await page.fill('#auth-pass', password);

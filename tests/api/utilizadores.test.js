@@ -3,14 +3,14 @@ const request = require('supertest');
 const { app, pool } = require('../../server');
 const { setupSchema, truncateAll, createTestUsers, makeToken, authHeader, testPool } = require('../helpers/testdb');
 
-let users, adminToken, gestorToken;
+let users, adminToken, ofligacaoToken;
 
 beforeAll(async () => {
   await setupSchema();
   await truncateAll();
   users = await createTestUsers();
   adminToken  = makeToken(users.admin);
-  gestorToken = makeToken(users.gestor);
+  ofligacaoToken = makeToken(users.ofligacao);
 });
 
 afterAll(async () => {
@@ -29,10 +29,10 @@ describe('GET /api/utilizadores', () => {
     expect(res.body[0].password_hash).toBeUndefined();
   });
 
-  test('gestor não pode listar → 403', async () => {
+  test('ofligacao não pode listar → 403', async () => {
     const res = await request(app)
       .get('/api/utilizadores')
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(403);
   });
 });
@@ -65,10 +65,10 @@ describe('POST /api/utilizadores', () => {
     expect(res.status).toBe(400);
   });
 
-  test('gestor não pode criar utilizadores → 403', async () => {
+  test('ofligacao não pode criar utilizadores → 403', async () => {
     const res = await request(app)
       .post('/api/utilizadores')
-      .set(authHeader(gestorToken))
+      .set(authHeader(ofligacaoToken))
       .send({ email: 'x@test.pt', nome: 'X', password: 'test123' });
     expect(res.status).toBe(403);
   });
@@ -98,13 +98,13 @@ describe('PATCH /api/utilizadores/:id', () => {
     await request(app)
       .patch(`/api/utilizadores/${users.operacional.id}`)
       .set(authHeader(adminToken))
-      .send({ role: 'gestor' });
+      .send({ role: 'ofligacao' });
 
     const { rows } = await testPool.query(
       'SELECT role FROM utilizadores WHERE id=$1',
       [users.operacional.id]
     );
-    expect(rows[0].role).toBe('gestor');
+    expect(rows[0].role).toBe('ofligacao');
 
     // Restaurar
     await testPool.query(
@@ -113,22 +113,22 @@ describe('PATCH /api/utilizadores/:id', () => {
     );
   });
 
-  test('admin atribui sub-região a gestor', async () => {
+  test('admin atribui sub-região a ofligacao', async () => {
     await request(app)
-      .patch(`/api/utilizadores/${users.gestor.id}`)
+      .patch(`/api/utilizadores/${users.ofligacao.id}`)
       .set(authHeader(adminToken))
       .send({ subregiao: 'Sub-Região Teste' });
 
     const { rows } = await testPool.query(
       'SELECT subregiao FROM utilizadores WHERE id=$1',
-      [users.gestor.id]
+      [users.ofligacao.id]
     );
     expect(rows[0].subregiao).toBe('Sub-Região Teste');
 
     // Restaurar
     await testPool.query(
       'UPDATE utilizadores SET subregiao=NULL WHERE id=$1',
-      [users.gestor.id]
+      [users.ofligacao.id]
     );
   });
 });
@@ -141,10 +141,10 @@ describe('DELETE /api/utilizadores/:id', () => {
     expect(res.status).toBe(400);
   });
 
-  test('gestor não pode eliminar → 403', async () => {
+  test('ofligacao não pode eliminar → 403', async () => {
     const res = await request(app)
       .delete(`/api/utilizadores/${users.visualizador.id}`)
-      .set(authHeader(gestorToken));
+      .set(authHeader(ofligacaoToken));
     expect(res.status).toBe(403);
   });
 });
