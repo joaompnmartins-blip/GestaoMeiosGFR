@@ -523,6 +523,9 @@
         <span class="nav-icon">🗄</span><span>Arquivo</span>
       </div>
       <div class="nav-sep"></div>
+      <div class="nav-item auth-admin" data-page="pedidos" onclick="navTo('pedidos',this)" style="display:none;">
+        <span class="nav-icon">🗑</span><span>Pedidos</span>
+      </div>
       <div class="nav-item auth-admin" data-page="utilizadores" onclick="navTo('utilizadores',this)" style="display:none;">
         <span class="nav-icon">👤</span><span>Utilizadores</span>
       </div>
@@ -749,6 +752,21 @@
       </div>
 
       <!-- ══════════ PAGE: UTILIZADORES (admin only) ══════════ -->
+      <div class="page" id="page-pedidos">
+        <div class="section-hdr">
+          <div class="section-title">Pedidos de Remoção de Meios</div>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Pedidos submetidos por oficiais de ligação para remoção de meios. Aprovar remove o meio definitivamente; rejeitar mantém o meio activo.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Data</th><th>Meio</th><th>Tipo</th><th>Ocorrência</th><th>Motivo</th><th>Solicitado por</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody id="delete-requests-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="page" id="page-utilizadores">
         <div class="section-hdr">
           <div class="section-title">Gestão de Utilizadores</div>
@@ -1635,7 +1653,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], operacionais:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], operacionais:[], deleteRequests:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -1737,6 +1755,11 @@ async function loadAllData(){
   else                db.operacionais= opsRes.data || [];
   if(occRes.error||teamsRes.error||equipasRes.error)
     toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
+
+  try {
+    const { data: drData, error: drErr } = await apiFetch('/api/delete-requests');
+    if(!drErr) db.deleteRequests = drData || [];
+  } catch(e){ /* ignore */ }
 
   try {
     const { data: occEvtData, error: occEvtErr } = await apiFetch('/api/ocorrencias_eventos');
@@ -1895,7 +1918,7 @@ function addEventLog(t, msg){
 let currentOccId=null, currentView='sector';
 
 function navTo(page,el){
-  if(page==='utilizadores'&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
+  if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -1907,6 +1930,7 @@ function navTo(page,el){
     utilizadores:{title:'Utilizadores',sub:'Gestão de acessos e roles',btn:null},
     equipas:{title:'Meios Predefinidos',sub:'Catálogo de meios para atribuição rápida',btn:'+ Novo Meio',btnFn:'openNewEquipa()'},
     arquivo:{title:'Arquivo',sub:'Ocorrências fechadas — consulta e exportação',btn:null},
+    pedidos:{title:'Pedidos de Remoção',sub:'Aprovação de pedidos de remoção de meios',btn:null},
   };
   const c=cfg[page];
   if(c){
@@ -1920,6 +1944,7 @@ function navTo(page,el){
   if(page==='arquivo') renderArquivo();
   if(page==='equipas'){ renderEquipas(); renderOperacionais(); }
   if(page==='utilizadores') renderUsers();
+  if(page==='pedidos') renderDeleteRequests();
 }
 
 function setView(v){
@@ -2484,8 +2509,9 @@ function renderTableView(teams, isClosed){
       <td><span class="badge ${est.cls}">${est.l}</span></td>
       <td style="font-size:10px;color:var(--muted);max-width:100px">${esc((t.obs||'').slice(0,60))}</td>
       <td><div style="display:flex;gap:4px;">
+        ${hasPendingDelete(t.id)?`<span class="badge badge-warn" style="font-size:9px" title="Pedido de remoção pendente">🔒</span>`:`
         ${!isClosed&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎</button>`:''}
-        ${!isClosed&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">✕</button>`:''}
+        ${!isClosed&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">✕</button>`:''}`}
       </div></td>
     </tr>`;
   }).join('');
@@ -2498,6 +2524,7 @@ function teamCardHtml(t, isClosed){
   // No urgency indication on closed ocorrências
   const ti=(!isClosed && t.estado==='operacao')?timeInfo(t):null;
   const urgent=ti&&ti.pct>=85;
+  const pendingDelete=hasPendingDelete(t.id);
 
   // Time bar HTML — suppressed for closed ocorrências
   let tiHtml='';
@@ -2529,7 +2556,7 @@ function teamCardHtml(t, isClosed){
         mrPmHtml=`<div class="team-card-row"><span class="lbl">Transporte</span><span class="val">${esc(pm.eq)}${pm.matricula?' · '+esc(pm.matricula):''} <span class="badge ${pmEst.cls}" style="font-size:8px">${pmEst.l}</span></span></div>`;
       }
     } else {
-      mrPmHtml=`<div class="team-card-row"><span class="lbl" style="color:var(--danger)">⚠ Sem PM</span><span class="val">${!isClosed&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-warn btn-xs" onclick="editTeam('${t.id}')">+ Atribuir PM</button>`:'—'}</span></div>`;
+      mrPmHtml=`<div class="team-card-row"><span class="lbl" style="color:var(--danger)">⚠ Sem PM</span><span class="val">${!isClosed&&!pendingDelete&&['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-warn btn-xs" onclick="editTeam('${t.id}')">+ Atribuir PM</button>`:'—'}</span></div>`;
     }
   }
 
@@ -2540,8 +2567,10 @@ function teamCardHtml(t, isClosed){
     lastEvt=`<div class="event-log"><div class="event-item"><span class="event-time">${e.ts.slice(11,16)}</span><span class="event-text">${esc(e.msg)}</span></div></div>`;
   }
 
-  // Action buttons — hidden for closed ocorrências
-  const actionsHtml = isClosed ? '' : `<div class="team-card-actions">
+  // Action buttons — hidden for closed ocorrências, or replaced by lock notice if a delete request is pending
+  const actionsHtml = isClosed ? '' : pendingDelete ? `<div class="team-card-actions">
+      <span class="badge badge-warn" style="font-size:10px">🔒 Pedido de remoção pendente — edição bloqueada</span>
+    </div>` : `<div class="team-card-actions">
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='operacao'&&t.estado!=='previsto'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
@@ -2557,6 +2586,7 @@ function teamCardHtml(t, isClosed){
       <div class="team-card-name">${esc(t.eq)}</div>
       <span class="badge badge-y" style="font-size:9px">${esc(t.tipo||'?')}</span>
       <span class="badge ${est.cls}">${est.l}</span>
+      ${pendingDelete?`<span class="badge badge-warn" style="font-size:9px" title="Pedido de remoção pendente">🔒</span>`:''}
     </div>
     <div class="team-card-body">
       ${tiHtml}
@@ -2581,6 +2611,7 @@ function teamCardHtml(t, isClosed){
 function quickAction(type, teamId){
   const t=db.teams.find(x=>x.id===teamId);
   if(!t) return;
+  if(hasPendingDelete(teamId)){ toast('Este meio tem um pedido de remoção pendente e não pode ser editado.','err'); return; }
   document.getElementById('action-team-id').value=teamId;
   const title=document.getElementById('modal-action-title');
   const body=document.getElementById('action-body');
@@ -2972,6 +3003,7 @@ function onPMPickChange(){
 function editTeam(id){
   const t=db.teams.find(x=>x.id===id);
   if(!t) return;
+  if(hasPendingDelete(id)){ toast('Este meio tem um pedido de remoção pendente e não pode ser editado.','err'); return; }
   document.getElementById('team-edit-id').value=t.id;
   document.getElementById('modal-team-title').textContent='Editar Meio — '+t.eq;
   refreshPresetSelect(null);
@@ -3181,13 +3213,66 @@ async function saveTeam(){
   closeModal('modal-team'); toast('Meio guardado!','ok'); await cacheToIDB(); renderTeams();
 }
 
+function hasPendingDelete(meioId){
+  return db.deleteRequests.some(x=>x.meio_id===meioId && x.status==='pending');
+}
+
+// Liberta o transporte de qualquer MR associado a este PM (ex.: ao remover o PM)
+async function unlinkTransporte(pmId){
+  const mrs=db.teams.filter(x=>x.transporteId===pmId);
+  for(const mr of mrs){
+    mr.transporteId=null;
+    await supaWriteOrQueue('meios','update',{id:mr.id,row:{transporte_id:null}},mr.id,`Transporte removido: ${mr.eq}`);
+  }
+}
+
 async function deleteTeam(id){
-  if(!confirm('Remover este meio da ocorrência?')) return;
   const t=db.teams.find(x=>x.id===id);
-  await supaWriteOrQueue('meios','delete',{id}, id, `Remover: ${t?.eq||id}`);
-  db.teams=db.teams.filter(x=>x.id!==id);
+  if(!t) return;
+  if(currentRole==='admin'){
+    if(!confirm('Remover este meio da ocorrência?')) return;
+    if(t.tipo==='PM') await unlinkTransporte(id);
+    await supaWriteOrQueue('meios','delete',{id}, id, `Remover: ${t?.eq||id}`);
+    db.teams=db.teams.filter(x=>x.id!==id);
+    db.deleteRequests=db.deleteRequests.filter(x=>x.meio_id!==id);
+    await cacheToIDB();
+    toast('Meio removido.','info'); renderTeams();
+    return;
+  }
+  if(db.deleteRequests.some(x=>x.meio_id===id && x.status==='pending')){
+    toast('Já existe um pedido de remoção pendente para este meio.','err');
+    return;
+  }
+  openDeleteRequestModal(id);
+}
+
+function openDeleteRequestModal(id){
+  const t=db.teams.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('action-team-id').value=id;
+  document.getElementById('modal-action-title').textContent=`Pedido de remoção — ${t.eq}`;
+  document.getElementById('action-body').innerHTML=`
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">
+      Vai ser submetido um pedido de remoção de <strong>${esc(t.eq)}</strong> para aprovação por um administrador.
+      Enquanto o pedido estiver pendente, este meio fica bloqueado para edição.
+    </p>
+    <div class="form-field" style="margin-top:14px;"><label class="form-label">Motivo (opcional)</label><textarea class="form-textarea" id="dr-motivo" rows="3" placeholder="Motivo da remoção…"></textarea></div>`;
+  document.getElementById('action-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+    <button class="btn btn-danger" onclick="submitDeleteRequest('${id}')">🗑 Enviar pedido</button>`;
+  openModal('modal-action');
+}
+
+async function submitDeleteRequest(id){
+  const t=db.teams.find(x=>x.id===id);
+  if(!t) return;
+  const motivo=document.getElementById('dr-motivo').value.trim();
+  const { data, error } = await apiFetch(`/api/meios/${id}/delete-request`,{method:'POST',body:JSON.stringify({motivo})});
+  if(error){ toast(error.error||'Não foi possível submeter o pedido.','err'); return; }
+  db.deleteRequests.push(data);
+  await persistOccEvento(t.ocorrencia_id,'delete_request',`Pedido de remoção de ${t.eq}${motivo?' — '+motivo:''}.`,t.eq);
   await cacheToIDB();
-  toast('Meio removido.','info'); renderTeams();
+  closeModal('modal-action'); renderTeams();
+  toast('Pedido de remoção submetido.','ok');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3779,6 +3864,54 @@ async function renderUsers(){
   </tr>`).join('');
 
   tbody.innerHTML = html || '<tr><td colspan="6"><div class="empty"><span class="empty-icon">👤</span><div class="empty-text">Sem utilizadores registados.</div></div></td></tr>';
+}
+
+// ─── PEDIDOS DE REMOÇÃO DE MEIOS ────────────────────────────────
+function renderDeleteRequests(){
+  const tbody=document.getElementById('delete-requests-tbody');
+  if(!tbody) return;
+  const reqs=[...db.deleteRequests].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  if(!reqs.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">🗑</span><div class="empty-text">Sem pedidos de remoção.</div></div></td></tr>'; return; }
+  const statusMap={pending:{l:'PENDENTE',cls:'badge-warn'},approved:{l:'APROVADO',cls:'badge-ok'},rejected:{l:'REJEITADO',cls:'badge-closed'}};
+  tbody.innerHTML=reqs.map(r=>{
+    const st=statusMap[r.status]||{l:r.status,cls:'badge-closed'};
+    return `<tr>
+      <td class="mono" style="font-size:10px;">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
+      <td><strong>${esc(r.meio_eq)}</strong></td>
+      <td><span class="badge badge-y" style="font-size:9px">${esc(r.meio_tipo||'—')}</span></td>
+      <td style="font-size:11px;color:var(--muted)">${esc(r.local_ignicao||'—')}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px">${esc(r.motivo||'—')}</td>
+      <td style="font-size:11px;color:var(--muted)">${esc(r.requested_nome||'—')}</td>
+      <td><span class="badge ${st.cls}">${st.l}</span></td>
+      <td>${r.status==='pending'?`<div style="display:flex;gap:6px;">
+          <button class="btn btn-success btn-xs" onclick="resolveDeleteRequest('${r.id}','approve')">✓ Aprovar</button>
+          <button class="btn btn-ghost btn-xs" onclick="resolveDeleteRequest('${r.id}','reject')">✕ Rejeitar</button>
+        </div>`:`<span style="font-size:10px;color:var(--muted)">${esc(r.resolved_nome||'—')}</span>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function resolveDeleteRequest(id, action){
+  const r=db.deleteRequests.find(x=>x.id===id);
+  if(!r) return;
+  if(action==='approve' && !confirm(`Aprovar a remoção de ${r.meio_eq}? Esta acção não pode ser desfeita.`)) return;
+  const { error } = await apiFetch(`/api/delete-requests/${id}/${action}`,{method:'POST'});
+  if(error){ toast(error.error||'Não foi possível resolver o pedido.','err'); return; }
+  r.status = action==='approve' ? 'approved' : 'rejected';
+  r.resolved_nome = currentNome;
+  r.resolved_at = new Date().toISOString();
+  const msg = action==='approve'
+    ? `Pedido de remoção de ${r.meio_eq} aprovado — meio removido.`
+    : `Pedido de remoção de ${r.meio_eq} rejeitado — meio mantido.`;
+  await persistOccEvento(r.ocorrencia_id,'delete_resolved',msg,r.meio_eq);
+  if(action==='approve'){
+    const t=db.teams.find(x=>x.id===r.meio_id);
+    if(t && t.tipo==='PM') await unlinkTransporte(t.id);
+    db.teams=db.teams.filter(x=>x.id!==r.meio_id);
+  }
+  await cacheToIDB();
+  renderDeleteRequests(); renderTeams();
+  toast(action==='approve'?'Pedido aprovado — meio removido.':'Pedido rejeitado — meio mantido.','ok');
 }
 
 function openNewUser(){

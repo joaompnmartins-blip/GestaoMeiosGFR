@@ -125,6 +125,25 @@ CREATE TABLE IF NOT EXISTS ocorrencias_eventos (
     user_id       UUID        REFERENCES utilizadores(id) ON DELETE SET NULL
 );
 
+-- ─── PEDIDOS DE REMOÇÃO DE MEIOS ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS meio_delete_requests (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    meio_id        UUID        NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
+    ocorrencia_id  UUID        NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    meio_eq        TEXT        NOT NULL,
+    meio_tipo      TEXT,
+    motivo         TEXT,
+    status         TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+    requested_by   UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    requested_nome TEXT,
+    resolved_by    UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    resolved_nome  TEXT,
+    resolved_at    TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meio_delete_requests_pending
+    ON meio_delete_requests(meio_id) WHERE status = 'pending';
+
 -- ─── SECTORES PREDEFINIDOS ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS sectores (
     id         SERIAL PRIMARY KEY,

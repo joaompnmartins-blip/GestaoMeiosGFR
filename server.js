@@ -151,6 +151,15 @@ async function findEquipaConflict(equipaId, estado, excludeId) {
   return rows[0] || null;
 }
 
+// Indica se existe um pedido de remoção pendente para este meio
+async function hasPendingDeleteRequest(meioId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM meio_delete_requests WHERE meio_id = $1 AND status = 'pending'`,
+    [meioId]
+  );
+  return rows.length > 0;
+}
+
 app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
   const [{ rows: meios }, { rows: operativos }, { rows: eventos }] = await Promise.all([
     pool.query('SELECT * FROM meios ORDER BY created_at'),
@@ -190,6 +199,10 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   const cols = MEIO_COLS.filter(c => c in b);
   if (!cols.length) return res.json({ ok: true });
 
+  if (await hasPendingDeleteRequest(req.params.id)) {
+    return res.status(409).json({ error: 'Este meio tem um pedido de remoção pendente e não pode ser editado.' });
+  }
+
   if ('estado' in b && ACTIVE_ESTADOS.includes(b.estado)) {
     let equipaId = b.equipa_id;
     if (equipaId === undefined) {
@@ -214,13 +227,17 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   res.json({ ok: true });
 }));
 
-app.delete('/api/meios/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+// Remoção directa — apenas admin. Oficiais de ligação têm de submeter um pedido (ver /delete-request).
+app.delete('/api/meios/:id', requireAuth('admin'), wrap(async (req, res) => {
   await pool.query('DELETE FROM meios WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 }));
 
 // Replace all operativos for a meio in one shot
 app.put('/api/meios/:id/operativos', requireAuth('operacional'), wrap(async (req, res) => {
+  if (await hasPendingDeleteRequest(req.params.id)) {
+    return res.status(409).json({ error: 'Este meio tem um pedido de remoção pendente e não pode ser editado.' });
+  }
   const rows = req.body.rows || [];
   await pool.query('DELETE FROM meios_operativos WHERE meio_id = $1', [req.params.id]);
   if (rows.length) {
@@ -228,6 +245,67 @@ app.put('/api/meios/:id/operativos', requireAuth('operacional'), wrap(async (req
     const ph   = rows.map((_, i) => `($${i * 3 + 1},$${i * 3 + 2},$${i * 3 + 3})`).join(',');
     await pool.query(`INSERT INTO meios_operativos (meio_id,nome,ordem) VALUES ${ph}`, vals);
   }
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  PEDIDOS DE REMOÇÃO DE MEIOS
+// ══════════════════════════════════════════════════════════════════
+
+// Oficial de ligação solicita a remoção de um meio — fica pendente até um admin decidir
+app.post('/api/meios/:id/delete-request', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rows: meioRows } = await pool.query('SELECT id, eq, tipo, ocorrencia_id FROM meios WHERE id=$1', [req.params.id]);
+  const meio = meioRows[0];
+  if (!meio) return res.status(404).json({ error: 'Meio não encontrado.' });
+  if (await hasPendingDeleteRequest(meio.id)) {
+    return res.status(409).json({ error: 'Já existe um pedido de remoção pendente para este meio.' });
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO meio_delete_requests (meio_id, ocorrencia_id, meio_eq, meio_tipo, motivo, requested_by, requested_nome)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [meio.id, meio.ocorrencia_id, meio.eq, meio.tipo, req.body.motivo || null, req.user.id, req.user.nome]
+  );
+  res.json(rows[0]);
+}));
+
+// Lista pedidos: admin vê todos; restantes vêem os pendentes (para saber o que está bloqueado) + os próprios
+app.get('/api/delete-requests', requireAuth('visualizador'), wrap(async (req, res) => {
+  let query, params;
+  if (req.user.role === 'admin') {
+    query = `SELECT dr.*, o.local_ignicao FROM meio_delete_requests dr JOIN ocorrencias o ON o.id = dr.ocorrencia_id ORDER BY dr.created_at DESC`;
+    params = [];
+  } else {
+    query = `SELECT dr.*, o.local_ignicao FROM meio_delete_requests dr JOIN ocorrencias o ON o.id = dr.ocorrencia_id WHERE dr.status = 'pending' OR dr.requested_by = $1 ORDER BY dr.created_at DESC`;
+    params = [req.user.id];
+  }
+  const { rows } = await pool.query(query, params);
+  res.json(rows);
+}));
+
+// Admin aprova: remove o meio definitivamente
+app.post('/api/delete-requests/:id/approve', requireAuth('admin'), wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM meio_delete_requests WHERE id=$1', [req.params.id]);
+  const dr = rows[0];
+  if (!dr) return res.status(404).json({ error: 'Pedido não encontrado.' });
+  if (dr.status !== 'pending') return res.status(409).json({ error: 'Este pedido já foi resolvido.' });
+  await pool.query('DELETE FROM meios WHERE id=$1', [dr.meio_id]);
+  await pool.query(
+    `UPDATE meio_delete_requests SET status='approved', resolved_by=$1, resolved_nome=$2, resolved_at=NOW() WHERE id=$3`,
+    [req.user.id, req.user.nome, dr.id]
+  );
+  res.json({ ok: true });
+}));
+
+// Admin rejeita: o meio mantém-se e fica novamente editável
+app.post('/api/delete-requests/:id/reject', requireAuth('admin'), wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM meio_delete_requests WHERE id=$1', [req.params.id]);
+  const dr = rows[0];
+  if (!dr) return res.status(404).json({ error: 'Pedido não encontrado.' });
+  if (dr.status !== 'pending') return res.status(409).json({ error: 'Este pedido já foi resolvido.' });
+  await pool.query(
+    `UPDATE meio_delete_requests SET status='rejected', resolved_by=$1, resolved_nome=$2, resolved_at=NOW() WHERE id=$3`,
+    [req.user.id, req.user.nome, dr.id]
+  );
   res.json({ ok: true });
 }));
 
@@ -474,6 +552,29 @@ async function runMigrations() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_equipa_active
       ON meios(equipa_id)
       WHERE equipa_id IS NOT NULL AND estado IN ('transito','operacao','descanso')
+  `);
+
+  // Pedidos de remoção de meios (oficial de ligação solicita, admin aprova/rejeita)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS meio_delete_requests (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      meio_id        UUID NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
+      ocorrencia_id  UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+      meio_eq        TEXT NOT NULL,
+      meio_tipo      TEXT,
+      motivo         TEXT,
+      status         TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+      requested_by   UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+      requested_nome TEXT,
+      resolved_by    UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+      resolved_nome  TEXT,
+      resolved_at    TIMESTAMPTZ,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_meio_delete_requests_pending
+      ON meio_delete_requests(meio_id) WHERE status = 'pending'
   `);
 
   // Fita do Tempo: tabela de entradas manuais da timeline
