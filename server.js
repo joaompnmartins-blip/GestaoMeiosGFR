@@ -215,6 +215,51 @@ app.post('/api/ocorrencias_eventos', requireAuth('operacional'), wrap(async (req
 }));
 
 // ══════════════════════════════════════════════════════════════════
+//  FITA DO TEMPO
+// ══════════════════════════════════════════════════════════════════
+app.get('/api/ocorrencias/:id/timeline', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT ts, categoria, titulo, descricao, dados, autor_nome, meio_eq FROM (
+      SELECT ot.ts, ot.categoria, ot.titulo, ot.descricao, ot.dados, ot.autor_nome,
+             m.eq AS meio_eq
+      FROM ocorrencia_timeline ot
+      LEFT JOIN meios m ON m.id = ot.meio_id
+      WHERE ot.ocorrencia_id = $1
+
+      UNION ALL
+
+      SELECT oe.ts, 'ocorrencia', oe.msg, NULL, NULL::JSONB, NULL, NULL
+      FROM ocorrencias_eventos oe
+      WHERE oe.ocorrencia_id = $1
+
+      UNION ALL
+
+      SELECT me.ts, 'meios_icnf', me.msg, NULL,
+             jsonb_build_object('missao', m.missao, 'estado', m.estado),
+             NULL, m.eq
+      FROM meios_eventos me
+      JOIN meios m ON m.id = me.meio_id
+      WHERE m.ocorrencia_id = $1
+    ) sub
+    ORDER BY ts DESC
+  `, [req.params.id]);
+  res.json(rows);
+}));
+
+app.post('/api/ocorrencias/:id/timeline', requireAuth('operacional'), wrap(async (req, res) => {
+  const b = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO ocorrencia_timeline
+       (ocorrencia_id, ts, categoria, titulo, descricao, dados, autor_nome, autor_id, meio_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [req.params.id, b.ts || new Date().toISOString(), b.categoria, b.titulo || null,
+     b.descricao || null, b.dados ? JSON.stringify(b.dados) : null,
+     req.user.nome, req.user.id, b.meio_id || null]
+  );
+  res.json(rows[0]);
+}));
+
+// ══════════════════════════════════════════════════════════════════
 //  EQUIPAS
 // ══════════════════════════════════════════════════════════════════
 app.get('/api/equipas', requireAuth('visualizador'), wrap(async (req, res) => {
@@ -376,6 +421,22 @@ async function runMigrations() {
   await pool.query(`
     ALTER TABLE utilizadores ADD CONSTRAINT utilizadores_role_check
       CHECK (role IN ('admin','ofligacao','operacional','visualizador'))
+  `);
+
+  // Fita do Tempo: tabela de entradas manuais da timeline
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ocorrencia_timeline (
+      id            SERIAL PRIMARY KEY,
+      ocorrencia_id UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+      ts            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      categoria     TEXT NOT NULL,
+      titulo        TEXT,
+      descricao     TEXT,
+      dados         JSONB,
+      autor_nome    TEXT,
+      autor_id      UUID REFERENCES utilizadores(id),
+      meio_id       UUID REFERENCES meios(id)
+    )
   `);
 
   // Seed ICNF/ANEPC 2026 data if table is empty
