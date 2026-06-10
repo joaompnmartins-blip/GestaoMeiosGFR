@@ -2892,16 +2892,30 @@ function populatePMPicker(){
   const sel = document.getElementById('team-pm-pick');
   const editId = document.getElementById('team-edit-id').value;
   const current = document.getElementById('team-transporte-id').value;
-  // PM "livre" = é PM desta ocorrência e nenhum outro MR (além deste) o tem como transporte
-  const free = db.teams.filter(t=>{
+  const ACTIVE=['transito','operacao','descanso'];
+
+  // PMs já registados nesta ocorrência e livres (não associados a outro MR)
+  const freeMeios = db.teams.filter(t=>{
     if(t.ocorrencia_id!==currentOccId || t.tipo!=='PM' || t.id===editId) return false;
     const ownerMR = db.teams.find(mr=>mr.transporteId===t.id);
     return !ownerMR || ownerMR.id===editId;
   });
-  sel.innerHTML = '<option value="">— Seleccionar PM —</option>' +
-    free.map(t=>`<option value="${t.id}">${esc(t.eq)}${t.matricula?' · '+esc(t.matricula):''}</option>`).join('') +
-    '<option value="__new__">+ Criar novo PM</option>';
-  if(current && free.some(t=>t.id===current)) sel.value = current;
+
+  // PMs do catálogo (predefinidos) que não estejam activos noutra ocorrência
+  const catalogPMs = (db.equipas||[]).filter(e=>{
+    if(e.tipo!=='PM') return false;
+    if(freeMeios.some(t=>t.equipaId===e.id)) return false; // já listado acima
+    const active = db.teams.find(t=>t.equipaId===e.id && ACTIVE.includes(t.estado));
+    return !active || active.id===editId;
+  });
+
+  let opts='<option value="">— Seleccionar PM —</option>';
+  opts += freeMeios.map(t=>`<option value="${t.id}">${esc(t.eq)}${t.matricula?' · '+esc(t.matricula):''}</option>`).join('');
+  opts += catalogPMs.map(e=>`<option value="eq:${e.id}">${esc(e.nome)}${e.concelho?' · '+esc(e.concelho):''}</option>`).join('');
+  opts += '<option value="__new__">+ Criar novo PM</option>';
+  sel.innerHTML = opts;
+
+  if(current && freeMeios.some(t=>t.id===current)) sel.value = current;
   onPMPickChange();
 }
 
@@ -3044,6 +3058,29 @@ async function saveTeam(){
       db.teams.push({id:pmId,...pmPayload,created:Date.now(),eventos:[{ts:new Date().toISOString(),msg:pmMsg}]});
       await persistEvento(pmId, pmMsg);
       await persistOccEvento(currentOccId,'created',`Meio adicionado: ${pmEq} (PM) — transporte de ${eq}`,pmEq);
+      payload.transporteId=pmId;
+    } else if(pmPick.startsWith('eq:')){
+      const eId=pmPick.slice(3);
+      const e=db.equipas.find(x=>x.id===eId);
+      if(!e){toast('Equipa de PM não encontrada.','err');return;}
+      const pmEstado=payload.estado==='previsto'?'previsto':'transito';
+      const pmPayload={
+        ocorrencia_id:currentOccId, eq:e.nome, tipo:'PM', matricula:'',
+        concelho:e.concelho||e.origem||payload.concelho, setor:payload.setor, operacionais:0, operativos:[],
+        responsavel:payload.responsavel, contacto:payload.contacto,
+        dataDespacho:'', horaDespacho:'', dataSaidaEntidade:'', horaSaidaEntidade:'',
+        dataChegada:payload.dataChegada, horaChegada:'', horasMax:null, limiteOp:'',
+        dataDemob:'', horaDemob:'', dataChegadaEntidade:'', horaChegadaEntidade:'',
+        km:null, missao:'', estado:pmEstado, obs:'',
+        previstoData:payload.previstoData, previstoHora:payload.previstoHora,
+        equipaId:e.id, transporteId:null,
+      };
+      const pmId=await persistTeam(pmPayload, null);
+      if(!pmId){toast('Erro ao registar o PM seleccionado.','err');return;}
+      const pmMsg=`Registado no sistema. Estado: ${pmEstado}.`;
+      db.teams.push({id:pmId,...pmPayload,created:Date.now(),eventos:[{ts:new Date().toISOString(),msg:pmMsg}]});
+      await persistEvento(pmId, pmMsg);
+      await persistOccEvento(currentOccId,'created',`Meio adicionado: ${e.nome} (PM) — transporte de ${eq}`,e.nome);
       payload.transporteId=pmId;
     } else if(pmPick){
       payload.transporteId=pmPick;
