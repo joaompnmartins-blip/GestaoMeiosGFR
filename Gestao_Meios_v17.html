@@ -1160,7 +1160,7 @@
         </select>
       </div>
       <div class="form-field" id="invite-subregiao-field" style="display:none;">
-        <label class="form-label">Sub-região (obrigatório para OfLigacao)</label>
+        <label class="form-label">Sub-região (opcional — em branco = acesso a todas)</label>
         <select class="form-select" id="invite-subregiao">
           <option value="">— Selecionar sub-região —</option>
         </select>
@@ -1715,9 +1715,15 @@ function applyRoleUI(){
   const isOp     = ['admin','ofligacao','operacional'].includes(currentRole);
   // Admin-only elements
   document.querySelectorAll('.auth-admin').forEach(el=>el.style.display=isAdmin?'':'none');
-  // Sub-região filter only visible to admin
+  // Oficial de Ligação: sem acesso a Meios (catálogo) e Arquivo
+  ['equipas','arquivo'].forEach(p=>{
+    const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
+    if(navEl) navEl.style.display = currentRole==='ofligacao' ? 'none' : '';
+  });
+  // Sub-região filter: visível para admin, e para ofligacao "nacional" (sem sub-região fixa)
+  const showSrFilter = isAdmin || (currentRole==='ofligacao' && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
-  if(srFilter) srFilter.style.display = isAdmin ? '' : 'none';
+  if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   // OfLigacao+ elements
   document.querySelectorAll('.auth-ofligacao').forEach(el=>el.style.display=isOfLigacao?'':'none');
   // Operacional+ elements
@@ -1919,6 +1925,7 @@ let currentOccId=null, currentView='sector';
 
 function navTo(page,el){
   if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
+  if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -2006,9 +2013,11 @@ function renderOcorrencias(){
 
   const grid=document.getElementById('occ-grid');
   const isAdmin = currentRole==='admin';
+  // OfLigacao "nacional" (sem sub-região fixa) vê e organiza tal como o admin
+  const groupBySubregiao = isAdmin || (currentRole==='ofligacao' && !currentSubregiao);
 
-  // Admin: populate sub-região filter and apply
-  if(isAdmin){
+  // Admin / OfLigacao nacional: populate sub-região filter and apply
+  if(groupBySubregiao){
     const subregiaoSel = document.getElementById('filter-subregiao');
     if(subregiaoSel){
       const current = subregiaoSel.value;
@@ -2026,13 +2035,13 @@ function renderOcorrencias(){
     return;
   }
 
-  // OfLigacao or filtered: flat list
-  if(!isAdmin || occSubregiaoFilter){
+  // OfLigacao com sub-região fixa, ou filtrado: lista plana
+  if(!groupBySubregiao || occSubregiaoFilter){
     grid.innerHTML='<div class="occ-grid">' + list.map(occCardHtml).join('') + '</div>';
     return;
   }
 
-  // Admin ungrouped: group by sub-região
+  // Agrupado por sub-região (admin / ofligacao nacional)
   const groups={};
   list.forEach(o=>{
     const key = o.subregiao || '(Sem sub-região)';
@@ -3936,7 +3945,6 @@ async function createUser(){
   const subregiao= document.getElementById('invite-subregiao').value || null;
   if(!nome||!email||!pass){ toast('Preencha nome, email e password.','err'); return; }
   if(pass.length<8){ toast('Password mínimo 8 caracteres.','err'); return; }
-  if(role==='ofligacao'&&!subregiao){ toast('Selecione a sub-região para o OfLigacao.','err'); return; }
   const { data, error } = await apiFetch('/api/utilizadores',{method:'POST',body:JSON.stringify({nome,email,password:pass,role,subregiao})});
   if(error){ toast('Erro: '+error.message,'err'); return; }
   closeModal('modal-user'); toast('Utilizador criado!','ok'); renderUsers();
