@@ -90,10 +90,10 @@ app.post('/api/ocorrencias', requireAuth('ofligacao'), wrap(async (req, res) => 
   const b = req.body;
   const { rows } = await pool.query(
     `INSERT INTO ocorrencias
-       (local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+       (local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status, created_by, oficial_ligacao_id, oficial_ligacao_nome)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9) RETURNING *`,
     [b.local_ignicao, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-     b.obs || null, b.inicio || null, b.status || 'active', req.user.id]
+     b.obs || null, b.inicio || null, b.status || 'active', req.user.id, req.user.nome]
   );
   res.json(rows[0]);
 }));
@@ -102,16 +102,18 @@ app.patch('/api/ocorrencias/:id', requireAuth('ofligacao'), wrap(async (req, res
   const b = req.body;
   await pool.query(
     `UPDATE ocorrencias
-     SET local_ignicao      = COALESCE($1, local_ignicao),
-         codigo_ocorrencia  = COALESCE($2, codigo_ocorrencia),
-         subregiao          = COALESCE($3, subregiao),
-         concelho           = COALESCE($4, concelho),
-         obs                = COALESCE($5, obs),
-         inicio             = COALESCE($6, inicio),
-         status             = COALESCE($7, status)
-     WHERE id=$8`,
+     SET local_ignicao        = COALESCE($1, local_ignicao),
+         codigo_ocorrencia    = COALESCE($2, codigo_ocorrencia),
+         subregiao            = COALESCE($3, subregiao),
+         concelho             = COALESCE($4, concelho),
+         obs                  = COALESCE($5, obs),
+         inicio               = COALESCE($6, inicio),
+         status               = COALESCE($7, status),
+         oficial_ligacao_id   = COALESCE($8, oficial_ligacao_id),
+         oficial_ligacao_nome = COALESCE($9, oficial_ligacao_nome)
+     WHERE id=$10`,
     [b.local_ignicao || null, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-     b.obs || null, b.inicio || null, b.status || null, req.params.id]
+     b.obs || null, b.inicio || null, b.status || null, b.oficial_ligacao_id || null, b.oficial_ligacao_nome || null, req.params.id]
   );
   res.json({ ok: true });
 }));
@@ -445,6 +447,15 @@ app.delete('/api/operacionais/:id', requireAuth('ofligacao'), wrap(async (req, r
   res.json({ ok: true });
 }));
 
+// Lista de candidatos a Oficial de Ligação (para transferir o papel numa ocorrência)
+app.get('/api/utilizadores/ofligacao', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT id, nome, subregiao FROM utilizadores
+     WHERE role IN ('ofligacao','admin') AND ativo = true ORDER BY nome`
+  );
+  res.json(rows);
+}));
+
 // ══════════════════════════════════════════════════════════════════
 //  UTILIZADORES (admin only)
 // ══════════════════════════════════════════════════════════════════
@@ -576,6 +587,10 @@ async function runMigrations() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_meio_delete_requests_pending
       ON meio_delete_requests(meio_id) WHERE status = 'pending'
   `);
+
+  // Oficial de Ligação responsável pela ocorrência (registado na Fita do Tempo)
+  await pool.query(`ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS oficial_ligacao_id UUID REFERENCES utilizadores(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS oficial_ligacao_nome TEXT`);
 
   // Fita do Tempo: tabela de entradas manuais da timeline
   await pool.query(`

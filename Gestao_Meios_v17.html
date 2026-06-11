@@ -636,6 +636,10 @@
             <div class="info-row"><span class="info-label">Concelho</span><span class="info-val" id="d-concelho">—</span></div>
             <div class="info-row"><span class="info-label">Estado</span><span id="d-estado">—</span></div>
             <div class="info-row"><span class="info-label">Início</span><span class="info-val" id="d-inicio">—</span></div>
+            <div class="info-row"><span class="info-label">Oficial de Ligação</span><span class="info-val">
+              <span id="d-oflig">—</span>
+              <button class="btn btn-ghost btn-xs auth-ofligacao" id="btn-change-oflig" onclick="openChangeOfLigacao()" style="margin-left:6px;">✎ Alterar</button>
+            </span></div>
           </div>
           <div class="detail-card">
             <div class="detail-card-title">Resumo de Meios</div>
@@ -1783,7 +1787,7 @@ async function loadAllData(){
 }
 
 // ── Map Supabase snake_case → app camelCase ──────────────────────
-function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_ocorrencia, concelho:r.concelho, subregiao:r.subregiao||'', obs:r.obs, inicio:r.inicio, status:r.status, created:r.created_at }; }
+function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_ocorrencia, concelho:r.concelho, subregiao:r.subregiao||'', obs:r.obs, inicio:r.inicio, status:r.status, created:r.created_at, oficialLigacaoId:r.oficial_ligacao_id||null, oficialLigacaoNome:r.oficial_ligacao_nome||'' }; }
 
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
@@ -2250,7 +2254,11 @@ async function saveOcorrencia(){
   const id = await persistOcorrencia(payload, editId||null);
   if(!id) return;
   if(editId){ const idx=db.ocorrencias.findIndex(x=>x.id===editId); if(idx>-1) db.ocorrencias[idx]={...db.ocorrencias[idx],...payload}; await persistOccEvento(editId, 'occ', `Ocorrência editada — ${nome}${payload.obs?' · '+payload.obs:''}`); }
-  else { db.ocorrencias.unshift({id,...payload,created:Date.now()}); await persistOccEvento(id, 'occ', `Ocorrência criada — ${nome}${payload.ref?' · Cód. '+payload.ref:''}${payload.concelho?' · '+payload.concelho:''}`); }
+  else {
+    db.ocorrencias.unshift({id,...payload,created:Date.now(),oficialLigacaoId:currentUser?.id||null,oficialLigacaoNome:currentNome});
+    await persistOccEvento(id, 'occ', `Ocorrência criada — ${nome}${payload.ref?' · Cód. '+payload.ref:''}${payload.concelho?' · '+payload.concelho:''}`);
+    await persistOccEvento(id, 'oficial_ligacao', `${currentNome} assumiu o papel de Oficial de Ligação desta ocorrência.`);
+  }
   closeModal('modal-occ'); toast('Ocorrência guardada!','ok'); await cacheToIDB(); renderOcorrencias();
 }
 
@@ -2268,6 +2276,8 @@ function openDetalhe(id){
     ?'<span class="badge badge-closed">🗄 ARQUIVADA</span>'
     :'<span class="badge badge-active">● ATIVA</span>';
   document.getElementById('d-inicio').textContent=fmtDateTime(o.inicio);
+  document.getElementById('d-oflig').textContent=o.oficialLigacaoNome||'—';
+  document.getElementById('btn-change-oflig').style.display=isClosed?'none':'';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
   document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
   // Hide "Adicionar Meio" and quick actions for archived ocorrências
@@ -2303,6 +2313,45 @@ async function toggleCloseOcorrencia(){
     toast('Ocorrência reaberta.','info');
     openDetalhe(currentOccId);
   }
+}
+
+// ─── OFICIAL DE LIGAÇÃO ──────────────────────────────────────────
+async function openChangeOfLigacao(){
+  const o=db.ocorrencias.find(x=>x.id===currentOccId);
+  if(!o) return;
+  const { data, error } = await apiFetch('/api/utilizadores/ofligacao');
+  if(error){ toast('Não foi possível obter a lista de oficiais de ligação.','err'); return; }
+  document.getElementById('action-team-id').value=o.id;
+  document.getElementById('modal-action-title').textContent='Alterar Oficial de Ligação';
+  document.getElementById('action-body').innerHTML=`
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;">Oficial de Ligação atual: <strong>${esc(o.oficialLigacaoNome||'—')}</strong></p>
+    <div class="form-field" style="margin-top:14px;">
+      <label class="form-label">Novo Oficial de Ligação</label>
+      <select class="form-select" id="oflig-new">
+        <option value="">— Selecionar —</option>
+        ${(data||[]).filter(u=>u.id!==o.oficialLigacaoId).map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}">${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('')}
+      </select>
+    </div>`;
+  document.getElementById('action-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+    <button class="btn btn-primary" onclick="submitChangeOfLigacao('${o.id}')">✓ Confirmar</button>`;
+  openModal('modal-action');
+}
+
+async function submitChangeOfLigacao(id){
+  const o=db.ocorrencias.find(x=>x.id===id);
+  if(!o) return;
+  const sel=document.getElementById('oflig-new');
+  const newId=sel.value;
+  if(!newId){ toast('Selecione o novo Oficial de Ligação.','err'); return; }
+  const newNome=sel.options[sel.selectedIndex].dataset.nome;
+  const oldNome=o.oficialLigacaoNome||'—';
+  await supaWriteOrQueue('ocorrencias','update',{id:o.id, row:{oficial_ligacao_id:newId, oficial_ligacao_nome:newNome}}, o.id, `OL: ${o.nome}`);
+  o.oficialLigacaoId=newId; o.oficialLigacaoNome=newNome;
+  await persistOccEvento(o.id,'oficial_ligacao',`Oficial de Ligação alterado: ${oldNome} → ${newNome}.`);
+  await cacheToIDB();
+  closeModal('modal-action');
+  document.getElementById('d-oflig').textContent=newNome;
+  toast('Oficial de Ligação atualizado.','ok');
 }
 
 // ══════════════════════════════════════════════════════════════════

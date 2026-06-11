@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     inicio            TIMESTAMPTZ,
     status            TEXT        DEFAULT 'active' CHECK (status IN ('active','closed')),
     created_by        UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    oficial_ligacao_id   UUID      REFERENCES utilizadores(id) ON DELETE SET NULL,
+    oficial_ligacao_nome TEXT,
     created_at        TIMESTAMPTZ DEFAULT now(),
     updated_at        TIMESTAMPTZ DEFAULT now()
 );
