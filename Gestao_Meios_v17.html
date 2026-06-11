@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gestão Meios — ICNF</title>
+  <title>GOGFR - Gestão Ocorrências GFR</title>
 
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
@@ -110,10 +110,8 @@
     /* LAYOUT */
     #shell{display:flex;height:100vh;overflow:hidden;}
     .sidebar{width:200px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
-    .sidebar-header{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
-    .sidebar-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--icnf-green-lime);letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px;}
-    .sidebar-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;line-height:1;letter-spacing:.02em;}
-    .sidebar-title span{color:var(--icnf-blue-light);}
+    .sidebar-header{padding:0;border-bottom:1px solid var(--border);}
+    .sidebar-logo{display:block;width:100%;height:auto;}
     .nav{flex:1;padding:12px 0;}
     .nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-left:2px solid transparent;transition:all .12s;}
     .nav-item:hover{color:var(--text);background:var(--surface2);}
@@ -435,7 +433,7 @@
     .pulse{animation:pulse 2s infinite;}
 
     @media(max-width:768px){
-      .sidebar{width:56px;}.sidebar-header .sidebar-title,.sidebar-header .sidebar-tag{display:none;}.nav-item span{display:none;}
+      .sidebar{width:56px;}.nav-item span{display:none;}
       .detail-grid{grid-template-columns:1fr;}.form-grid,.form-grid-3{grid-template-columns:1fr;}.form-field.span2,.form-field.span3{grid-column:auto;}
       .teams-grid{grid-template-columns:1fr;}
     }
@@ -501,16 +499,7 @@
   <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-tag" style="display:flex;align-items:center;gap:6px;">
-        <svg viewBox="0 0 92 92" width="24" height="24" style="flex-shrink:0;">
-          <rect x="0"  y="0"  width="42" height="42" rx="6" fill="#429ABD"/>
-          <rect x="50" y="0"  width="42" height="42" rx="6" fill="#8C961C"/>
-          <rect x="0"  y="50" width="42" height="42" rx="6" fill="#21658A"/>
-          <rect x="50" y="50" width="42" height="42" rx="6" fill="#596300"/>
-        </svg>
-        ICNF / GFR
-      </div>
-      <div class="sidebar-title">Gestão<br>Meios</div>
+      <img src="/gogfr_logo_v1.png" alt="GO GFR — Gestão Operações ICNF/GFR" class="sidebar-logo"/>
     </div>
     <nav class="nav">
       <div class="nav-item active" data-page="ocorrencias" onclick="navTo('ocorrencias',this)">
