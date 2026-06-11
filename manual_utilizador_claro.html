@@ -92,6 +92,23 @@
     }
     .theme-toggle:hover { color: var(--text); border-color: var(--inactive); }
 
+    /* ── PRINT BUTTON ── */
+    .print-btn {
+      position: fixed;
+      top: 20px; right: 64px;
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px;
+      border-radius: 2px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 16px;
+      transition: all .15s;
+      z-index: 1000;
+    }
+    .print-btn:hover { color: var(--text); border-color: var(--inactive); }
+
     /* ── COVER ── */
     .cover {
       padding: 56px 0 48px;
@@ -470,15 +487,41 @@
 
     /* ── PRINT ── */
     @media print {
+      :root {
+        --bg:       #ffffff;
+        --surface:  #ffffff;
+        --surface2: #eef3ee;
+        --border:   #c8d8c8;
+        --accent:   #6b7214;
+        --accent2:  #1e6e99;
+        --accent3:  #1a7a9a;
+        --text:     #1a2a1a;
+        --muted:    #5a7a5a;
+        --danger:   #c03030;
+        --success:  #2e7d2e;
+        --warn:     #8a6010;
+        --inactive: #b0c8b0;
+        --icnf-blue-light: #1e6e99;
+        --icnf-blue-dark:  #184f70;
+        --icnf-green-lime: #6b7214;
+        --icnf-green-dark: #3d4600;
+      }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       body::before { display:none; }
-      .theme-toggle { display:none; }
+      .theme-toggle, .print-btn { display:none; }
       .toc-item { color: var(--text) !important; }
       a { text-decoration: none; color: inherit; }
+      .cover-bar { background: linear-gradient(90deg, #6b7214, #1e6e99); }
+      .wrapper { max-width: 100%; padding: 0 12px; }
+      .toc { break-after: page; }
+      .section { break-inside: avoid-page; }
+      .card, .info-box, .step, .role-table tr, .icon-item { break-inside: avoid; }
     }
   </style>
 </head>
 <body>
 
+<button class="print-btn" onclick="window.print()" title="Exportar como PDF / Imprimir">🖨</button>
 <button class="theme-toggle" onclick="document.documentElement.classList.toggle('theme-light')" title="Alternar tema">☀</button>
 
 <div class="wrapper">
