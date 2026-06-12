@@ -3403,19 +3403,20 @@ function refreshPresetSelect(selectedId){
   const fSR = srSel?.value || '';
   const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
 
-  // Exclusividade: não listar meios já activos (trânsito/operação/descanso) noutra ocorrência
-  const ACTIVE_ESTADOS=['transito','operacao','descanso'];
+  // Exclusividade: não listar meios já em uso (qualquer estado excepto desmobilizado) noutra ocorrência
   const editId = document.getElementById('team-edit-id')?.value || null;
-  const busyEquipaIds = new Set(
-    db.teams.filter(t => t.id!==editId && t.ocorrencia_id!==currentOccId && ACTIVE_ESTADOS.includes(t.estado) && t.equipaId)
-      .map(t=>t.equipaId)
-  );
+  const busy = new Set();
+  db.teams.forEach(t=>{
+    if(t.id===editId || t.ocorrencia_id===currentOccId || t.estado==='desmobilizado') return;
+    if(t.equipaId) busy.add(t.equipaId);
+    if(t.eq) busy.add('nome:'+t.eq.trim().toLowerCase());
+  });
 
   const filtered = db.equipas.filter(e => {
     if(fTE && e.tipo_equipa !== fTE) return false;
     if(fSR && e.subregiao !== fSR) return false;
     if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
-    if(busyEquipaIds.has(e.id) && e.id!==selectedId) return false;
+    if(e.id!==selectedId && (busy.has(e.id) || busy.has('nome:'+e.nome.trim().toLowerCase()))) return false;
     return true;
   });
 
