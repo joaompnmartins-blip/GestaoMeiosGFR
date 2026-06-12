@@ -3403,10 +3403,19 @@ function refreshPresetSelect(selectedId){
   const fSR = srSel?.value || '';
   const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
 
+  // Exclusividade: não listar meios já activos (trânsito/operação/descanso) noutra ocorrência
+  const ACTIVE_ESTADOS=['transito','operacao','descanso'];
+  const editId = document.getElementById('team-edit-id')?.value || null;
+  const busyEquipaIds = new Set(
+    db.teams.filter(t => t.id!==editId && t.ocorrencia_id!==currentOccId && ACTIVE_ESTADOS.includes(t.estado) && t.equipaId)
+      .map(t=>t.equipaId)
+  );
+
   const filtered = db.equipas.filter(e => {
     if(fTE && e.tipo_equipa !== fTE) return false;
     if(fSR && e.subregiao !== fSR) return false;
     if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
+    if(busyEquipaIds.has(e.id) && e.id!==selectedId) return false;
     return true;
   });
 
