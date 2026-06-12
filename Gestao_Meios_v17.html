@@ -1259,7 +1259,7 @@ async function apiFetch(path, options = {}){
     const body = await res.json();
     if(!res.ok){
       if(res.status === 401){ sessionStorage.removeItem('gfr_token'); showAuthOverlay(); }
-      return { data: null, error: { message: body.error || 'Erro desconhecido' } };
+      return { data: null, error: { message: body.error || 'Erro desconhecido', status: res.status } };
     }
     return { data: body, error: null };
   } catch(e){
@@ -1417,7 +1417,7 @@ async function syncNow(){
   isSyncing=true; updateSyncBadge();
   toast(`A sincronizar ${q.length} operação${q.length>1?'ões':''}…`,'info');
 
-  let synced=0, failed=0;
+  let synced=0, failed=0, discarded=0;
   const idMap = {};  // local temp-id → real server id (for chained inserts)
 
   for(const op of q){
@@ -1428,52 +1428,58 @@ async function syncNow(){
       if(op.table==='ocorrencias'){
         if(op.op==='insert'){
           const { data, error } = await apiFetch('/api/ocorrencias',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           if(op.tempId) idMap[op.tempId]=data.id; ok=true;
         } else if(op.op==='update'){
           const { error } = await apiFetch(`/api/ocorrencias/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
         }
       } else if(op.table==='meios'){
         if(op.op==='insert'){
           const { data, error } = await apiFetch('/api/meios',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           if(op.tempId) idMap[op.tempId]=data.id; ok=true;
         } else if(op.op==='update'){
           const { error } = await apiFetch(`/api/meios/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
         } else if(op.op==='delete'){
           const { error } = await apiFetch(`/api/meios/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message); ok=true;
+          if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
         }
       } else if(op.table==='meios_operativos'){
         const { error } = await apiFetch(`/api/meios/${payload.meio_id}/operativos`,{method:'PUT',body:JSON.stringify({rows:payload.rows})});
-        if(error) throw new Error(error.message); ok=true;
+        if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
       } else if(op.table==='meios_eventos'){
         const { error } = await apiFetch('/api/meios_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message); ok=true;
+        if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
       } else if(op.table==='equipas'){
         if(op.op==='insert'){
           const { data, error } = await apiFetch('/api/equipas',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           if(op.tempId) idMap[op.tempId]=data.id; ok=true;
         } else if(op.op==='update'){
           const { error } = await apiFetch(`/api/equipas/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message); ok=true;
+          if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
         } else if(op.op==='delete'){
           const { error } = await apiFetch(`/api/equipas/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message); ok=true;
+          if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
         }
       } else if(op.table==='ocorrencias_eventos'){
         const { error } = await apiFetch('/api/ocorrencias_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message); ok=true;
+        if(error) throw Object.assign(new Error(error.message), {status: error.status}); ok=true;
       }
 
       if(ok){ await clearQueueItem(op.id); synced++; }
       else { failed++; }
     } catch(e){
-      console.warn('syncNow failed op:', op.table, op.op, e.message);
-      failed++;
+      if(e.status >= 400 && e.status < 500 && e.status !== 401){
+        console.warn('syncNow: operação rejeitada permanentemente, a descartar:', op.table, op.op, e.message);
+        await clearQueueItem(op.id);
+        discarded++;
+      } else {
+        console.warn('syncNow failed op:', op.table, op.op, e.message);
+        failed++;
+      }
     }
   }
 
@@ -1482,8 +1488,9 @@ async function syncNow(){
   updateSyncBadge();
   renderSyncPanel();
 
-  if(failed===0) toast(`✓ Sincronização completa (${synced} operaç${synced===1?'ão':'ões'}).`,'ok');
-  else toast(`Sincronização: ${synced} ok, ${failed} falharam. Verifique o painel.`,'err');
+  if(failed===0 && discarded===0) toast(`✓ Sincronização completa (${synced} operaç${synced===1?'ão':'ões'}).`,'ok');
+  else if(failed===0) toast(`Sincronização: ${synced} ok, ${discarded} operaç${discarded===1?'ão':'ões'} rejeitada${discarded===1?'':'s'} e descartada${discarded===1?'':'s'}.`,'err');
+  else toast(`Sincronização: ${synced} ok, ${failed} falharam${discarded?`, ${discarded} descartada${discarded===1?'':'s'}`:''}. Verifique o painel.`,'err');
 
   if(synced>0 && isOnline){ await loadAllData(); await cacheToIDB(); renderOcorrencias(); }
 }
@@ -1569,47 +1576,47 @@ async function supaWriteOrQueue(table, op, payload, tempId, desc){
       if(table==='ocorrencias'){
         if(op==='insert'){
           const { data, error }=await apiFetch('/api/ocorrencias',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return data.id;
         } else if(op==='update'){
           const { error }=await apiFetch(`/api/ocorrencias/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return payload.id;
         }
       } else if(table==='meios'){
         if(op==='insert'){
           const { data, error }=await apiFetch('/api/meios',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return data.id;
         } else if(op==='update'){
           const { error }=await apiFetch(`/api/meios/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return payload.id;
         } else if(op==='delete'){
           const { error }=await apiFetch(`/api/meios/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return true;
         }
       } else if(table==='meios_operativos'){
         const { error }=await apiFetch(`/api/meios/${payload.meio_id}/operativos`,{method:'PUT',body:JSON.stringify({rows:payload.rows})});
-        if(error) throw new Error(error.message);
+        if(error) throw Object.assign(new Error(error.message), {status: error.status});
         return true;
       } else if(table==='meios_eventos'){
         const { error }=await apiFetch('/api/meios_eventos',{method:'POST',body:JSON.stringify(payload)});
-        if(error) throw new Error(error.message);
+        if(error) throw Object.assign(new Error(error.message), {status: error.status});
         return true;
       } else if(table==='equipas'){
         if(op==='insert'){
           const { data, error }=await apiFetch('/api/equipas',{method:'POST',body:JSON.stringify(payload)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return data.id;
         } else if(op==='update'){
           const { error }=await apiFetch(`/api/equipas/${payload.id}`,{method:'PATCH',body:JSON.stringify(payload.row)});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return payload.id;
         } else if(op==='delete'){
           const { error }=await apiFetch(`/api/equipas/${payload.id}`,{method:'DELETE'});
-          if(error) throw new Error(error.message);
+          if(error) throw Object.assign(new Error(error.message), {status: error.status});
           return true;
         }
       } else if(table==='ocorrencias_eventos'){
@@ -1617,6 +1624,11 @@ async function supaWriteOrQueue(table, op, payload, tempId, desc){
         return true;
       }
     } catch(e){
+      if(e.status >= 400 && e.status < 500 && e.status !== 401){
+        console.warn(`supaWriteOrQueue: operação rejeitada (${table}/${op}, ${e.status}):`, e.message);
+        toast(e.message || 'Operação rejeitada pelo servidor.', 'err');
+        return null;
+      }
       console.warn(`supaWriteOrQueue: online write failed (${table}/${op}), queuing:`, e.message);
       isOnline=false; updateSyncBadge();
     }
@@ -4094,7 +4106,7 @@ async function loadFogosData() {
   document.getElementById('fogos-count-badge').textContent = '';
   try {
     const { data: json, error } = await apiFetch('/api/fogos/active');
-    if(error) throw new Error(error.message);
+    if(error) throw Object.assign(new Error(error.message), {status: error.status});
     if(!json.success) throw new Error('API error');
     fogosData = (json.data || []).filter(d => d.coords && d.lat && d.lng);
     // Sort: "Em Curso" first, then by statusCode asc (lower = more active)
