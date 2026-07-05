@@ -1,0 +1,794 @@
+id,Tipo,,Meio,Brigada_format,Num_elementos,UO_DRCNF,LOCAL,Lat_Base,Long_Base,CONTACTO,EMAIL,Concelho,NUTSIII,AGFR,DDI_Portatil,DDI_Viatura,Viatura_COD,Viatura_existe_em_Viaturas_v1
+1,ESF,CNT,SF 21-117,,5,AFLODOUNORTE - Associação Florestal do Vale do Douro Norte,Carrazeda de Ansiães,"41,46002","-7,469137",NULL,NULL,Carrazeda de Ansiães,Douro,NORTE,4260665,4260664,VLCI 91-XJ-17,OK
+2,ESF,CNT,SF 15-117,,5,Município de Freixo de Espada à Cinta,Freixo de Espada À Cinta,"41,093192","-6,81072",NULL,NULL,Freixo de Espada À Cinta,Douro,NORTE,4260509,NULL,VLCI 10-JR-99,OK
+3,ESF,CNT,SF 53-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Macedo de Cavaleiros,"41,345388","-6,705556",NULL,NULL,Macedo de Cavaleiros,Terras de Trás-Os-Montes,NORTE,3260636,NULL,VLCI 97-OF-92,OK
+4,ESF,CNT,SF 56-118,,5,Junta de Freguesia de Miranda do Douro,Miranda do Douro,"41,496094","-6,273368",NULL,NULL,Miranda do Douro,Terras de Trás-Os-Montes,NORTE,3260702,NULL,VLCI BC-11-AN,OK
+5,ECNAF,PRP,CNAF 35,,5,ICNF - Norte,Mogadouro,NULL,NULL,NULL,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,3260680,NULL,VLCI 17-TX-27,OK
+6,ESF,CNT,SF 14-118,,4,APFNT - Associação de Produtores Florestais do Nordeste Transmontano,Miranda do Douro,"41,340649","-6,709127",NULL,NULL,Miranda do Douro,Terras de Trás-Os-Montes,NORTE,3260613,NULL,VLCI 17-28-TQ,OK
+7,ESF,CNT,SF 28-118,,5,Município de Mirandela,Mirandela,"41,483096","-7,172948",NULL,NULL,Mirandela,Terras de Trás-Os-Montes,NORTE,3260621,NULL,VLCI 77-JS-54,OK
+8,ESF,CNT,SF 57-118,,5,Junta de Freguesia de Mirandela,Mirandela,"41,458859","-7,185982",NULL,NULL,Mirandela,Terras de Trás-Os-Montes,NORTE,3260700,NULL,VLCI BF-92-GI,OK
+9,ESF,CNT,SF 55-118,,5,Junta de Freguesia de Mirandela,Mirandela,"41,458859","-7,185982",NULL,NULL,Mirandela,Terras de Trás-Os-Montes,NORTE,3260698,NULL,VLCI 97-MP-97,OK
+10,ESF,CNT,SF 49-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Mogadouro,"41,345388","-6,705556",NULL,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,3260524,3260635,VLCI 16-XO-40,OK
+11,ESF,CNT,SF 44-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Mogadouro,"41,345388","-6,705556",NULL,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,3260631,NULL,VLCI 53-VA-78,OK
+12,ESF,CNT,SF 21-118,,5,APFNT - Associação de Produtores Florestais do Nordeste Transmontano,Mogadouro,"41,340649","-6,709127",NULL,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,3260617,NULL,VLCI 90-XJ-82,OK
+13,ESF,CNT,SF 19-117,,5,"Município de Torre de Moncorvo, em representação do Órgão de Gestão do Baldio da Serra do Reboredo",Torre de Moncorvo,"41,17717","-7,05147",NULL,NULL,Torre de Moncorvo,Douro,NORTE,4260661,4260660,VLCI 35-VL-26,OK
+14,ESF,CNT,SF 22-117,,5,Município de Vila Flor,Vila Flor,"41,308855","-7,153771",NULL,NULL,Vila Flor,Terras de Trás-Os-Montes,NORTE,3260646,NULL,VLCI 42-DA-15,OK
+15,ESF,CNT,SF 07-117,,5,Município de Vila Flor,Vila Flor,"41,308855","-7,153771",NULL,NULL,Vila Flor,Terras de Trás-Os-Montes,NORTE,3260607,NULL,VLCI AS-03-OG,OK
+16,ESF,CNT,SF 12-117,,5,SILVIDOURO - Associação Agro-Florestal,Vila Flor,"41,488262","-7,181056",NULL,NULL,Vila Flor,Terras de Trás-Os-Montes,NORTE,3260611,NULL,VLCI 80-JQ-57,OK
+17,ESF,CNT,SF 29-118,,4,Município de Vimioso,Vimioso,"41,584466","-6,532",NULL,NULL,Vimioso,Terras de Trás-Os-Montes,NORTE,3260623,NULL,VLCI 69-IU-89,OK
+18,ESF,CNT,SF 60-118,,4,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Bragança,"41,345388","-6,705556",NULL,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,NULL,NULL,VLCI 21-LF-44,Viatura NÃO encontrada
+19,ESF,CNT,SF 46-118,,5,Freguesia de Algoso Campo de Víboras e Uva,Vimioso,"41,470412","-6,575553",NULL,NULL,Vimioso,Terras de Trás-Os-Montes,NORTE,3260633,3260634,VLCI 91-XJ-06,OK
+20,ESF,CNT,SF 54-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Vimioso,"41,345388","-6,705556",NULL,NULL,Vimioso,Terras de Trás-Os-Montes,NORTE,3260637,NULL,VLCI AV-50-LM,OK
+21,ESF,CNT,SF 33-118,,5,Freguesia de Ervedosa,Vinhais,"41,731035","-7,103848",NULL,NULL,Vinhais,Terras de Trás-Os-Montes,NORTE,3260626,3260625,VLCI 53-VA-45,OK
+22,ESF,CNT,SF 23-118,,5,ARBOREA - Associação Agro-Florestal e Ambiental da Terra Fria Transmontana,Vinhais,"41,826937","-7,009635",NULL,NULL,Vinhais,Terras de Trás-Os-Montes,NORTE,3260619,NULL,VLCI AX-51-RN,OK
+23,ESF,CNT,SF 10-118,,5,ARBOREA - Associação Agro-Florestal e Ambiental da Terra Fria Transmontana,Vinhais,"41,826937","-7,009635",NULL,NULL,Vinhais,Terras de Trás-Os-Montes,NORTE,3260609,NULL,VLCI 67-TX-46,OK
+24,ESF,CNT,SF 14-16A,,5,Serras e Povoados - Associação,Belmonte,"40,307429","-7,459792",NULL,NULL,Belmonte,Beiras e Serra da Estrela,CENTRO,5260619,5260618,VLCI 53-VA-43,OK
+25,ESF,CNT,SF 11-169,BRIG 01-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-1-169,Castelo Branco,"39,815194","-7,494407",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260552,5260551,VLCI 53-VA-70,OK
+26,ESF,CNT,SF 12-169,BRIG 01-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-1-169,Castelo Branco,"39,815194","-7,494407",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260556,5260555,VLCI 53-VA-91,OK
+27,ESF,CNT,SF 13-169,BRIG 01-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-1-169,Castelo Branco,"39,815194","-7,494407",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260558,5260557,VLCI 53-VA-95,OK
+28,ESF,CNT,SF 14-169,BRIG 02-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-2-169,Castelo Branco,"39,819933","-7,496331",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260559,5260560,VLCI 35-VL-06,OK
+29,ESF,CNT,SF 15-169,BRIG 02-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-2-169,Castelo Branco,"39,819933","-7,496331",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260561,5260562,VLCI 35-VL-07,OK
+30,ESF,CNT,SF 16-169,BRIG 02-169,5,Comunidade Intermunicipal da Beira Baixa - BRIG-2-169,Castelo Branco,"39,819933","-7,496331",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260563,5260564,VLCI 35-VL-08,OK
+31,ESF,CNT,SF 03-169,,4,MAGAREFA - Associação de Produtores Florestais,Castelo Branco,"39,850298","-7,68735",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260507,5260773,VLCI 67-TX-30,OK
+32,ESF,CNT,SF 04-169,,5,Assembleia de Compartes dos Baldios de Louriçal do Campo,Castelo Branco,"39,962911","-7,403518",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260536,5260535,VLCI 01-95-TR,OK
+33,ESF,CNT,SF 02-169,,5,Pedragueira e Espanada - Associação de Produtores Florestais,Castelo Branco,"40,005533","-7,661476",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260505,5260772,VLCI 80-PC-99,OK
+34,ESF,CNT,SF 05-169,,5,Pedragueira e Espanada - Associação de Produtores Florestais,Castelo Branco,"40,005533","-7,661476",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260538,5260537,VLCI 53-VA-26,OK
+35,ESF,CNT,SF 03-161,,5,Associação Florestal do Baixo Vouga,Águeda,"40,689914","-8,474556",NULL,NULL,Águeda,Região de Aveiro,CENTRO,6260570,NULL,VLCI 38-XF-75,OK
+36,ESF,CNT,SF 08-169,,5,AFLOBEI-Associação de Produtores Florestais da Beira Interior,Castelo Branco,"39,825139","-7,484206",NULL,NULL,Castelo Branco,Beira Baixa,CENTRO,5260543,5260544,VLCI 57-XI-37,OK
+37,ESF,CNT,SF 05-16A,,5,COMUNIDADE LOCAL DO BALDIO DA FREGUESIA DE CORTES DO MEIO,Covilhã,"40,256962","-7,577182",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260579,NULL,VLCI 67-TX-32,OK
+38,ESF,CNT,SF 09-16A,,5,"QUEIRÓ - Associação para a Floresta, Caça e Pesca",Covilhã,"40,255278","-7,580363",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260599,5260598,VLCI 53-VA-21,OK
+39,ESF,CNT,SF 10-16A,,6,Conselho Directivo dos Baldios de Erada,Covilhã,"40,225862","-7,648114",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260604,5260605,VLCI 57-XI-24,OK
+40,ESF,CNT,SF 12-16A,,5,Assembleia de Compartes da Povoação da Atalaia da Freguesia de Teixoso,Covilhã,"40,307429","-7,459792",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260610,NULL,VLCI 13-ST-59,OK
+41,ESF,CNT,SF 15-16A,,5,Associação de Agrupamentos de Baldios Estrela Sul,Covilhã,"40,256502","-7,577687",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260623,5260622,VLCI 91-XJ-00,OK
+42,ESF,CNT,SF 13-16A,,5,"QUEIRÓ - Associação para a Floresta, Caça e Pesca",Covilhã,"40,255278","-7,580363",NULL,NULL,Covilhã,Beiras e Serra da Estrela,CENTRO,5260615,5260614,VLCI 53-VA-64,OK
+43,ESF,CNT,SF 16-16A,,5,Serras e Povoados - Associação,Fundão,"40,307429","-7,459792",NULL,NULL,Fundão,Beiras e Serra da Estrela,CENTRO,5260626,NULL,VLCI 16-XO-46,OK
+44,ESF,CNT,SF 11-16A,,5,PINUS VERDE - Associação de Desenvolvimento Integrado da Floresta,Fundão,"40,076432","-7,713618",NULL,NULL,Fundão,Beiras e Serra da Estrela,CENTRO,5260608,NULL,VLCI 13-ST-54,OK
+45,ESF,CNT,SF 01-16A,,5,Agência de Desenvolvimento Gardunha 21,Fundão,"40,137739","-7,500698",NULL,NULL,Fundão,Beiras e Serra da Estrela,CENTRO,5260503,5260774,VLCI 81-PC-11,OK
+46,ESF,CNT,SF 07-16A,,5,PINUS VERDE - Associação de Desenvolvimento Integrado da Floresta,Fundão,"40,076432","-7,713618",NULL,NULL,Fundão,Beiras e Serra da Estrela,CENTRO,5260589,NULL,VLCI 67-TX-15,OK
+47,ESF,CNT,SF 01-169,,5,AFLOBEI-Associação de Produtores Florestais da Beira Interior,Idanha-A-Nova,"39,825139","-7,484206",NULL,NULL,Idanha-A-Nova,Beira Baixa,CENTRO,5260502,5260771,VLCI 80-PC-98,OK
+48,ESF,CNT,SF 12-166,,5,Município de Idanha-a-Nova,Idanha-A-Nova,"40,025919","-7,239823",NULL,NULL,Idanha-A-Nova,Beira Baixa,CENTRO,5260553,NULL,VLCI 13-ST-51,OK
+49,ESF,CNT,SF 10-169,,5,Município de Idanha-a-Nova,Idanha-A-Nova,"40,025919","-7,239823",NULL,NULL,Idanha-A-Nova,Beira Baixa,CENTRO,5260518,NULL,VLCI AT-56-SZ,OK
+50,ESF,CNT,SF 11-166,,3,APFAM - Associação de Produtores Florestais de Alvelos e Muradal,Oleiros,"39,931472","-7,879999",NULL,NULL,Oleiros,Beira Baixa,CENTRO,5260549,NULL,VLCI 13-ST-49,OK
+51,ESF,CNT,SF 10-166,,4,APFAM - Associação de Produtores Florestais de Alvelos e Muradal,Oleiros,"39,931472","-7,879999",NULL,NULL,Oleiros,Beira Baixa,CENTRO,5260547,NULL,VLCI 00-IU-39,OK
+52,ESF,CNT,SF 09-169,,5,OPAFLOR - Associação de Produtores Florestais da Serra de Opa,Penamacor,"40,168346","-7,169609",NULL,NULL,Penamacor,Beira Baixa,CENTRO,5260545,5260546,VLCI 16-XO-58,OK
+53,ESF,CNT,SF 04-161,,5,Município de Águeda,Águeda,"40,573074","-8,445574",NULL,NULL,Águeda,Região de Aveiro,CENTRO,6260571,NULL,VLCI AX-43-RN,OK
+54,ESF,CNT,SF 01-166,,5,Associação de Produtores Florestais e Agrícolas do Concelho de Proença-a-Nova,Proença-A-Nova,"39,751436","-7,925101",NULL,NULL,Proença-A-Nova,Beira Baixa,CENTRO,5260501,5260770,VLCI 81-PC-03,OK
+55,ESF,CNT,SF 07-166,,5,Associação de Produtores Florestais e Agrícolas do Concelho de Proença-a-Nova,Proença-A-Nova,"39,751436","-7,925101",NULL,NULL,Proença-A-Nova,Beira Baixa,CENTRO,5260540,5260539,VLCI 53-VA-30,OK
+56,EFSBF,PRP,FSBF VFCI04,,,ICNF,NULL,"39,731861","-7,873833",NULL,NULL,Proença-A-Nova,Beira Baixa,NACIONAL,1260584,1260589,NULL,Sem viatura
+57,EFSBF,PRP,FSBF PRN01,,,ICNF,NULL,"39,731861","-7,873833",NULL,NULL,Proença-A-Nova,Beira Baixa,NACIONAL,1260647,NULL,NULL,Sem viatura
+58,EFSBF,PRP,FSBF PRN02,,5,ICNF,NULL,"39,731861","-7,873833",NULL,NULL,Proença-A-Nova,Beira Baixa,NACIONAL,1260652,NULL,NULL,Sem viatura
+59,ESF,CNT,SF 04-166,,6,APROFLORA - Associação de Produtores Florestais e Agrícolas da Zona do Pinhal,Sertã,"39,862448","-8,018407",NULL,NULL,Sertã,Beira Baixa,CENTRO,5260783,NULL,VLCI 67-TX-31,OK
+60,ESF,CNT,SF 09-166,,6,APROFLORA - Associação de Produtores Florestais e Agrícolas da Zona do Pinhal,Sertã,"39,862448","-8,018407",NULL,NULL,Sertã,Beira Baixa,CENTRO,5260785,NULL,VLCI AX-49-RN,OK
+61,ESF,CNT,SF 03-166,,5,Município de Vila de Rei,Vila de Rei,"39,673513","-8,146453",NULL,NULL,Vila de Rei,Beira Baixa,CENTRO,5260782,5260781,VLCI 53-VA-76,OK
+62,ESF,CNT,SF 13-166,,5,FLORZÊZERE - Associação de Desenvolvimento Florestal do Concelho de Ferreira do Zêzere,Vila de Rei,"39,770353","-8,268952",NULL,NULL,Vila de Rei,Beira Baixa,CENTRO,5260786,5260787,VLCI 90-XJ-99,OK
+63,ESF,CNT,SF 07-169,,5,Associação de Produtores Florestais e Agrícolas do Concelho de Proença-a-Nova,Vila Velha de Ródão,"39,751436","-7,925101",NULL,NULL,Vila Velha de Ródão,Beira Baixa,CENTRO,5260542,5260541,VLCI 53-VA-81,OK
+64,ESF,CNT,SF 16-164,,9,Associação de Produtores Florestais do Concelho de Arganil,Arganil,"40,215585","-8,052336",NULL,NULL,Arganil,Região de Coimbra,CENTRO,5260685,5260684,VLCI 53-VA-34,OK
+65,ESF,CNT,SF 06-162,,4,Freguesia de Tocha,Cantanhede,"40,313424","-8,754547",NULL,NULL,Cantanhede,Região de Coimbra,CENTRO,5260510,NULL,VLCI AX-46-RN,OK
+66,ESF,CNT,SF 11-162,,5,Organização Florestal Atlantis - Associação de Desenvolvimento Florestal,Cantanhede,"40,383651","-8,492576",NULL,NULL,Cantanhede,Região de Coimbra,CENTRO,5260675,5260674,VLCI 53-VA-19,OK
+67,ESF,CNT,SF 32-164,BRIG 01-164,5,Comunidade Intermunicipal da Região de Coimbra - BRIG-1-164,Coimbra,"40,200625","-8,406402",NULL,NULL,Coimbra,Região de Coimbra,CENTRO,5260701,5260700,VLCI 18-VI-38,OK
+68,ESF,CNT,SF 33-164,BRIG 01-164,5,Comunidade Intermunicipal da Região de Coimbra - BRIG-1-164,Coimbra,"40,200625","-8,406402",NULL,NULL,Coimbra,Região de Coimbra,CENTRO,5260703,5260702,VLCI 18-VI-26,OK
+69,ESF,CNT,SF 34-164,BRIG 01-164,5,Comunidade Intermunicipal da Região de Coimbra - BRIG-1-164,Coimbra,"40,200625","-8,406402",NULL,NULL,Coimbra,Região de Coimbra,CENTRO,5260705,5260704,VLCI 18-VI-42,OK
+70,ESF,CNT,SF 13-162,,1,"NÚMERO SENSAÇÃO, LDA",Coimbra,"40,1777","-8,422551",NULL,NULL,Coimbra,Região de Coimbra,CENTRO,5260678,5260679,VLCI 91-XJ-22,OK
+71,ESF,CNT,SF 37-164,,5,Comunidade Intermunicipal da Região de Coimbra - BRIG-2-164,Coimbra,"40,200625","-8,406402",NULL,NULL,Coimbra,Região de Coimbra,CENTRO,5260708,5260709,VLCI 35-VL-16,OK
+72,ESF,CNT,SF 05-162,,5,Município de Figueira da Foz,Figueira da Foz,"40,147314","-8,85362",NULL,NULL,Figueira da Foz,Região de Coimbra,CENTRO,5260663,NULL,VLCI AS-18-OG,OK
+73,ESF,CNT,SF 02-162,,5,Município de Figueira da Foz,Figueira da Foz,"40,147314","-8,85362",NULL,NULL,Figueira da Foz,Região de Coimbra,CENTRO,5260656,NULL,VLCI AS-20-OG,OK
+74,ECNAF,PRP,CNAF 07,,4,ICNF - Centro,Marinha Grande,"39,751227","-8,930384",NULL,NULL,Marinha Grande,Região de Coimbra,CENTRO,6260606,NULL,VLCI 41-FH-35,OK
+75,ECNAF,PRP,CNAF 04,,4,ICNF - Centro,Arganil,"40,216424","-7,919146",NULL,NULL,Arganil,Região de Coimbra,CENTRO,5260795,NULL,VLCI 96-FC-95,OK
+76,ESF,CNT,SF 26-164,,5,Freguesia de Cadafaz e Colmeal,Góis,"40,142857","-8,00329",NULL,NULL,Góis,Região de Coimbra,CENTRO,5260526,NULL,VLCI 16-XO-64,OK
+77,ESF,CNT,SF 03-164,,5,Associação Florestal do Concelho de Góis,Góis,"40,102097","-8,114117",NULL,NULL,Góis,Região de Coimbra,CENTRO,5260658,NULL,VLCI 67-TX-16,OK
+78,ESF,CNT,SF 10-164,,5,Associação Florestal do Concelho de Góis,Góis,"40,102097","-8,114117",NULL,NULL,Góis,Região de Coimbra,CENTRO,5260673,5260672,VLCI 53-VA-44,OK
+79,ESF,CNT,SF 13-164,,5,Conselho Directivo dos Baldios da Lousã,Lousã,"40,111017","-8,25296",NULL,NULL,Lousã,Região de Coimbra,CENTRO,5260680,NULL,VLCI 17-TX-22,OK
+80,ESF,CNT,SF 07-164,,7,Comunidade local dos Baldios dos Lugares da extinta Freguesia de Vilarinho,Lousã,"40,106875","-8,203124",NULL,NULL,Lousã,Região de Coimbra,CENTRO,5260667,NULL,VLCI 67-TX-18,OK
+81,ESF,CNT,SF 19-164,,5,AFLOPINHAL - Associação Florestal do Pinhal,Lousã,"40,138177","-8,225377",NULL,NULL,Lousã,Região de Coimbra,CENTRO,5260689,5260688,VLCI 53-VA-93,OK
+82,ECNAF,PRP,CNAF 03,,4,ICNF - Centro,Lousã,"40,109353","-8,240828",NULL,NULL,Lousã,Região de Coimbra,CENTRO,5260794,NULL,VLCI 96-FC-91,OK
+83,ESF,CNT,SF 03-162,,5,Município de Mira,Mira,"40,428426","-8,736269",NULL,NULL,Mira,Região de Coimbra,CENTRO,5260657,NULL,VLCI AT-13-UT,OK
+84,ESF,CNT,SF 27-164,,6,Conselho Directivo dos Baldios da Freguesia de Vila Nova,Miranda do Corvo,"40,049405","-8,279498",NULL,NULL,Miranda do Corvo,Região de Coimbra,CENTRO,5260528,NULL,VLCI AS-23-OG,OK
+85,ESF,CNT,SF 35-164,,5,"LITOCOOP - Cooperativa Agro-Florestal da Beira, C.R.L.",Miranda do Corvo,"40,127631","-8,331825",NULL,NULL,Miranda do Corvo,Região de Coimbra,CENTRO,5260706,5260707,VLCI 53-VA-94,OK
+86,ESF,CNT,SF 10-162,,5,Município de Montemor-o-Velho,Montemor-O-Velho,"40,172776","-8,684446",NULL,NULL,Montemor-O-Velho,Região de Coimbra,CENTRO,5260671,NULL,VLCI 41-JC-16,OK
+87,ESF,CNT,SF 18-164,,5,CAULE - Associação Florestal da Beira Serra,Oliveira do Hospital,"40,314057","-7,890349",NULL,NULL,Oliveira do Hospital,Região de Coimbra,CENTRO,5260687,5260686,VLCI 53-VA-16,OK
+88,ESF,CNT,SF 04-164,,5,CAULE - Associação Florestal da Beira Serra,Oliveira do Hospital,"40,314057","-7,890349",NULL,NULL,Oliveira do Hospital,Região de Coimbra,CENTRO,5260661,NULL,VLCI 67-TX-19,OK
+89,ESF,CNT,SF 01-164,,5,"Cooperativa dos Agricultores de Alvoco das Várzeas, CRL",Oliveira do Hospital,"40,30317","-7,834122",NULL,NULL,Oliveira do Hospital,Região de Coimbra,CENTRO,5260654,NULL,VLCI 67-TX-14,OK
+90,ESF,CNT,SF 09-164,,4,Associação de Produtores Florestais de Pampilhosa da Serra - APFPS,Pampilhosa da Serra,"40,045624","-7,952348",NULL,NULL,Pampilhosa da Serra,Região de Coimbra,CENTRO,5260669,NULL,VLCI 67-TX-27,OK
+91,ESF,CNT,SF 25-164,,5,Freguesia de Fajão-Vidual,Pampilhosa da Serra,"40,149107","-7,922203",NULL,NULL,Pampilhosa da Serra,Região de Coimbra,CENTRO,5260524,NULL,VLCI 16-XO-61,OK
+92,ESF,CNT,SF 39-164,,4,Associação de Produtores Florestais de Pampilhosa da Serra - APFPS,Pampilhosa da Serra,"40,045624","-7,952348",NULL,NULL,Pampilhosa da Serra,Região de Coimbra,CENTRO,5260711,5260712,VLCI 16-XO-29,OK
+93,ESF,CNT,SF 12-162,,5,Município de Penacova,Penacova,"40,269992","-8,281204",NULL,NULL,Penacova,Região de Coimbra,CENTRO,5260676,NULL,VLCI 99-UQ-11,OK
+94,ESF,CNT,SF 07-162,,5,CAULE - Associação Florestal da Beira Serra,Penacova,"40,314057","-7,890349",NULL,NULL,Penacova,Região de Coimbra,CENTRO,5260512,NULL,VLCI AZ-84-OQ,OK
+95,ESF,CNT,SF 01-162,,5,Município de Penacova,Penacova,"40,269992","-8,281204",NULL,NULL,Penacova,Região de Coimbra,CENTRO,5260652,NULL,VLCI 67-TX-52,OK
+96,ESF,CNT,SF 20-164,,6,FLOPEN - Associação de Produtores e Proprietários Florestais do Concelho de Penela,Penela,"40,012296","-8,348924",NULL,NULL,Penela,Região de Coimbra,CENTRO,5260690,5260691,VLCI 57-XI-28,OK
+97,ESF,CNT,SF 04-162,,5,SAURIUM FLORESTAL - Associação Prá Floresta do Concelho de Soure,Soure,"40,060255","-8,626128",NULL,NULL,Soure,Região de Coimbra,CENTRO,5260660,NULL,VLCI AT-37-SZ,OK
+98,ESF,CNT,SF 28-164,,5,CAULE - Associação Florestal da Beira Serra,Tábua,"40,314057","-7,890349",NULL,NULL,Tábua,Região de Coimbra,CENTRO,5260529,NULL,VLCI AT-40-SZ,OK
+99,ESF,CNT,SF 14-164,,5,CAULE - Associação Florestal da Beira Serra,Tábua,"40,314057","-7,890349",NULL,NULL,Tábua,Região de Coimbra,CENTRO,5260682,NULL,VLCI 17-TX-21,OK
+100,ESF,CNT,SF 30-164 ,,5,Município de Vila Nova de Poiares,Vila Nova de Poiares,"40,210082","-8,259153",NULL,NULL,Vila Nova de Poiares,Região de Coimbra,CENTRO,5260696,NULL,VLCI 59-TQ-92,OK
+101,ESF,CNT,SF 31-164,,5,AFLOPINHAL - Associação Florestal do Pinhal,Vila Nova de Poiares,"40,138177","-8,225377",NULL,NULL,Vila Nova de Poiares,Região de Coimbra,CENTRO,5260699,5260698,VLCI 53-VA-29,OK
+102,ESF,CNT,SF 03-183,,5,Município de Borba,Borba,"38,779956","-7,487112",NULL,NULL,Borba,Alentejo Central,ALENTEJO,2260502,NULL,VLCI AS-10-OG,OK
+103,ESF,CNT,SF 01-183,,5,Município de Estremoz,Estremoz,"38,842881","-7,585205",NULL,NULL,Estremoz,Alentejo Central,ALENTEJO,2260500,NULL,VLCI AS-24-OG,OK
+104,ESF,CNT,SF 02-183,,4,Município de Portel,Portel,"38,309985","-7,703197",NULL,NULL,Portel,Alentejo Central,ALENTEJO,2260508,NULL,VLCI AT-35-SZ,OK
+105,ESF,CNT,SF 03-150,,5,CUMEADAS - Associação de Proprietários Florestais das Cumeadas do Baixo Guadiana,Alcoutim,"37,446806","-7,594766",NULL,NULL,Alcoutim,Algarve,ALGARVE,7260512,7260513,VLCI 38-XF-99,OK
+106,ESF,CNT,SF 14-150,,5,TERRAS DO INFANTE - Associação de Municipios,Aljezur,"37,099207","-8,674994",NULL,NULL,Aljezur,Algarve,ALGARVE,7260526,7260525,VLCI 13-ST-56,OK
+107,ESF,CNT,SF 15-150,,5,Comunidade Intermunicipal do Algarve - BRIG-1-150,Faro,"37,019239","-7,925777",NULL,NULL,Faro,Algarve,ALGARVE,7260528,7260527,VLCI 18-VI-16,OK
+108,ESF,CNT,SF 16-150,,5,Comunidade Intermunicipal do Algarve - BRIG-1-150,Faro,"37,019239","-7,925777",NULL,NULL,Faro,Algarve,ALGARVE,7260530,7260529,VLCI 18-VI-30,OK
+109,EFSBF,PRP,FSBF LOU02,,3,ICNF,NULL,NULL,NULL,NULL,NULL,Faro,Algarve,NACIONAL,1260675,NULL,NULL,Sem viatura
+110,ESF,CNT,SF 01-161,,5,Associação Florestal do Baixo Vouga,Albergaria-A-Velha,"40,689914","-8,474556",NULL,NULL,Albergaria-A-Velha,Região de Aveiro,CENTRO,6260500,6260602,VLCI 17-TX-20,OK
+111,ESF,CNT,SF 04-116,,5,Associação Florestal de Entre Douro e Vouga,Arouca,"40,929246","-8,248978",968514949,p.quaresma@afedv.com.pt,Arouca,Área Metropolitana do Porto,NORTE,3260575,NULL,VLCI AZ-88-OQ,OK
+112,ESF,CNT,SF 06-116,,5,Associação Florestal de Entre Douro e Vouga,Arouca,"40,929246","-8,248978",968514949,p.quaresma@afedv.com.pt,Arouca,Área Metropolitana do Porto,NORTE,3260508,3260643,VLCI 13-ST-45,OK
+113,ESF,CNT,SF 05-116,,5,Associação Florestal de Entre Douro e Vouga,Santa Maria da Feira,"40,929246","-8,248978",968514949,p.quaresma@afedv.com.pt,Santa Maria da Feira,Área Metropolitana do Porto,NORTE,3260506,NULL,VLCI AZ-92-OQ,OK
+114,ESF,CNT,SF 07-161,,5,Município da Mealhada,Mealhada,"40,379725","-8,451862",NULL,NULL,Mealhada,Região de Coimbra,CENTRO,5260665,NULL,VLCI 00-UN-81,OK
+115,ESF,CNT,SF 02-116,,5,Associação Florestal de Entre Douro e Vouga,Oliveira de Azeméis,"40,929246","-8,248978",968514949,p.quaresma@afedv.com.pt,Oliveira de Azeméis,Área Metropolitana do Porto,NORTE,3260503,3260642,VLCI 81-PC-12,OK
+116,ESF,CNT,SF 02-161,,5,Cooperativa Agrícola de Sanfins CRL,Sever do Vouga,"40,762516","-8,331371",NULL,NULL,Sever do Vouga,Região de Aveiro,CENTRO,6260569,NULL,VLCI 16-XO-54,OK
+117,ESF,CNT,SF 03-116,,6,Associação Florestal de Entre Douro e Vouga,Vale de Cambra,"40,929246","-8,248978",968514949,p.quaresma@afedv.com.pt,Vale de Cambra,Área Metropolitana do Porto,NORTE,3260572,NULL,VLCI AS-11-OG,OK
+118,ESF,CNT,SF 07-116,,5,Município de Vale de Cambra,Vale de Cambra,"40,84234","-8,398065",911801145,gtf@cm-valedecambra.pt,Vale de Cambra,Área Metropolitana do Porto,NORTE,3260509,3260644,VLCI 13-ST-55,OK
+119,ESF,CNT,SF 02-184,,6,Município de Almodôvar,Almodôvar,"37,5142","-8,064613",NULL,NULL,Almodôvar,Baixo Alentejo,ALENTEJO,7260501,NULL,VLCI 48-JD-65,OK
+120,ESF,CNT,SF 03-184,,5,Município de Barrancos,Barrancos,"38,129277","-6,975767",NULL,NULL,Barrancos,Baixo Alentejo,ALENTEJO,7260538,NULL,VLCI 13-JA-38,OK
+121,ESF,CNT,SF 04-184,,5,Município de Moura,Moura,"38,142755","-7,451419",NULL,NULL,Moura,Baixo Alentejo,ALENTEJO,7260504,NULL,VLCI AS-16-OG,OK
+122,ESF,CNT,SF 04-181,,9,Município de Odemira,Odemira,"37,596067","-8,643175",NULL,NULL,Odemira,Alentejo Litoral,ALENTEJO,2260510,NULL,VLCI 77-JH-01,OK
+123,ESF,CNT,SF 08-181,,5,APIFLORA - Associação Agro-Florestal,Odemira,"39,247923","-8,008585",NULL,NULL,Odemira,Alentejo Litoral,ALENTEJO,2260516,NULL,VLCI 91-XJ-03,OK
+124,ESF,CNT,SF 09-181,,5,APIFLORA - Associação Agro-Florestal,Odemira,"39,247923","-8,008585",NULL,NULL,Odemira,Alentejo Litoral,ALENTEJO,2260506,NULL,VLCI 91-XJ-11,OK
+125,ESF,CNT,SF 01-184,,5,Município de Ourique,Ourique,"37,652384","-8,226087",NULL,NULL,Ourique,Baixo Alentejo,ALENTEJO,7260536,NULL,VLCI AS-09-OG,OK
+126,ESF,CNT,SF 05-184,,5,Município da Vidigueira,Vidigueira,"38,117825","-7,647227",NULL,NULL,Vidigueira,Baixo Alentejo,ALENTEJO,7260540,NULL,VLCI AZ-80-OQ,OK
+127,ESF,CNT,SF 02-112,,5,Associação Florestal do Cávado,Amares,"41,537683","-8,400096",NULL,NULL,Amares,Cávado,NORTE,NULL,4260625,VLCI 53-VA-23,OK
+128,ESF,CNT,SF 04-112,,5,Associação Florestal do Cávado,Barcelos,"41,537683","-8,400096",NULL,NULL,Barcelos,Cávado,NORTE,4260629,4260630,VLCI 16-XO-65,OK
+129,ESF,CNT,SF 09-112,,5,Associação Florestal do Cávado,Barcelos,"41,537683","-8,400096",NULL,NULL,Barcelos,Cávado,NORTE,4260642,4260641,VLCI 53-VA-86,OK
+130,ESF,CNT,SF 10-112,,5,Associação Florestal do Cávado,Braga,"41,537683","-8,400096",NULL,NULL,Braga,Cávado,NORTE,4260643,4260644,VLCI 16-XO-52,OK
+131,ESF,CNT,SF 08-112,,5,Associação Florestal do Cávado,Braga,"41,537683","-8,400096",NULL,NULL,Braga,Cávado,NORTE,4260639,NULL,VLCI 13-ST-62,OK
+132,ECNAF,PRP,CNAF 19,,4,ICNF - Norte,Cabeceiras de Basto,NULL,NULL,NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260679,NULL,VLCI 41-FH-34,OK
+133,ESF,CNT,SF 29-115,,5,Comunidade Local dos Baldios de Moimenta e Rabiçais,Cabeceiras de Basto,"41,524765","-7,888382",NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260617,NULL,VLCI AS-02-OG,OK
+134,ESF,CNT,SF 24-115,,5,Conselho Diretivo dos Baldios de Cabeceiras de Basto - S. Nicolau,Cabeceiras de Basto,"41,555803","-8,021189",NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260613,NULL,VLCI AS-08-OG,OK
+135,ESF,CNT,SF 16-115,,5,RURALBASTO - Cooperativa de Desenvolvimento Agro-Florestal de Basto,Cabeceiras de Basto,"41,515109","-7,990812",NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260611,NULL,VLCI 67-TX-29,OK
+136,ESF,CNT,SF 42-115,,5,Comunidade Local dos Baldios da Freguesia de Riodouro,Cabeceiras de Basto,"41,544241","-7,949168",NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260621,4260620,VLCI 35-VL-13,OK
+137,EFSBF,PRP,FSBF CBAS02,,2,ICNF,NULL,"41,521439","-7,995917",NULL,NULL,Cabeceiras de Basto,Ave,NACIONAL,1260621,NULL,NULL,Sem viatura
+138,EFSBF,PRP,FSBF VFCI01,,,ICNF,NULL,"41,521439","-7,995917",NULL,NULL,Cabeceiras de Basto,Ave,NACIONAL,1260581,1260586,NULL,Sem viatura
+139,EFSBF,PRP,FSBF CBAS03,,4,ICNF,NULL,"41,521439","-7,995917",NULL,NULL,Cabeceiras de Basto,Ave,NACIONAL,1260619,NULL,NULL,Sem viatura
+140,EFSBF,PRP,FSBF VPA03,,14,ICNF,NULL,"41,521439","-7,995917",NULL,NULL,Cabeceiras de Basto,Ave,NACIONAL,NULL,NULL,NULL,Sem viatura
+141,ESF,CNT,SF 07-112,,5,Associação Florestal do Cávado,Esposende,"41,537683","-8,400096",NULL,NULL,Esposende,Cávado,NORTE,4260637,NULL,VLCI BA-47-ID,OK
+142,ESF,CNT,SF 04-113,,5,"COFAFE - Cooperativa dos Produtores Agrícolas de Fafe, CRL",Fafe,"41,456472","-8,172062",NULL,NULL,Fafe,Ave,NORTE,4260589,NULL,VLCI 90-XJ-87,OK
+143,ESF,CNT,SF 08-113,,5,ASVA - Associação de Silvicultores do Vale do Ave,Guimarães,"41,337842","-8,559472",NULL,NULL,Guimarães,Ave,NORTE,4260593,NULL,VLCI 13-ST-57,OK
+144,ESF,CNT,SF 11-113,,5,Comunidade Intermunicipal do Ave - BRIG-1-113,Guimarães,"41,448136","-8,293473",NULL,NULL,Guimarães,Ave,NORTE,4260600,4260599,VLCI 18-VI-36,OK
+145,ESF,CNT,SF 12-113,,5,Comunidade Intermunicipal do Ave - BRIG-1-113,Guimarães,"41,448136","-8,293473",NULL,NULL,Guimarães,Ave,NORTE,4260602,4260601,VLCI 18-VI-17,OK
+146,ESF,CNT,SF 13-113,,5,Comunidade Intermunicipal do Ave - BRIG-1-113,Guimarães,"41,448136","-8,293473",NULL,NULL,Guimarães,Ave,NORTE,4260604,4260603,VLCI 18-VI-29,OK
+147,ESF,CNT,SF 15-113,,5,ASVA - Associação de Silvicultores do Vale do Ave,Guimarães,"41,337842","-8,559472",NULL,NULL,Guimarães,Ave,NORTE,4260609,4260610,VLCI 16-XO-23,OK
+148,ECNAF,PRP,CNAF 27,,4,ICNF - Norte,Gerês,"41,73767","-8,158496",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260677,NULL,VLCI 17-TX-36,OK
+149,ECNAF,PRP,CNAF 23,,4,ICNF - Norte,Gerês,"41,73767","-8,158496",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260682,NULL,VLCI 64-TE-38,OK
+150,ECNAF,PRP,CNAF 50,,4,ICNF - Norte,Gerês,"41,73767","-8,158496",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260678,NULL,VLCI 93-AG-06,OK
+151,ESF,CNT,SF 05-112,,5,AFVH - Associação Florestal do Vale do Homem,Terras de Bouro,"41,729058","-8,13173",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260631,NULL,VLCI 90-XJ-92,OK
+152,ESF,CNT,SF 05-113,,5,AFVH - Associação Florestal do Vale do Homem,Terras de Bouro,"41,729058","-8,13173",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260633,NULL,VLCI AT-04-UT,OK
+153,ESF,CNT,SF 03-112,,5,Associação Florestal do Cávado,Terras de Bouro,"41,537683","-8,400096",NULL,NULL,Terras de Bouro,Cávado,NORTE,4260628,4260627,VLCI 53-VA-24,OK
+154,ESF,CNT,SF 02-113,,5,APOSC - Associação para o Ordenamento da Serra da Cabreira,Vieira do Minho,"41,633924","-8,139378",NULL,NULL,Vieira do Minho,Ave,NORTE,4260588,4260587,VLCI 53-VA-63,OK
+155,ESF,CNT,SF 09-113,,5,APOSC - Associação para o Ordenamento da Serra da Cabreira,Vieira do Minho,"41,633924","-8,139378",NULL,NULL,Vieira do Minho,Ave,NORTE,4260596,4260595,VLCI 53-VA-53,OK
+156,ESF,CNT,SF 10-113,,5,APOSC - Associação para o Ordenamento da Serra da Cabreira,Vieira do Minho,"41,633924","-8,139378",NULL,NULL,Vieira do Minho,Ave,NORTE,4260598,4260597,VLCI 53-VA-83,OK
+157,ESF,CNT,SF 14-113,,5,APOSC - Associação para o Ordenamento da Serra da Cabreira,Vieira do Minho,"41,633924","-8,139378",NULL,NULL,Vieira do Minho,Ave,NORTE,4260608,4260607,VLCI 91-XJ-13,OK
+158,ESF,CNT,SF 07-113,,4,ASVA - Associação de Silvicultores do Vale do Ave,Vila Nova de Famalicão,"41,337842","-8,559472",NULL,NULL,Vila Nova de Famalicão,Ave,NORTE,4260591,NULL,VLCI AZ-91-OQ,OK
+159,ESF,CNT,SF 06-112,,5,Associação Florestal do Cávado,Vila Verde,"41,537683","-8,400096",NULL,NULL,Vila Verde,Cávado,NORTE,4260635,NULL,VLCI BA-44-ID,OK
+160,ESF,CNT,SF 01-112,,5,Associação Florestal do Cávado,Vila Verde,"41,537683","-8,400096",NULL,NULL,Vila Verde,Cávado,NORTE,4260623,NULL,VLCI 67-TX-43,OK
+161,ESF,CNT,SF 19-118,,5,AFLOCAF - Associação de Produtores Florestais do Concelho de Alfândega da Fé,Alfândega da Fé,"41,348336","-7,040023",NULL,NULL,Alfândega da Fé,Terras de Trás-Os-Montes,NORTE,3260615,3260616,VLCI 16-XO-67,OK
+162,ECNAF,PRP,CNAF 22,,4,ICNF - Norte,Bragança,NULL,NULL,NULL,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,3260676,326081,VLCI 18-VI-23,OK
+163,ESF,CNT,SF 34-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Bragança,"41,345388","-6,705556",NULL,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,3260628,3260627,VLCI 53-VA-92,OK
+164,ESF,CNT,SF 35-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Bragança,"41,345388","-6,705556",NULL,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,3260630,3260629,VLCI 53-VA-47,OK
+165,ECNAF,PRP,CNAF 34,,4,ICNF - Norte,Bragança,NULL,NULL,NULL,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,3260679,NULL,VLCI 17-TX-35,OK
+166,ECNAF,PRP,CNAF 20,,5,ICNF - Norte,Mondim de Basto,NULL,NULL,NULL,NULL,Mondim de Basto,Ave,NORTE,4260684,NULL,VLCI 96-FC-86,OK
+167,ESF,CNT,SF 30-115,,5,Conselho Directivo de Compartes dos Baldios da Freguesia de Bilhó,Mondim de Basto,"41,393135","-7,827582",NULL,NULL,Mondim de Basto,Ave,NORTE,4260619,NULL,VLCI AT-42-SZ,OK
+168,ESF,CNT,SF 25-115,,5,Associação Florestal de Compartes de Vilar de Ferreiros,Mondim de Basto,"41,405244","-7,907965",NULL,NULL,Mondim de Basto,Ave,NORTE,4260615,NULL,VLCI 16-XO-71,OK
+169,ESF,CNT,SF 27-115,,5,Município de Mondim de Basto,Mondim de Basto,"41,410832","-7,952304",NULL,NULL,Mondim de Basto,Ave,NORTE,4260515,NULL,VLCI AS-21-OG,OK
+170,ESF,CNT,SF 13-115,,5,Comunidade Local dos Baldios do Lugar de Ermelo,Mondim de Basto,"41,358484","-7,88821",NULL,NULL,Mondim de Basto,Ave,NORTE,4260605,4260606,VLCI 67-TX-34,OK
+171,ESF,CNT,SF 47-118,,5,Freguesia de Venda Nova e Pondras,Montalegre,"41,680737","-7,94663",963651732,abaldiosmontalegre@coopbarroso.pt,Montalegre,Alto Tâmega e Barroso,NORTE,4260579,NULL,VLCI 16-XO-47,OK
+172,ECNAF,PRP,CNAF 29,,4,ICNF - Norte,Cabril,"41,822784","-7,790904",960058461,Luis.Francisco@icnf.pt,Montalegre,Alto Tâmega e Barroso,NORTE,4260696,4265027,VLCI 17-TX-29,OK
+173,ECNAF,PRP,CNAF 30,,4,ICNF - Norte,Montalegre,"41,822784","-7,790904",967084804,Luis.Francisco@icnf.pt,Montalegre,Alto Tâmega e Barroso,NORTE,4260695,4265028,VLCI 17-TX-26,OK
+174,ESF,CNT,SF 40-118,,5,"COOPBARROSO - Cooperativa Agrícola do Barroso, C.R.L.",Montalegre,"41,822551","-7,789027",938909953,abaldiosbarroso@coopbarroso.pt,Montalegre,Alto Tâmega e Barroso,NORTE,4260572,4260573,VLCI 35-VL-11,OK
+175,ESF,CNT,SF 31-118,,5,Freguesia de Viade de Baixo e Fervidelas,Montalegre,"41,760645","-7,863664",935935270,absgeres@gmail.com,Montalegre,Alto Tâmega e Barroso,NORTE,4260559,4260558,VLCI 53-VA-51,OK
+176,ESF,CNT,SF 04-118,,5,Freguesia de Sezelhe e Covelães,Montalegre,"41,807458","-7,888803",938696172,abaldiosmontalegre@coopbarroso.pt,Montalegre,Alto Tâmega e Barroso,NORTE,4260528,4260529,VLCI 67-TX-33,OK
+177,ESF,CNT,SF 05-118,,5,Comunidade Local dos Baldios de Pitões das Júnias,Montalegre,"41,841548","-7,95108",967683471,luciapitoes@gmail.com,Montalegre,Alto Tâmega e Barroso,NORTE,4260530,4260531,VLCI 81-PC-02,OK
+178,ESF,CNT,SF 06-118,,5,Comunidade Local dos Baldios do Cabril,Montalegre,"41,792791","-7,71913",961570731,absgeres@gmail.com,Montalegre,Alto Tâmega e Barroso,NORTE,4260501,4260669,VLCI 81-PC-05,OK
+179,ESF,CNT,SF 07-118,,5,Comunidade Local dos Baldios de Fafião,Montalegre,"41,699883","-8,085872",960214303,absgeres@gmail.com,Montalegre,Alto Tâmega e Barroso,NORTE,4260532,4260533,VLCI 81-PC-00,OK
+180,ESF,CNT,SF 08-118,,5,Comunidade Local dos Baldios de Outeiro e Parada,Montalegre,"41,787365","-7,944315",934482833,luciapitoes@gmail.com,Montalegre,Alto Tâmega e Barroso,NORTE,4260503,4260670,VLCI 81-PC-08,OK
+181,ESF,CNT,SF 17-118,,5,Associação Agro Florestal das Terras do Barroso,Montalegre,"41,648489","-7,942888",960066410,projetos.aaftb@gmail.com,,Alto Tâmega e Barroso,NORTE,,,VLCI 38-XF-74,OK
+182,ESF,CNT,SF 26-118,,5,AFLODOUNORTE - Associação Florestal do Vale do Douro Norte,Murça,"41,46002","-7,469137",NULL,NULL,Murça,Douro,NORTE,4260666,4260667,VLCI 96-FC-76,OK
+183,ESF,CNT,SF 28-115,,5,Associação Florestal de Ribeira de Pena,Ribeira de Pena,"41,472434","-7,846584",965209110,hcardoso@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260554,4260555,VLCI AU-46-TG,OK
+184,ECNAF,PRP,CNAF 21,,4,ICNF - Norte,Ribeira de Pena,"41,519315","-7,795556",966821110,rute.gaspar@icnf.pt,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260686,NULL,VLCI 96-FC-94,OK
+185,ESF,CNT,SF 22-115,,5,Associação Florestal de Ribeira de Pena,Ribeira de Pena,"41,472434","-7,846584",968350565,hcardoso@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260549,4260548,VLCI 53-VA-67,OK
+186,ESF,CNT,SF 18-115,,5,Associação Florestal de Ribeira de Pena,Ribeira de Pena,"41,472434","-7,846584",934494275,hcardoso@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260541,4260540,VLCI 53-VA-27,OK
+187,ESF,CNT,SF 19-115,,5,Associação Florestal de Ribeira de Pena,Ribeira de Pena,"41,472434","-7,846584",935010528,hcardoso@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260545,4260544,VLCI 53-VA-62,OK
+188,ESF,CNT,SF 14-115,,5,Associação Florestal de Ribeira de Pena,Ribeira de Pena,"41,472434","-7,846584",924212461,hcardoso@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260534,4260535,VLCI 67-TX-40,OK
+189,ESF,CNT,SF 38-115,,4,Freguesia de Santa Marinha,Ribeira de Pena,"41,526511","-7,783569",964553441,natbmoreira@gmail.com,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260567,4260566,VLCI 53-VA-75,OK
+190,ESF,CNT,SF 03-117,,5,AFLODOUNORTE - Associação Florestal do Vale do Douro Norte,Sabrosa,"41,46002","-7,469137",NULL,NULL,Sabrosa,Douro,NORTE,4260646,4260645,VLCI 53-VA-25,OK
+191,ESF,CNT,SF 14-117,,5,Freguesia de São Martinho de Anta e Paradela de Guiães,Sabrosa,"41,266476","-7,619755",NULL,NULL,Sabrosa,Douro,NORTE,4260508,NULL,VLCI AZ-83-OQ,OK
+192,ESF,CNT,SF 32-118,,5,AGRO-LILA - Associação Agro-Florestal das Terras do Lila,Valpaços,"41,523201","-7,324839",935948205,mmigcruz@sapo.pt,Valpaços,Alto Tâmega e Barroso,NORTE,4260561,4260560,VLCI 18-VI-18,OK
+193,ESF,CNT,SF 41-118,,5,Município de Valpaços,Valpaços,"41,603439","-7,316876",938678305,proteccao-civil@valpacos.pt,Valpaços,Alto Tâmega e Barroso,NORTE,4260574,NULL,VLCI 34-QD-98,OK
+194,ESF,CNT,SF 42-118,,5,Município de Valpaços,Valpaços,"41,603439","-7,316876",963703197,proteccao-civil@valpacos.pt,Valpaços,Alto Tâmega e Barroso,NORTE,4260520,NULL,VLCI AB-11-SO,OK
+195,ESF,CNT,SF 39-118,,5,AGUIARFLORESTA - Associação Florestal e Ambiental do Concelho de Vila Pouca de Aguiar,Vila Pouca de Aguiar,"41,502453","-7,638467",937268006,sapadores@aguiarfloresta.org,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NORTE,4260571,4260570,VLCI 53-VA-85,OK
+196,ECNAF,PRP,CNAF 43,,4,ICNF - Norte,Chaves,"41,742118","-7,466867",938835185,Antonio.Batista@icnf.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260698,NULL,VLCI 37-14-XA,OK
+197,ESF,CNT,SF 48-118,,5,AGBATA - Associação do Agrupamento dos Baldios de Terras de Aguiar,Vila Pouca de Aguiar,"41,496572","-7,643447",936193688,pedroalves.cnavreal@sapo.pt,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NORTE,4260580,4260581,VLCI 91-XJ-16,OK
+198,EFSBF,PRP,FSBF VPA01,,3,ICNF,NULL,"41,500083","-7,640167",NULL,NULL,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NACIONAL,NULL,NULL,NULL,Sem viatura
+199,EFSBF,PRP,FSBF VPA02,,3,ICNF,NULL,"41,500083","-7,640167",NULL,NULL,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NACIONAL,NULL,NULL,NULL,Sem viatura
+200,ESF,CNT,SF 22-118,,5,AGUIARFLORESTA - Associação Florestal e Ambiental do Concelho de Vila Pouca de Aguiar,Vila Pouca de Aguiar,"41,502453","-7,638467",933735734,sapadores@aguiarfloresta.org,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NORTE,4260550,4260551,VLCI AT-07-XE,OK
+201,ESF,CNT,SF 20-118,,5,AGUIARFLORESTA - Associação Florestal e Ambiental do Concelho de Vila Pouca de Aguiar,Vila Pouca de Aguiar,"41,502453","-7,638467",934505984,sapadores@aguiarfloresta.org,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NORTE,4260546,4260547,VLCI 38-XF-80,OK
+202,ESF,CNT,SF 15-118,,5,AGUIARFLORESTA - Associação Florestal e Ambiental do Concelho de Vila Pouca de Aguiar,Vila Pouca de Aguiar,"41,502453","-7,638467",969608025,sapadores@aguiarfloresta.org,Vila Pouca de Aguiar,Alto Tâmega e Barroso,NORTE,4260536,4260537,VLCI 57-XI-20,OK
+203,ESF,CNT,SF 08-117,,5,Associação de Produtores Florestais do Vale da Campeã,Vila Real,"41,295128","-7,885912",NULL,NULL,Vila Real,Douro,NORTE,4260502,NULL,VLCI 16-XO-79,OK
+204,ESF,CNT,SF 11-117,,5,NATURA VIVA - Associação Ambiental e Florestal de Vale de Nogueiras,Vila Real,"41,281987","-7,683817",NULL,NULL,Vila Real,Douro,NORTE,4260505,NULL,VLCI AS-17-OG,OK
+205,ESF,CNT,SF 32-115,,5,Freguesia de Borbela e Lamas de Olo,Vila Real,"41,324456","-7,741855",NULL,NULL,Vila Real,Douro,NORTE,4260518,NULL,VLCI 90-XJ-85,OK
+206,ESF,CNT,SF 20-117,,5,Freguesia de Mouçós e Lamares,Vila Real,"41,293404","-7,703644",NULL,NULL,Vila Real,Douro,NORTE,4260662,4260663,VLCI 91-XJ-04,OK
+207,ESF,CNT,SF 15-165,,5,Associação de Produtores Florestais do Planalto Beirão,Carregal do Sal,"40,436945","-8,002095",NULL,NULL,Carregal do Sal,Viseu Dão Lafões,CENTRO,5260727,5260728,VLCI 39-XF-07,OK
+208,ESF,CNT,SF 06-165,,5,"Freguesia de Parada de Ester e Ester, em representação do Conselho Diretivo dos Baldios de Parada, Ilha e Corgo d'Água",Castro Daire,"40,931736","-8,0591",NULL,NULL,Castro Daire,Viseu Dão Lafões,CENTRO,5260715,5260716,VLCI 67-TX-28,OK
+209,ESF,CNT,SF 22-165,,5,Associação de Produtores Florestais de Montemuro e Paiva,Castro Daire,"40,900683","-7,92988",NULL,NULL,Castro Daire,Viseu Dão Lafões,CENTRO,5260741,NULL,VLCI 91-XJ-12,OK
+210,ESF,CNT,SF 38-165,,5,Associação de Produtores Florestais de Montemuro e Paiva,Castro Daire,"40,900683","-7,92988",NULL,NULL,Castro Daire,Viseu Dão Lafões,CENTRO,5260758,5260757,VLCI 35-VL-09,OK
+211,ESF,CNT,SF 34-115,,5,Associação Florestal de Entre Douro e Tâmega,Cinfães,"41,176913","-8,145437",962133960,pedro@maisfloresta.com,Cinfães,Tâmega e Sousa,NORTE,3260586,NULL,VLCI AZ-79-OQ,OK
+212,ESF,CNT,SF 36-115,,5,Associação Florestal de Entre Douro e Tâmega,Cinfães,"41,176913","-8,145437",962134637,pedro@maisfloresta.com,Cinfães,Tâmega e Sousa,NORTE,3260587,NULL,VLCI 13-ST-48,OK
+213,ESF,CNT,SF 09-117,,5,RIBAFLOR - Associação Florestal das Terras de Ribadouro,Lamego,"41,081835","-7,822013",NULL,NULL,Lamego,Douro,NORTE,4260504,NULL,VLCI AT-11-UT,OK
+214,ESF,CNT,SF 31-165,,5,CEDRUS - Asociação de Produtores Florestai de Viseu,Mangualde,"40,662758","-7,908585",NULL,NULL,Mangualde,Viseu Dão Lafões,CENTRO,5260750,5260749,VLCI 53-VA-15,OK
+215,ESF,CNT,SF 32-165,,5,CEDRUS - Asociação de Produtores Florestai de Viseu,Mangualde,"40,662758","-7,908585",NULL,NULL,Mangualde,Viseu Dão Lafões,CENTRO,5260752,5260751,VLCI 53-VA-61,OK
+216,ESF,CNT,SF 18-117,,5,ADRLU - Associação de Desenvolvimento Rural Lobos Uivam,Moimenta da Beira,"40,968974","-7,633082",NULL,NULL,Moimenta da Beira,Douro,NORTE,4260512,4260674,VLCI 13-ST-61,OK
+217,ESF,CNT,SF 01-117,,5,FLORESTA 21 - Associação de Produtores Florestais do Perímetro de Leomil,Moimenta da Beira,"40,983837","-7,655448",NULL,NULL,Moimenta da Beira,Douro,NORTE,4260500,4260672,VLCI 67-TX-20,OK
+218,ESF,CNT,SF 07-165,,5,Município de Mortágua,Mortágua,"40,396532","-8,229809",NULL,NULL,Mortágua,Região de Coimbra,CENTRO,5260513,5260775,VLCI 67-TX-22,OK
+219,ESF,CNT,SF 37-165,,5,Município de Mortágua,Mortágua,"40,396532","-8,229809",NULL,NULL,Mortágua,Região de Coimbra,CENTRO,5260710,NULL,VLCI 51-FA-40,OK
+220,ESF,CNT,SF 30-165,,5,Associação de Produtores Florestais do Planalto Beirão,Nelas,"40,436945","-8,002095",NULL,NULL,Nelas,Viseu Dão Lafões,CENTRO,5260748,5260747,VLCI 53-VA-58,OK
+221,ESF,CNT,SF 44-165,,5,Associação de Produtores Florestais do Planalto Beirão,Nelas,"40,436945","-8,002095",NULL,NULL,Nelas,Viseu Dão Lafões,CENTRO,5260534,NULL,VLCI 16-XO-41,OK
+222,ESF,CNT,SF 11-165,,5,VERDE LAFÕES - Associação de Produtores Florestais,Oliveira de Frades,"38,559604","-9,037043",NULL,NULL,Oliveira de Frades,Viseu Dão Lafões,CENTRO,5260719,5260720,VLCI 38-XF-92,OK
+223,ESF,CNT,SF 12-165,,5,BIOSFERA - Associação Florestal de Caça e Pesca dos Compartes de Ribeiradio,Oliveira de Frades,"40,73435","-8,176155",NULL,NULL,Oliveira de Frades,Viseu Dão Lafões,CENTRO,5260721,5260722,VLCI 57-XI-31,OK
+224,ESF,CNT,SF 24-165,,6,DÃO FLORA - Associação de Produtores Florestais,Penalva do Castelo,"40,675872","-7,700713",NULL,NULL,Penalva do Castelo,Viseu Dão Lafões,CENTRO,5260523,NULL,VLCI AT-52-SZ,OK
+225,ESF,CNT,SF 04-117,,5,Cooperativa Agrícola de Penela da Beira,Penedono,"41,042576","-7,419538",NULL,NULL,Penedono,Douro,NORTE,4260647,4260648,VLCI 38-XF-69,OK
+226,ESF,CNT,SF 46-115,,5,Associação Florestal de Entre Douro e Tâmega,Resende,"41,176913","-8,145437",925796564,pedro@maisfloresta.com,Resende,Tâmega e Sousa,NORTE,3260604,3260603,VLCI 16-XO-31,OK
+227,ESF,CNT,SF 16-117 ,,5,Município de São João da Pesqueira,São João da Pesqueira,"41,14812","-7,408961",NULL,NULL,São João da Pesqueira,Douro,NORTE,4260510,NULL,VLCI 21-IV-66,OK
+228,ESF,CNT,SF 16-165,,5,"Freguesia de São Pedro do Sul, Várzea e Baiões",São Pedro do Sul,"40,762525","-8,065386",NULL,NULL,São Pedro do Sul,Viseu Dão Lafões,CENTRO,5260729,5260730,VLCI 38-XF-94,OK
+229,ESF,CNT,SF 17-165,,5,Freguesia do Sul,São Pedro do Sul,"40,765458","-8,06683",NULL,NULL,São Pedro do Sul,Viseu Dão Lafões,CENTRO,5260731,5260732,VLCI 57-XI-25,OK
+230,ESF,CNT,SF 18-165,,5,Agrupamento de Produtores Florestais de São Cristóvão de Lafões,São Pedro do Sul,"40,769869","-8,174401",NULL,NULL,São Pedro do Sul,Viseu Dão Lafões,CENTRO,5260733,5260734,VLCI 38-XF-95,OK
+231,ESF,CNT,SF 19-165,,5,"Freguesia de Pindelo dos Milagres, em representação da Assembleia de Compartes dos Baldios da Freguesia de Pindelo dos Milagres",São Pedro do Sul,"40,805409","-7,962418",NULL,NULL,São Pedro do Sul,Viseu Dão Lafões,CENTRO,5260735,5260736,VLCI 38-XF-90,OK
+232,ESF,CNT,SF 20-165,,5,"Freguesia de Santa Cruz da Trapa e São Cristóvão de Lafões, em representação da Assembleia de Compartes de Santa Cruz da Trapa",São Pedro do Sul,"40,794053","-8,073394",NULL,NULL,São Pedro do Sul,Viseu Dão Lafões,CENTRO,5260737,5260738,VLCI 57-XI-35,OK
+233,ESF,CNT,SF 13-165,,5,"Assembleia de Compartes dos Baldios de Mioma, Meã, Afonsim, Fontainhas e Quinta do Monte",Sátão,"40,752104","-7,710963",NULL,NULL,Sátão,Viseu Dão Lafões,CENTRO,5260724,5260723,VLCI 53-VA-56,OK
+234,ESF,CNT,SF 10-165,,5,Assembleia de Compartes dos Baldios da Freguesia de Ferreira de Aves,Sátão,"40,808911","-7,665219",NULL,NULL,Sátão,Viseu Dão Lafões,CENTRO,5260718,5260717,VLCI 53-VA-39,OK
+235,ESF,CNT,SF 33-165,,5,DÃO FLORA - Associação de Produtores Florestais,Sátão,"40,675872","-7,700713",NULL,NULL,Sátão,Viseu Dão Lafões,CENTRO,5260754,5260753,VLCI 53-VA-96,OK
+236,ESF,CNT,SF 17-117,,5,Município de Sernancelhe,Sernancelhe,"40,897936","-7,495965",NULL,NULL,Sernancelhe,Douro,NORTE,4260511,4260673,VLCI 13-ST-60,OK
+237,ESF,CNT,SF 06-117,,5,RIBAFLOR - Associação Florestal das Terras de Ribadouro,Tabuaço,"41,081835","-7,822013",NULL,NULL,Tabuaço,Douro,NORTE,4260649,4260650,VLCI 38-XF-85,OK
+238,ESF,CNT,SF 13-117,,5,Assembleia de Compartes dos Baldios de Várzea da Serra - Associação de Promoção dos Interesses dos Compartes da Freguesia de Várzea da Serra,Tarouca,"40,995065","-7,824489",NULL,NULL,Tarouca,Douro,NORTE,4260507,NULL,VLCI 70-JI-08,OK
+239,ESF,CNT,SF 25-165,,5,Freguesia de Parada de Gonta,Tondela,"40,580879","-7,994328",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260743,NULL,VLCI AS-15-OG,OK
+240,ESF,CNT,SF 21-165,,5,Freguesia de Santiago de Besteiros,Tondela,"40,584226","-8,126125",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260739,NULL,VLCI 39-FA-54,OK
+241,ESF,CNT,SF 34-165,,5,Comunidade Intermunicipal Viseu Dão Lafões - BRIG-1-165,Tondela,"40,521229","-8,087703",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260756,5260755,VLCI 53-VA-79,OK
+242,ESF,CNT,SF 29-165,,4,Associação de Freguesias da Serra do Caramulo,Tondela,"40,56961","-8,170775",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260530,5260778,VLCI 13-ST-50,OK
+243,ESF,CNT,SF 39-165,BRIG 02-165,4,Comunidade Intermunicipal Viseu Dão Lafões - BRIG-2-165,Tondela,"40,521229","-8,087703",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260759,5260760,VLCI 35-VL-02,OK
+244,ESF,CNT,SF 40-165,BRIG 02-165,4,Comunidade Intermunicipal Viseu Dão Lafões - BRIG-2-165,Tondela,"40,521229","-8,087703",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260761,5260762,VLCI 35-VL-03,OK
+245,ESF,CNT,SF 41-165,BRIG 02-165,4,Comunidade Intermunicipal Viseu Dão Lafões - BRIG-2-165,Tondela,"40,521229","-8,087703",NULL,NULL,Tondela,Viseu Dão Lafões,CENTRO,5260763,5260764,VLCI 35-VL-04,OK
+246,ESF,CNT,SF 42-165,,5,Freguesia do Touro,Vila Nova de Paiva,"40,894519","-7,744499",NULL,NULL,Vila Nova de Paiva,Viseu Dão Lafões,CENTRO,5260532,NULL,VLCI 91-XJ-10,OK
+247,ESF,CNT,SF 26-165,,4,Município de Vila Nova de Paiva,Vila Nova de Paiva,"40,85212","-7,729939",NULL,NULL,Vila Nova de Paiva,Viseu Dão Lafões,CENTRO,5260744,NULL,VLCI AT-49-SZ,OK
+248,ESF,CNT,SF 28-165,,5,CEDRUS - Asociação de Produtores Florestai de Viseu,Viseu,"40,662758","-7,908585",NULL,NULL,Viseu,Viseu Dão Lafões,CENTRO,5260745,5260746,VLCI 00-IS-96,OK
+249,ESF,CNT,SF 43-165,,5,CEDRUS - Asociação de Produtores Florestai de Viseu,Viseu,"40,662758","-7,908585",NULL,NULL,Viseu,Viseu Dão Lafões,CENTRO,5260533,5260766,VLCI 16-XO-38,OK
+250,ESF,CNT,SF 08-165,,5,ADRL - Associação de Desenvolvimento Rural de Lafões,Vouzela,"40,723657","-8,111653",NULL,NULL,Vouzela,Viseu Dão Lafões,CENTRO,5260514,5260777,VLCI 67-TX-44,OK
+251,ESF,CNT,SF 01-165,,5,ADRL - Associação de Desenvolvimento Rural de Lafões,Vouzela,"40,723657","-8,111653",NULL,NULL,Vouzela,Viseu Dão Lafões,CENTRO,5260500,5260776,VLCI 81-PC-01,OK
+252,TGFR,PRP,ALEXANDRE MANUEL FERNANDES DA SILVA NOGUEIRA,,1,LVT,Sintra,"38,802088","-9,386994",917780062,alexandre.nogueira@icnf.pt,Sintra,Grande Lisboa,LVT,NULL,NULL,NULL,Sem viatura
+253,OLN,PRP,ANA RITA AGRA MAIA MENDES RODRIGUES,,1,DGPFR,Algés,"38,696583","-9,230788",,ana.rita@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+254,TFSBF,PRP,ANA RITA FERNANDES CARDEAL,,1,FSBF,Algés,"38,696583","-9,230788",,ana.cardeal@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+255,TGFR,PRP,ANDREIA NATIVIDADE GONÇALVES,,1,LVT,Santarém,"39,220627","-8,697438",911983788,andreia.goncalves@icnf.pt,Santarém,Lezíria do Tejo,LVT,1260768,NULL,VCOT AR-63-ZJ,OK
+256,TGFR,PRP,ÂNGELA MARIA FERNANDES FRAGA,,1,Centro,Lousã,"40,146261","-8,242141",914203092,angela.fraga@icnf.pt,Lousã,Região de Coimbra,CENTRO,5260810,NULL,VCOT 38-XF-68,OK
+257,TGFR,PRP,ANITA ISABEL FERREIRA DA COSTA PINTO,,1,Norte,Vila Real,"41,300063","-7,739406",910921384,anita.pinto@icnf.pt,Vila Real,Douro,NORTE,4260701,NULL,VCOT AR-72-ZJ,OK
+258,TGFR,PRP,ANTÓNIO CARLOS DA CRUZ PATRÃO,,1,Centro,Lousã,"40,146261","-8,242141",938374627,antonio.patrao@icnf.pt,Lousã,Região de Coimbra,CENTRO,5260811,NULL,NULL,Sem viatura
+259,TGFR,PRP,ANTÓNIO EMÍDIO MOREIRA SANTOS,,1,DNGPFR,Algés,"38,696583","-9,230788",,Emidio.Santos@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+260,TGFR,PRP,ANTÓNIO MANUEL FRAGA MIRANDA,,1,Algarve,Olhão,NULL,NULL,914197317,Antonio.Miranda@icnf.pt,NULL,,ALGARVE,NULL,NULL,NULL,Sem viatura
+261,TGFR,PRP,ARTUR JORGE RAMOS DA SILVA CARVALHO BORGES,,1,Norte,Porto,"41,185289","-8,646336",969785108,artur.borges@icnf.pt,Porto,Tâmega e Sousa,NORTE,3260694,NULL,VCOT 17-TX-41,OK
+262,TGFR,PRP,CARLA PATRICIA REBELO RAMOS ESQUETIM JANEIRO,,1,Norte,Matosinhos,NULL,NULL,,carla.janeiro@icnf.pt,NULL,,NORTE,NULL,NULL,NULL,Sem viatura
+263,TGFR,PRP,CARLOS ALBERTO RODRIGUES LOUREIRO DA SILVA,,1,Norte,Vila Real,"41,300063","-7,739406",925210286,carlos.loureirosilva@icnf.pt,Vila Real,Douro,NORTE,4260700,NULL,VCOT 55-VO-25,OK
+264,TGFR,PRP,CARLOS FERNANDO ESTEVES DE SÁ RAMALHO,,1,LVT,Sintra,"38,802088","-9,386994",961932460,carlos.ramalho@icnf.pt,Sintra,,LVT,1260749,NULL,VCOT AA-93-LV,OK
+265,TGFR,PRP,CARLOS JOÃO PIRES LOURENÇO,,1,Alentejo,Portalegre,NULL,NULL,,carlos.lourenco@icnf.pt,NULL,Alto Alentejo,ALENTEJO,NULL,NULL,NULL,Sem viatura
+266,TGFR,PRP,DANIEL RICARDO MARANHÃO SANTANA,,1,Centro,Castelo Branco,"39,816269","-7,510944",969780730,daniel.santana@icnf.pt,Castelo Branco,Beira Baixa,CENTRO,5260801,NULL,VCOT 17-TX-30,OK
+267,TGFR,PRP,BRUNO MIGUEL RAMOS FERNANDES,,1,Norte,Chaves,"41,742118","-7,466867",933275336,bruno.fernandes@icnf.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260704,NULL,VCOT 91-XJ-08,OK
+268,TGFR,PRP,ELMANO DUARTE FREITAS DA SILVA,,1,Centro,Guarda,"40,530112","-7,257427",961445596,elmano.silva@icnf.pt,Guarda,,CENTRO,1260762,NULL,VCOT AA-92-LV,OK
+269,TGFR,PRP,FILIPE AUGUSTO VALENTE OLIVEIRA,,1,Norte,Porto,"41,185289","-8,646336",968688661,filipe.oliveira@icnf.pt,Porto,Área Metropolitana do Porto,NORTE,3260692,NULL,VCOT AR-74-ZJ,OK
+270,TGFR,PRP,FILIPE DA SILVA ANTUNES,,1,Norte,Ponte de Lima,"41,759801","-8,576001",969780594,filipe.antunes@icnf.pt,Ponte de Lima,Alto Minho ,NORTE,3260685,NULL,VCOT 17-TX-42,OK
+271,TGFR,PRP,HERMÍNIA SOUSA,,1,DGPFR,Algés,"38,696583","-9,230788",,Herminia.Sousa@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+272,OLN,PRP,HUGO EMANUEL LOURENÇO SANTOS,,1,DGPFR,Algés,"38,696583","-9,230788",,hugoe.santos@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+273,TGFR,PRP,HUGO HENRIQUE NETO ROCHA,,1,Centro,Guarda,"40,530112","-7,257427",969785113,hugo.rocha@icnf.pt,Guarda,Beiras e Serra da Estrela,CENTRO,5260804,NULL,VCOT AR-78-ZJ,OK
+274,TGFR,PRP,INÊS CASTRO VASCO,,1,DGPFR,Algés,"38,696583","-9,230788",,Ines.Vasco@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+275,TGFR,PRP,ISABEL MOREIRA DA SILVA,,1,DGPFR,Algés,"38,696583","-9,230788",,Isabel.MoreiraSilva@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+276,TGFR,PRP,JOANA CRISTINA VITORINO CARINHAS,,1,Centro,Aveiro,"40,626356","-8,648776",925216097,joana.carinhas@icnf.pt,Aveiro,Região de Aveiro,CENTRO,6260614,NULL,VCOT AR-76-ZJ,OK
+277,DIR,PRP,JOÃO ALEXANDRE DA SILVA ROCHA PINHO,,1,DNGPFR,Algés,"38,696583","-9,230788",962001656,joao.pinho@icnf.pt ,NULL,,NACIONAL,1260783,NULL,NULL,Sem viatura
+278,TGFR,PRP,JOÃO ALEXANDRE GRANCHINHO BELCHIORINHO,,1,Alentejo,Évora,NULL,NULL,917295055,joao.belchiorinho@icnf.pt,NULL,Alentejo Central,ALENTEJO,NULL,NULL,NULL,Sem viatura
+279,TGFR,PRP,JOÃO FILIPE LAMELAS PESTANA BAPTISTA DINIZ,,1,Centro,Marinha Grande,"39,751227","-8,930384",964698764,joao.diniz@icnf.pt,Marinha Grande,Região de Leiria,CENTRO,6260612,NULL,VCOT 55-VO-36,OK
+280,TGFR,PRP,JOÃO HENRIQUE CRUZ LOUREIRO DA SILVA,,1,Norte,Vila Real ,"41,300063","-7,739406",961978363,joaohenrique.silva@icnf.pt,Vila Real ,Alto Tâmega e Barroso,NORTE,4260707,NULL,VCOT 17-TX-40,OK
+281,TGFR,PRP,JOÃO LUÍS INÁCIO DONA,,1,Alentejo,Portalegre,NULL,NULL,969785111,joao.dona@icnf.pt ,NULL,Alto Alentejo,ALENTEJO,NULL,NULL,NULL,Sem viatura
+282,TGFR,PRP,JOÃO MANUEL DE CASTRO RIBEIRO,,1,LVT,Rio Maior,"39,336714","-8,942255",969785103,joaomanuel.ribeiro@icnf.pt,Rio Maior,Lezíria do Tejo,LVT,1260769,NULL,VCOT 38-XF-84,OK
+283,TGFR,PRP,JOÃO MARTINS MOREIRA,,1,DGPFR,Algés,"38,696583","-9,230788",,joao.moreira@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+284,TGFR,PRP,JOÃO MIGUEL PIRES MARTINS,,1,Algarve,Lagos,NULL,NULL,,joaop.martins@icnf.pt,NULL,Algarve,ALGARVE,NULL,NULL,NULL,Sem viatura
+285,DIR,PRP,JOAQUIM JORGE CASTELÃO RODRIGUES,,1,Conselho Diretivo,,NULL,NULL,962092659,Castelao.Rodrigues@icnf.pt,NULL,,NULL,NULL,NULL,NULL,Sem viatura
+286,TGFR,PRP,JOÃO PEDRO LOURO E SILVA PEREIRA,,1,Alentejo,Alcácer do Sal,NULL,NULL,968688690,joao.pereira@icnf.pt,NULL,,ALENTEJO,NULL,NULL,NULL,Sem viatura
+287,TGFR,PRP,JOAQUIM JOSÉ SOUSA PROENÇA,,1,Centro,Castelo Branco,"39,816269","-7,510944",914196207,Joaquim.Proenca@icnf.pt,Castelo Branco,Beira Baixa,CENTRO,5260802,NULL,VCOT 55-VO-35,OK
+288,DIR,PRP,JORGE HUMBERTO DA FONSECA FREITAS DIAS,,1,DGPFR,Algés,"38,696583","-9,230788",917770529,jorgeh.dias@icnf.pt,NULL,,NACIONAL,1260784,NULL,NULL,Sem viatura
+289,TGFR,PRP,JOSÉ CARLOS DE SOUSA UVA PATRÍCIO PAÚL,,1,DNGPFR,Algés,"38,696583","-9,230788",961917478,jose.uva@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+290,TGFR,PRP,JOSÉ EDUARDO PINHEIRO CARVALHO,,1,Norte,Vila Real,"41,300063","-7,739406",969525654,eduardo.carvalho@icnf.pt,Vila Real,Alto Tâmega e Barroso,NORTE,4260706,NULL,VCOT AR-62-ZJ,OK
+291,TGFR,PRP,JOSÉ FILIPE AMORIM DE PINHO,,1,Norte,Arouca,"40,928824","-8,243896",969780643,josefilipe.pinho@icnf.pt,Arouca,Tâmega e Sousa,NORTE,3260695,NULL,VCOT AR-74-ZJ,OK
+292,TFSBF,PRP,JOSÉ LOURENÇO CALADO MOTACO,,1,FSBF,Portalegre,NULL,NULL,968341365,jose.motaco@icnf.pt,NULL,Alto Alentejo,NACIONAL,NULL,NULL,NULL,Sem viatura
+293,TFSBF,PRP,JOSÉ MANUEL BRITES SANCHES SALVADO,,1,FSBF,Lisboa,NULL,NULL,,jose.salvado@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+294,TGFR,PRP,JOSÉ MANUEL CARVALHO RODRIGUES,,1,Norte,Vila Real,"41,300063","-7,739406",914200645,jose.carvalhorodrigues@icnf.pt,Vila Real,Douro,NORTE,4260702,NULL,VCOT AR-72-ZJ,OK
+295,TGFR,PRP,JOSÉ MARCOLINO BARRANHA LOPES,,1,Centro,Viseu,"40,655954","-7,90274",969780469,jose.lopes@icnf.pt,Viseu,Viseu Dão Lafões,CENTRO,5260813,NULL,VCOT 17-TX-43,OK
+296,TGFR,PRP,JOSÉ MARCOS FERREIRA DE AZEVEDO GUERRA LIBERAL,,1,Norte,Ponte de Lima,"41,759801","-8,576001",925216124,jose.liberal@icnf.pt,Ponte de Lima,Alto Minho,NORTE,3260681,NULL,VCOT AR-69-ZJ,OK
+297,TGFR,PRP,LUÍS MIGUEL CÔRTE-REAL PORTELA GONÇALVES,,1,Norte,Cabeceiras de Basto,NULL,NULL,914201140,miguel.goncalves@icnf.pt,NULL,,NORTE,NULL,NULL,NULL,Sem viatura
+298,TGFR,PRP,LUÍS MIGUEL DA CONCEIÇÃO HENRIQUES,,1,LVT,Santarém,"39,336687","-8,942278",969780603,luis.henriques@icnf.pt,Santarém,Lezíria do Tejo,LVT,1260770,NULL,VCOT 55-VO-20,OK
+299,TGFR,PRP,LUÍS PAULO DA COSTA PITA,,1,Centro,Lousã,"40,146261","-8,242141",969780683,luis.pita@icnf.pt,Lousã,Região de Coimbra,CENTRO,5260808,NULL,VCOT AR-55-ZJ,OK
+300,TGFR,PRP,MAFALDA ISABEL CACHOPO VEIGAS,,1,Alentejo,Évora,NULL,NULL,910137885,mafalda.veigas@icnf.pt,NULL,Alentejo Central,ALENTEJO,NULL,NULL,NULL,Sem viatura
+301,TGFR,PRP,MARCO ROSA SANTOS,,1,LVT,Bairro,"39,572322","-8,588076",925210277,marco.santos@icnf.pt,Ourém,Médio Tejo ,LVT,1260764,NULL,VCOT AR-61-ZJ,OK
+302,DIR,PRP,MARIA DE FÁTIMA FERREIRA ARAÚJO AFONSO REIS,,1,Conselho Diretivo,,NULL,NULL,965123243,Fatima.Reis@icnf.pt,NULL,,NULL,NULL,NULL,NULL,Sem viatura
+303,TGFR,PRP,MARCOS PAULO DA EIRA COUTINHO,,1,Norte,Ponte de Lima,"41,759801","-8,576001",961938988,marcos.coutinho@icnf.pt,Ponte de Lima,Alto Minho,NORTE,3260687,NULL,VCOT 39-FA-74,OK
+304,TGFR,PRP,MARIA AMÉLIA FERNANDES FREITAS,,1,Norte,Viana do Castelo,"41,698372","-8,831123",969780476,amelia.freitas@icnf.pt,Viana do Castelo,Alto Minho,NORTE,3260686,NULL,VCOT 55-VO-31,OK
+305,TFSBF,PRP,MARIA HELENA CUIÇA SIMÃO,,1,FSBF,Olhão,NULL,NULL,,maria.simao@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+306,TGFR,PRP,MARIA MANUELA DA SILVA FREITAS,,1,Norte,Braga,NULL,NULL,910127338,manuela.freitas@icnf.pt,NULL,Ave,NORTE,NULL,NULL,NULL,Sem viatura
+307,TGFR,PRP,NÉLIA CRISTINA LUZ JOSÉ,,1,Alentejo,Santo André,NULL,NULL,917511470,nelia.jose@icnf.pt,NULL,Alentejo Litoral,ALENTEJO,NULL,NULL,NULL,Sem viatura
+308,DIR,PRP,NUNO MIGUEL FIGUEIREDO E SILVA DE SOUSA SEQUEIRA GAMA,,1,Conselho Diretivo,Algés,"38,696583","-9,230788",969846378,Nuno.Sequeira@icnf.pt,NULL,,NULL,1260782,NULL,NULL,Sem viatura
+309,DIR,PRP,NUNO MIGUEL SOARES BANZA,,1,Conselho Diretivo,Algés,"38,696583","-9,230788",911 930 377,Nuno.Banza@icnf.pt,NULL,,NULL,1260780,NULL,NULL,Sem viatura
+310,DIR,PRP,OLGA CRISTINA CARRASCO MARTINS,,1,Conselho Diretivo,,NULL,NULL,938612813,Olga.Martins@icnf.pt,NULL,,NULL,NULL,NULL,NULL,Sem viatura
+311,TGFR,PRP,NUNO ANTÓNIO SILVA MARQUES,,1,LVT,Porto de Mós,"39,599263","-8,820058",964566021,nuno.marques@icnf.pt,Porto de Mós,Oeste,LVT,6260623,NULL,VCOT 17-TX-31,OK
+312,TGFR,PRP,NUNO MANUEL MEIRELES GONÇALVES,,1,LVT,Porto de Mós,"39,599263","-8,820058",968669607,nuno.goncalves@icnf.pt,Porto de Mós,Oeste,LVT,6260622,NULL,VCOT AR-73-ZJ,OK
+313,TGFR,PRP,ORIANA ALEXANDRA G. AFONSO,,1,Norte,Bragança,NULL,NULL,962032655,oriana.afonso@icnf.pt,NULL,Terras de Trás-os-Montes,NORTE,NULL,NULL,NULL,Sem viatura
+314,DIR,PRP,PAULO JORGE DE MELO CHAVES E MENDES SALSA,,1,Conselho Diretivo,Algés,"38,696583","-9,230788",914200538,Paulo.Salsa@icnf.pt,NULL,,NULL,1260781,NULL,NULL,Sem viatura
+315,TGFR,PRP,PAULA CRISTINA DUARTE MIRA ALVES DE MATOS,,1,DNGPFR,Algés,"38,696583","-9,230788",,Paula.Mira@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+316,OLN,PRP,PAULA ISABEL PEREIRA SANTOS ALVES,,1,DGPFR,Algés,"38,696583","-9,230788",,paula.isabel@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+317,TGFR,PRP,PAULO JORGE MARQUES ALBINO,,1,Centro,Guarda,"40,530112","-7,257427",914199661,paulo.albino@icnf.pt,Guarda,Beiras e Serra da Estrela,CENTRO,5260806,NULL,VCOT 38-XF-72,OK
+318,TGFR,PRP,PAULO SÉRGIO PEREIRA DE BESSA,,1,Norte,Porto,"41,185289","-8,646336",925216155,paulo.bessa@icnf.pt,Porto,Área Metropolitana do Porto,NORTE,3260693,NULL,VCOT AR-71-ZJ,OK
+319,TGFR,PRP,PEDRO ALEXANDRE CAROCINHO DE JESUS,,1,Algarve,Olhão,NULL,NULL,NULL,pedro.jesus@icnf.pt,NULL,Algarve,ALGARVE,NULL,NULL,NULL,Sem viatura
+320,TGFR,PRP,PEDRO MIGUEL MOURA CARDOSO,,1,DGPFR,Vila Real,NULL,NULL,914056454,pedro.cardoso@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+321,TGFR,PRP,PEDRO MIGUEL SEQUEIRA NETO GOMES AMARAL,,1,Centro,Lousã,"40,146261","-8,242141",910147474,pedro.amaral@icnf.pt,Lousã,Região de Coimbra,CENTRO,5260809,NULL,VCOT 55-VO-37,OK
+322,TGFR,PRP,RAQUEL ONOFRE,,1,FSBF,Algés,"38,696583","-9,230788",,Raquel.Onofre@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+323,TGFR,PRP,RICARDO JORGE PEREIRA MARTINS,,1,Norte,Vila Real,NULL,NULL,,ricardo.martins@icnf.pt,NULL,,NORTE,NULL,NULL,NULL,Sem viatura
+324,TGFR,PRP,RICARDO MANUEL CARVALHO SALDANHA,,1,Norte,Chaves,"41,742118","-7,466867",917770857,ricardo.saldanha@icnf.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260705,NULL,VCOT 55-VO-26,OK
+325,TGFR,PRP,RUI FILIPE DIAS VENTURA,,1,Centro,Viseu,"40,655954","-7,90274",924469047,rui.ventura@icnf.pt,Viseu,Viseu Dão Lafões,CENTRO,5260814,NULL,VCOT AR-60-ZJ,OK
+326,DIR,PRP,RUI MANUEL FELIZARDO POMBO,,1,Conselho Diretivo,,NULL,NULL,968078189,Rui.Pombo@icnf.pt,NULL,,NULL,NULL,NULL,NULL,Sem viatura
+327,TGFR,PRP,RUI FILIPE FONTOURA TEIXEIRA,,1,Centro,Marinha Grande,"39,751227","-8,930384",961567053,rui.teixeira@icnf.pt,Marinha Grande,Região de Leiria,CENTRO,6260611,NULL,VCOT AR-68-ZJ,OK
+328,DIR,PRP,SANDRA SARMENTO,,1,Conselho Diretivo,,NULL,NULL,910205421,Sandra.Sarmento@icnf.pt,NULL,,NULL,NULL,NULL,NULL,Sem viatura
+329,DIR,PRP,RUI MANUEL LOPES DA CUNHA ALMEIDA,,1,FSBF,Algés,"38,696583","-9,230788",967875907,rui.almeida@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+330,TGFR,PRP,RUI SAMUEL LOPES,,1,Centro,Guarda,"40,530112","-7,257427",910141169,rui.lopes@icnf.pt,Guarda,Beiras e Serra da Estrela,CENTRO,5260805,NULL,VCOT AR-56-ZJ,OK
+331,TGFR,PRP,SAMUEL DAVID RODRIGUES MARTINS,,1,Norte,Bragança,NULL,NULL,910 141 770,samuel.martins@icnf.pt,NULL,Terras de Trás-os-Montes,NORTE,NULL,NULL,NULL,Sem viatura
+332,TGFR,PRP,SARA MANUELA FERNANDES GONÇALVES,,1,Norte,Ponte de Lima,NULL,NULL,,saram.goncalves@icnf.pt,NULL,Cávado,NORTE,NULL,NULL,NULL,Sem viatura
+333,TGFR,PRP,SÓNIA PACHECO FAIAS,,1,DNGPFR,Arganil,NULL,NULL,,dfci1@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+334,TGFR,PRP,TÂNIA ISABEL VAREJÃO PEREIRA,,1,Norte,Vila Real,NULL,NULL,,tania.varejao@icnf.pt,NULL,,NORTE,NULL,NULL,NULL,Sem viatura
+335,OLN,PRP,TÂNIA PEREIRA,,1,FSBF,Algés,"38,696583","-9,230788",,Tania.Pereira@icnf.pt,NULL,,NACIONAL,NULL,NULL,NULL,Sem viatura
+336,TGFR,PRP,VITOR JOSÉ RIJO PENEDO CARAMELO,,1,Centro,Castelo Branco,"39,816269","-7,510944",969780969,vitor.caramelo@icnf.pt,Castelo Branco,Beira Baixa,CENTRO,5260800,NULL,VCOT AR-79-ZJ,OK
+337,TGFR,PRP,CARLOS JÚLIO BATISTA TRINDADE,,1,LVT,Sintra,"38,802088","-9,386994",933230671,carlos.trindade@icnf.pt,Sintra,Grande Lisboa,LVT,1260750,NULL,VCOT AR-67-ZJ,OK
+338,EFSBF,PRP,FSBF LOU01,,3,ICNF,NULL,NULL,NULL,NULL,NULL,Faro,Algarve,NACIONAL,1260676,NULL,NULL,Sem viatura
+339,ESF,CNT,SF 10-150,,5,TERRAS DO INFANTE - Associação de Municipios,Lagos,"37,099207","-8,674994",NULL,NULL,Lagos,Algarve,ALGARVE,7260519,NULL,VLCI 11-AQ-29,OK
+340,ESF,CNT,SF 02-150,,4,Associação dos Produtores Florestais da Serra do Caldeirão,Loulé,"37,237431","-7,937149",NULL,NULL,Loulé,Algarve,ALGARVE,7260510,7260511,VLCI 67-TX-42,OK
+341,ESF,CNT,SF 19-150,,5,Município de Loulé,Loulé,"37,139122","-8,022375",NULL,NULL,Loulé,Algarve,ALGARVE,7260533,NULL,VLCI AF-11-RC,OK
+342,ESF,CNT,SF 04-150,,5,ASPAFLOBAL - Associação de Produtores Florestais do Barlavento Algarvio,Monchique,"37,317688","-8,551899",NULL,NULL,Monchique,Algarve,ALGARVE,7260503,NULL,VLCI AS-36-OT,OK
+343,ESF,CNT,SF 12-150,,5,ASPAFLOBAL - Associação de Produtores Florestais do Barlavento Algarvio,Monchique,"37,317688","-8,551899",NULL,NULL,Monchique,Algarve,ALGARVE,7260521,7260522,VLCI 13-ST-44,OK
+344,ESF,CNT,SF 07-150,,5,Município de Portimão,Portimão,"37,137494","-8,537281",NULL,NULL,Portimão,Algarve,ALGARVE,7260517,NULL,VLCI 01-IU-00,OK
+345,ESF,CNT,SF 13-150,,4,Município de São Brás de Alportel,São Brás de Alportel,"37,151501","-7,888401",NULL,NULL,São Brás de Alportel,Algarve,ALGARVE,7260523,7260524,VLCI 13-ST-53,OK
+346,ESF,CNT,SF 05-150,,5,Município de Silves,Silves,"37,189039","-8,440116",NULL,NULL,Silves,Algarve,ALGARVE,7260515,7260516,VLCI AT-12-UT,OK
+347,ESF,CNT,SF 20-150,,5,Município de Silves,Silves,"37,189039","-8,440116",NULL,NULL,Silves,Algarve,ALGARVE,NULL,NULL,VLCI BC-41-QH,OK
+348,ESF,CNT,SF 18-150,,5,Freguesia de São Bartolomeu de Messines,Silves,"37,258014","-8,291771",NULL,NULL,Silves,Algarve,ALGARVE,7260531,7260532,VLCI 35-VL-25,OK
+349,ESF,CNT,SF 11-150,,5,TERRAS DO INFANTE - Associação de Municipios,Vila do Bispo,"37,099207","-8,674994",NULL,NULL,Vila do Bispo,Algarve,ALGARVE,7260520,NULL,VLCI 88-JX-61,OK
+350,ESF,CNT,SF 09-150,,6,Município de Vila Real de Santo António,Vila Real de Santo António,"37,19451","-7,415959",NULL,NULL,Vila Real de Santo António,Algarve,ALGARVE,7260507,NULL,VLCI 59-IT-47,OK
+351,ESF,CNT,SF 14-165,,5,Associação de Produtores Florestais da Serra da Lapa-Dão,Aguiar da Beira,"40,859241","-7,528918",NULL,NULL,Aguiar da Beira,Viseu Dão Lafões,CENTRO,5260725,5260726,VLCI 39-XF-12,OK
+352,ESF,CNT,SF 10-168,,5,CROFLOR - Associação de Produtores Florestais do Cró,Almeida,"40,711404","-6,908993",NULL,NULL,Almeida,Beiras e Serra da Estrela,CENTRO,5260603,5260602,VLCI 53-VA-90,OK
+353,ESF,CNT,SF 22-168,,5,CROFLOR - Associação de Produtores Florestais do Cró,Almeida,"40,711404","-6,908993",NULL,NULL,Almeida,Beiras e Serra da Estrela,CENTRO,5260521,NULL,VLCI AX-47-RN,OK
+354,ESF,CNT,SF 20-168,,5,Município de Celorico da Beira,Celorico da Beira,"40,635028","-7,393625",NULL,NULL,Celorico da Beira,Beiras e Serra da Estrela,CENTRO,5260633,5260634,VLCI 38-XF-67,OK
+355,ESF,CNT,SF 02-168,,4,CELFLOR - Associação de Produtores Florestais,Celorico da Beira,"40,62723","-7,339572",NULL,NULL,Celorico da Beira,Beiras e Serra da Estrela,CENTRO,5260569,NULL,VLCI 80-PC-90,OK
+356,ESF,CNT,SF 04-168,,5,CELFLOR - Associação de Produtores Florestais,Celorico da Beira,"40,62723","-7,339572",NULL,NULL,Celorico da Beira,Beiras e Serra da Estrela,CENTRO,5260575,NULL,VLCI 67-TX-51,OK
+357,ESF,CNT,SF 06-168,,5,Associação de Produtores Florestais do Concelho de Figueira de Castelo Rodrigo,Figueira de Castelo Rodrigo,"40,895112","-6,963953",NULL,NULL,Figueira de Castelo Rodrigo,Beiras e Serra da Estrela,CENTRO,5260583,NULL,VLCI 67-TX-50,OK
+358,ESF,CNT,SF 04-167,,5,APROFFAL - Associação de Produtores Florestais de Fornos de Algodres,Fornos de Algodres,"40,618933","-7,539188",NULL,NULL,Fornos de Algodres,Beiras e Serra da Estrela,CENTRO,5260574,5260573,VLCI 53-VA-74,OK
+359,ESF,CNT,SF 01-167,,5,URZE - Associação Florestal da Encosta da Serra da Estrela,Gouveia,"40,499032","-7,58987",NULL,NULL,Gouveia,Beiras e Serra da Estrela,CENTRO,5260568,5260567,VLCI 53-VA-98,OK
+360,ESF,CNT,SF 06-167,,5,Município de Gouveia,Gouveia,"40,494526","-7,592309",NULL,NULL,Gouveia,Beiras e Serra da Estrela,CENTRO,5260581,5260582,VLCI 16-XO-60,OK
+361,ESF,CNT,SF 07-167,,5,Conselho Directivo dos Baldios de Folgosinho,Gouveia,"40,509547","-7,513909",NULL,NULL,Gouveia,Beiras e Serra da Estrela,CENTRO,5260585,5260586,VLCI 85-CT-37,OK
+362,EFSBF,PRP,FSBF GD01,,6,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260635,NULL,NULL,Sem viatura
+363,EFSBF,PRP,FSBF GD04,,6,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260646,NULL,NULL,Sem viatura
+364,EFSBF,PRP,FSBF GD03,,5,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260637,NULL,NULL,Sem viatura
+365,EFSBF,PRP,FSBF VFCI02,,,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260582,1260587,NULL,Sem viatura
+366,EFSBF,PRP,FSBF VFCI03,,,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260583,1260588,NULL,Sem viatura
+367,EFSBF,PRP,FSBF GD02,,,ICNF,NULL,"40,538056","-7,286139",NULL,NULL,Guarda,Beiras e Serra da Estrela,NACIONAL,1260644,NULL,NULL,Sem viatura
+368,ESF,CNT,SF 26-168,BRIG 01-168,4,Comunidade Intermunicipal das Beiras e Serra da Estrela - BRIG-1-168,Guarda,"40,538584","-7,269553",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260644,5260643,VLCI 18-VI-25,OK
+369,ESF,CNT,SF 27-168,BRIG 01-168,4,Comunidade Intermunicipal das Beiras e Serra da Estrela - BRIG-1-168,Guarda,"40,538584","-7,269553",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260646,5260645,VLCI 18-VI-34,OK
+370,ESF,CNT,SF 28-168,BRIG 01-168,4,Comunidade Intermunicipal das Beiras e Serra da Estrela - BRIG-1-168,Guarda,"40,538584","-7,269553",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260648,5260647,VLCI 18-VI-21,OK
+371,ESF,CNT,SF 25-168,,7,ACRIGUARDA - Associação de Criadores de Ruminantes e Produtores Florestais do Concelho da Guarda,Guarda,"40,532825","-7,23448",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260642,5260641,VLCI 53-VA-32,OK
+372,ESF,CNT,SF 21-168,,5,Comunidade Local dos Baldios de Valhelhas,Guarda,"40,410824","-7,401397",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260635,NULL,VLCI AT-05-UT,OK
+373,ESF,CNT,SF 24-168,,5,Associação Floresta Viva de Fernão Joanes,Guarda,"40,485246","-7,355758",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260639,5260640,VLCI 80-JQ-56,OK
+374,ESF,CNT,SF 07-168,,5,Associação Floresta Viva de Fernão Joanes,Guarda,"40,485246","-7,355758",NULL,NULL,Guarda,Beiras e Serra da Estrela,CENTRO,5260588,5260587,VLCI 53-VA-49,OK
+375,ESF,CNT,SF 08-168,,5,Conselho Directivo dos Baldios da Freguesia de Santa Maria de Manteigas,Manteigas,"40,401849","-7,538054",NULL,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,5260593,5260592,VLCI 53-VA-65,OK
+376,ESF,CNT,SF 09-168,,5,Conselho Directivo dos Baldios da Freguesia de São Pedro de Manteigas,Manteigas,"40,40092","-7,539435",NULL,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,5260597,5260596,VLCI 53-VA-72,OK
+377,ESF,CNT,SF 15-168,,5,"Freguesia de Sameiro, em representação da Assembleia de Compartes dos Baldios da Freguesia de Sameiro",Manteigas,"40,391539","-7,5366",NULL,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,5260620,5260621,VLCI 57-XI-32,OK
+378,ECNAF,PRP,CNAF 10,,4,ICNF - Centro,Manteigas,"40,402398","-7,537512",NULL,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,5260797,5260796,VLCI 96-FC-93,OK
+379,ECNAF,PRP,CNAF 11,,4,ICNF - Centro,Manteigas,"40,402398","-7,537512",NULL,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,5260798,NULL,VLCI 41-FH-37,OK
+380,ESF,CNT,SF 17-168,,5,Associação de Agricultores da Ribeira Teja e Vale do Côa,Mêda,"40,962815","-7,263984",NULL,NULL,Mêda,Beiras e Serra da Estrela,CENTRO,5260627,5260628,VLCI 39-XF-01,OK
+381,ESF,CNT,SF 23-168,,5,COVICÔA - Associação de Produtores de Pequenos Ruminantes da Bacia Hidrográfica do Côa,Pinhel,"40,774631","-7,058356",NULL,NULL,Pinhel,Beiras e Serra da Estrela,CENTRO,5260638,NULL,VLCI 69-IU-85,OK
+382,ESF,CNT,SF 16-168,,5,Conselho Directivo dos Baldios de Aldeia Velha,Sabugal,"40,343362","-6,867489",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260624,5260625,VLCI 57-XI-22,OK
+383,ESF,CNT,SF 18-168,,5,Assembleia de Compartes da Freguesia de Malcata,Sabugal,"40,301602","-7,070159",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260629,5260630,VLCI 57-XI-21,OK
+384,ESF,CNT,SF 19-168,,5,Conselho Directivo dos Baldios de Fóios,Sabugal,"40,286728","-6,892359",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260631,5260632,VLCI 39-XF-04,OK
+385,ESF,CNT,SF 13-168,,5,COOPCÔA - Cooperativa Agrícola do Concelho do Sabugal,Sabugal,"40,483166","-7,040146",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260612,5260613,VLCI 39-XF-06,OK
+386,ESF,CNT,SF 05-168,,5,ACRISABUGAL - Associação de Criadores de Ruminantes e de Produtores Florestais do Concelho do Sabugal,Sabugal,"40,508637","-6,948683",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260577,NULL,VLCI 67-TX-49,OK
+387,ESF,CNT,SF 03-168,,5,ACRISABUGAL - Associação de Criadores de Ruminantes e de Produtores Florestais do Concelho do Sabugal,Sabugal,"40,508637","-6,948683",NULL,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260571,NULL,VLCI 67-TX-39,OK
+388,ESF,CNT,SF 09-167,,5,CAULE - Associação Florestal da Beira Serra,Seia,"40,314057","-7,890349",NULL,NULL,Seia,Beiras e Serra da Estrela,CENTRO,5260595,5260594,VLCI 53-VA-50,OK
+389,ESF,CNT,SF 10-167,,5,Município de Seia,Seia,"40,42079","-7,704174",NULL,NULL,Seia,Beiras e Serra da Estrela,CENTRO,5260600,NULL,VLCI 69-HL-75,OK
+390,ESF,CNT,SF 08-167,,5,Município de Seia,Seia,"40,42079","-7,704174",NULL,NULL,Seia,Beiras e Serra da Estrela,CENTRO,5260515,NULL,VLCI AU-47_TG,OK
+391,ESF,CNT,SF 14-168,,5,PISCOTÁVORA - Associação de Produtores Florestais,Trancoso,"40,77836","-7,349558",NULL,NULL,Trancoso,Beiras e Serra da Estrela,CENTRO,5260616,5260617,VLCI 39-XF-11,OK
+392,ESF,CNT,SF 11-168,,5,ALTO DA BROCA - Associação de Produtores Florestais,Trancoso,"40,71748","-7,292898",NULL,NULL,Trancoso,Beiras e Serra da Estrela,CENTRO,5260606,5260607,VLCI 57-XI-36,OK
+393,ESF,CNT,SF 29-168,,5,PISCOTÁVORA - Associação de Produtores Florestais,Trancoso,"40,77836","-7,349558",NULL,NULL,Trancoso,Beiras e Serra da Estrela,CENTRO,5260650,5260649,VLCI 35-VL-05,OK
+394,ESF,CNT,SF 09-182,,5,Município de Fronteira,Fronteira,"39,056738","-7,647586",NULL,NULL,Fronteira,Alto Alentejo,ALENTEJO,6260514,NULL,VLCI AZ-86-OQ,OK
+395,ESF,CNT,SF 08-163,,4,APFCAN - Associação de Produtores Florestais dos Concelhos de Alcobaça e Nazaré,Alcobaça,"39,665042","-8,988422",NULL,NULL,Alcobaça,Oeste,LVT,6260560,6260559,VLCI 53-VA-69,OK
+396,ESF,CNT,SF 02-16B,,4,APFCAN - Associação de Produtores Florestais dos Concelhos de Alcobaça e Nazaré,Alcobaça,"39,665042","-8,988422",NULL,NULL,Alcobaça,Oeste,LVT,6260551,6260552,VLCI 57-XI-34,OK
+397,ESF,CNT,SF 22-164,,5,Associação de Produtores Florestais do Concelho de Alvaiázere,Alvaiázere,"39,821072","-8,37953",NULL,NULL,Alvaiázere,Região de Leiria,CENTRO,6260596,6260597,VLCI 38-XF-82,OK
+398,ESF,CNT,SF 12-164,,5,Associação de Produtores Florestais do Concelho de Alvaiázere,Alvaiázere,"39,821072","-8,37953",NULL,NULL,Alvaiázere,Região de Leiria,CENTRO,6260590,NULL,VLCI 17-TX-24,OK
+399,ESF,CNT,SF 02-164,,5,Associação Florestal do Concelho de Ansião,Ansião,"39,908956","-8,433806",NULL,NULL,Ansião,Região de Leiria,CENTRO,6260572,NULL,VLCI 67-TX-25,OK
+400,ESF,CNT,SF 15-164,,5,Associação Florestal do Concelho de Ansião,Ansião,"39,908956","-8,433806",NULL,NULL,Ansião,Região de Leiria,CENTRO,6260593,6260592,VLCI 53-VA-87,OK
+401,ESF,CNT,SF 08-16B,BRIG 01-16B,4,Comunidade Intermunicipal do Oeste - BRIG-1-16B,Caldas da Rainha,"39,411263","-9,135802",NULL,NULL,Caldas da Rainha,Oeste,LVT,6260562,6260561,VLCI 18-VI-35,OK
+402,ESF,CNT,SF 09-16B,BRIG 01-16B,4,Comunidade Intermunicipal do Oeste - BRIG-1-16B,Caldas da Rainha,"39,411263","-9,135802",NULL,NULL,Caldas da Rainha,Oeste,LVT,6260564,6260563,VLCI 18-VI-45,OK
+403,ESF,CNT,SF 11-164,,5,Conselho Directivo dos Baldios do Coentral,Castanheira de Pêra,"40,064365","-8,177707",NULL,NULL,Castanheira de Pêra,Região de Leiria,CENTRO,6260589,6260588,VLCI 53-VA-13,OK
+404,ESF,CNT,SF 06-164,,5,Conselho Directivo dos Baldios de Castanheira de Pêra,Castanheira de Pêra,"40,027063","-8,201677",NULL,NULL,Castanheira de Pêra,Região de Leiria,CENTRO,6260578,NULL,VLCI 67-TX-21,OK
+405,ESF,CNT,SF 17-164,,5,Associação de Produtores Agro-Florestais do Concelho de Figueiró dos Vinhos,Figueiró dos Vinhos,"39,907142","-8,273902",NULL,NULL,Figueiró dos Vinhos,Região de Leiria,CENTRO,6260595,6260594,VLCI 53-VA-54,OK
+406,ESF,CNT,CNAF 09,,5,ICNF - Centro,Marinha Grande,"39,751227","-8,930384",NULL,NULL,Marinha Grande,Região de Leiria,CENTRO,NULL,6260607,VLCI 96-FC-84,OK
+407,EFSBF,PRP,FSBF MG02,,,ICNF,NULL,"39,862789","-8,932041",NULL,NULL,Marinha Grande,Região de Leiria,NACIONAL,NULL,NULL,NULL,Sem viatura
+408,EFSBF,PRP,FSBF VFCI05,,,ICNF,NULL,"39,862789","-8,932041",NULL,NULL,Marinha Grande,Região de Leiria,NACIONAL,1260585,1260590,NULL,Sem viatura
+409,EFSBF,PRP,FSBF MG01,,3,ICNF,NULL,"39,862789","-8,932041",NULL,NULL,Marinha Grande,Região de Leiria,NACIONAL,1260653,NULL,NULL,Sem viatura
+410,ECNAF,PRP,CNAF 12,,4,ICNF - Lisboa e Vale do Tejo,Valado,"39,585464","-9,015533",914205708,NULL,Nazaré,Oeste,LVT,6260609,6260608,VLCI 18-VI-44,OK
+411,ESF,CNT,SF 23-164,,5,APFLOR - Associação de Produtores e Proprietários Florestais do Concelho de Pedrógão Grande,Pedrógão Grande,"39,918453","-8,145388",NULL,NULL,Pedrógão Grande,Região de Leiria,CENTRO,6260599,6260598,VLCI 53-VA-37,OK
+412,ESF,CNT,SF 08-164,,5,APFLOR - Associação de Produtores e Proprietários Florestais do Concelho de Pedrógão Grande,Pedrógão Grande,"39,918453","-8,145388",NULL,NULL,Pedrógão Grande,Região de Leiria,CENTRO,6260582,NULL,VLCI 67-TX-24,OK
+413,ESF,CNT,SF 06-16B,,5,Município de Peniche,Peniche,"39,356551","-9,378752",NULL,NULL,Peniche,Oeste,LVT,6260556,NULL,VLCI 02-IT-32,OK
+414,ESF,CNT,SF 07-163,,5,APFP - Associação de Produtores Florestais de Pombal,Pombal,"39,889196","-8,586476",NULL,NULL,Pombal,Região de Leiria,CENTRO,6260580,NULL,VLCI 13-ST-58,OK
+415,ESF,CNT,SF 06-163,,5,Município de Pombal,Pombal,"39,915256","-8,628421",NULL,NULL,Pombal,Região de Leiria,CENTRO,6260576,6260577,VLCI AX-41-RN,OK
+416,ESF,CNT,SF 03-163,,5,APFP - Associação de Produtores Florestais de Pombal,Pombal,"39,889196","-8,586476",NULL,NULL,Pombal,Região de Leiria,CENTRO,6260574,6260575,VLCI AS-27-PG,OK
+417,ESF,CNT,SF 09-163,,5,APFP - Associação de Produtores Florestais de Pombal,Pombal,"39,889196","-8,586476",NULL,NULL,Pombal,Região de Leiria,CENTRO,6260585,6260584,VLCI 53-VA-80,OK
+418,ESF,CNT,SF 10-163,,5,Município de Pombal,Pombal,"39,915256","-8,628421",NULL,NULL,Pombal,Região de Leiria,CENTRO,6260587,6260586,VLCI 53-VA-55,OK
+419,ESF,CNT,SF 01-163,,5,ADSAICA - Associação de Desenvolvimento das Serras de Aire e Candeeiros,Porto de Mós,"39,646024","-8,619779",NULL,NULL,Porto de Mós,Região de Leiria,CENTRO,6260501,6260601,VLCI 81-PC-04,OK
+420,ESF,CNT,SF 05-185 ,,5,Município de Azambuja,Azambuja,"39,067405","-8,874071",NULL,NULL,Azambuja,Lezíria do Tejo,LVT,1260523,NULL,VLCI 20-LF-75,OK
+421,ECNAF,PRP,CNAF 38,,2,ICNF - Lisboa e Vale do Tejo,Virtudes,"39,105955","-8,836471",911123152,NULL,Azambuja,Lezíria do Tejo,LVT,1260730,NULL,VLCI 91-XJ-25,OK
+422,ESF,CNT,SF 03-16B,,5,APAS FLORESTA - Associação de Produtores Florestais,Cadaval,"39,196221","-9,098637",NULL,NULL,Cadaval,Oeste,LVT,6260505,NULL,VLCI AT-08-UT,OK
+423,ESF,CNT,SF 04-171,,8,Município de Cascais,Cascais,"38,696699","-9,419972",NULL,NULL,Cascais,Grande Lisboa,LVT,1260517,1260518,VLCI 38-XF-60,OK
+424,ESF,CNT,SF 05-171,,5,Município de Loures,Loures,"38,832635","-9,167767",NULL,NULL,Loures,Grande Lisboa,LVT,1260505,NULL,VLCI 35-JB-03,OK
+425,ESF,CNT,SF 02-171,,5,Município de Mafra,Mafra,"38,555065","-9,081045",NULL,NULL,Mafra,Grande Lisboa,LVT,1260515,1260516,VLCI 38-XF-59,OK
+426,ESF,CNT,SF 01-171,,5,"Tapada Nacional de Mafra, CIPRL",Mafra,"38,966667","-9,3",NULL,NULL,Mafra,Grande Lisboa,LVT,1260513,NULL,VLCI 81-PC-07,OK
+427,ESF,CNT,SF 06-171,,6,Município de Sintra,Sintra,"38,798801","-9,3882",NULL,NULL,Sintra,Grande Lisboa,LVT,1260520,1260521,VLCI 93-XN-68,OK
+428,ESF,CNT,SF 11-16B,,7,Município de Torres Vedras,Torres Vedras,"39,091819","-9,256816",NULL,NULL,Torres Vedras,Oeste,LVT,6260516,NULL,VLCI AB-98-UZ,OK
+429,ESF,CNT,SF 07-16B,,6,Município de Torres Vedras,Torres Vedras,"39,091819","-9,256816",NULL,NULL,Torres Vedras,Oeste,LVT,6260511,NULL,VLCI AZ-82-OQ,OK
+430,ESF,CNT,SF 05-182,,5,Município de Alter do Chão,Alter do Chão,"39,199779","-7,658338",NULL,NULL,Alter do Chão,Alto Alentejo,ALENTEJO,6260524,NULL,VLCI 52-IZ-79,OK
+431,ESF,CNT,SF 06-182,,6,Município de Avis,Avis,"39,055787","-7,89063",NULL,NULL,Avis,Alto Alentejo,ALENTEJO,6260510,NULL,VLCI 77-JS-32,OK
+432,ESF,CNT,SF 03-182,,5,Município de Castelo Vide,Castelo de Vide,"39,41576","-7,455208",NULL,NULL,Castelo de Vide,Alto Alentejo,ALENTEJO,6260506,NULL,VLCI AS-06-OG,OK
+433,ESF,CNT,SF 07-182,,5,Município de Crato,Crato,"39,28698","-7,644711",NULL,NULL,Crato,Alto Alentejo,ALENTEJO,6260512,NULL,VLCI AZ-85-OQ,OK
+434,ESF,CNT,SF 08-182,,5,Município de Elvas,Elvas,"38,88062","-7,16429",NULL,NULL,Elvas,Alto Alentejo,ALENTEJO,6260527,NULL,VLCI BA-45-ID,OK
+435,ESF,CNT,SF 04-182,,6,APFLOGAV - Associação de Produtores Florestais do Município de Gavião,Gavião,"39,46532","-7,933388",NULL,NULL,Gavião,Alto Alentejo,ALENTEJO,6260508,NULL,VLCI AT-06-UT,OK
+436,ESF,CNT,SF 21-182,,3,APFLOBEV - Associação dos Produtores Florestais da Freguesia de Belver,Gavião,"39,46332","-7,921068",NULL,NULL,Gavião,Alto Alentejo,ALENTEJO,6260547,6260548,VLCI 35-VL-17,OK
+437,ESF,CNT,SF 10-182 ,,5,Município de Marvão,Marvão,"39,394579","-7,377878",NULL,NULL,Marvão,Alto Alentejo,ALENTEJO,6260529,NULL,VLCI BA-46-ID,OK
+438,ESF,CNT,SF 11-182 ,,5,Município de Nisa,Nisa,"39,515844","-7,649593",NULL,NULL,Nisa,Alto Alentejo,ALENTEJO,6260517,NULL,VLCI 98-JR-52,OK
+439,ESF,CNT,SF 14-182,,5,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Ponte de Sor,"39,423486","-8,209714",NULL,NULL,Ponte de Sor,Alto Alentejo,ALENTEJO,6260534,6260533,VLCI 53-VA-88,OK
+440,ESF,CNT,SF 15-182,BRIG 01-182,5,Comunidade Intermunicipal do Alto Alentejo - BRIG-1-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260536,6260535,VLCI 53-VA-82,OK
+441,ESF,CNT,SF 16-182,BRIG 01-182,5,Comunidade Intermunicipal do Alto Alentejo - BRIG-1-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260538,6260537,VLCI 53-VA-68,OK
+442,ESF,CNT,SF 17-182,BRIG 01-182,4,Comunidade Intermunicipal do Alto Alentejo - BRIG-1-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260540,6260539,VLCI 53-VA-31,OK
+443,ESF,CNT,SF 18-182,BRIG 02-182,5,Comunidade Intermunicipal do Alto Alentejo - BRIG-2-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260541,6260542,VLCI 35-VL-12,OK
+444,ESF,CNT,SF 19-182,BRIG 02-182,5,Comunidade Intermunicipal do Alto Alentejo - BRIG-2-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260543,6260544,VLCI 35-VL-19,OK
+445,ESF,CNT,SF 20-182,BRIG 02-182,5,Comunidade Intermunicipal do Alto Alentejo - BRIG-2-182,Portalegre,"39,297396","-7,430165",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260545,6260546,VLCI 35-VL-10,OK
+446,EFSBF,PRP,FSBF STR01,,6,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260656,NULL,NULL,Sem viatura
+447,EFSBF,PRP,FSBF PTG03,,3,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260669,NULL,NULL,Sem viatura
+448,EFSBF,PRP,FSBF PTG04,,6,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260671,NULL,NULL,Sem viatura
+449,EFSBF,PRP,FSBF PTG02,,,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260665,NULL,NULL,Sem viatura
+450,EFSBF,PRP,FSBF PTG01,,,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260662,NULL,NULL,Sem viatura
+451,EFSBF,PRP,FSBF STR02,,,ICNF,NULL,"39,313528","-7,41625",NULL,NULL,Portalegre,Alto Alentejo,NACIONAL,1260659,NULL,NULL,Sem viatura
+452,ESF,CNT,SF 13-182 ,,9,Município de Portalegre,Portalegre,"39,294788","-7,429248",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260519,NULL,VLCI AZ-87-OQ,OK
+453,ESF,CNT,SF 02-182,,5,APFDP - Associação de Produtores Florestais do Distrito de Portalegre,Portalegre,"39,271467","-7,421477",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260503,NULL,VLCI AS-07-0G,OK
+454,ESF,CNT,SF 01-182,,5,APAFNA - Agrupamento de Produtores Agrícolas e Florestais do Norte Alentejano,Portalegre,"39,271467","-7,421477",NULL,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260520,6260600,VLCI 67-TX-17,OK
+455,ESF,CNT,SF 12-182,,5,Município de Sousel,Sousel,"38,952591","-7,675364",NULL,NULL,Sousel,Alto Alentejo,ALENTEJO,6260531,NULL,VLCI BA-43-ID,OK
+456,ECNAF,PRP,CNAF 18,,4,ICNF - Norte,Amarante,"41,303868","-7,997068",916243411,paula.morais@icnf.pt,Amarante,Tâmega e Sousa,NORTE,NULL,3260651,VLCI 18-VI-19,OK
+457,ESF,CNT,SF 12-115,,5,Conselho Directivo dos Baldios de Ansiães,Amarante,"41,281089","-8,12331",918594974,henrique.cnavreal@sapo.pt,Amarante,Tâmega e Sousa,NORTE,3261016,3260645,VLCI 81-PC-13,OK
+458,ESF,CNT,SF 15-115,,6,Associação Florestal de Entre Douro e Tâmega,Amarante,"41,176913","-8,145437",962121317,pedro@maisfloresta.com,Amarante,Tâmega e Sousa,NORTE,3260578,NULL,VLCI 67-TX-36,OK
+459,ESF,CNT,SF 23-115,,5,Conselho Diretivo dos Baldios de Aboadela,Amarante,"41,231855","-8,096746",911044600,henrique.cnavreal@sapo.pt,Amarante,Tâmega e Sousa,NORTE,3260582,3260583,VLCI 57-XI-26,OK
+460,ESF,CNT,SF 37-115,,5,Associação Florestal de Entre Douro e Tâmega,Amarante,"41,176913","-8,145437",960271111,pedro@maisfloresta.com,Amarante,Tâmega e Sousa,NORTE,3260590,3260589,VLCI 53-VA-28,OK
+461,ESF,CNT,SF 17-115,,5,AFVS - Associação Florestal do Vale do Sousa,Felgueiras,"41,207328","-8,273412",962311762,sandra@afvs.ws,Felgueiras,Tâmega e Sousa,NORTE,3260580,NULL,VLCI 67-TX-35,OK
+462,ESF,CNT,SF 04-114,,4,PORTUCALEA - Associação Florestal do Grande Porto,Gondomar,"41,157279","-8,549065",935631873,helenabarbosa@portucalea.pt,Gondomar,Área Metropolitana do Porto,NORTE,3260573,3260574,VLCI 57-XI-30,OK
+463,ESF,CNT,SF 26-115,,5,Associação Florestal de Entre Douro e Tâmega,Marco de Canaveses,"41,176913","-8,145437",962133996,pedro@maisfloresta.com,Marco de Canaveses,Tâmega e Sousa,NORTE,3260520,NULL,VLCI AT-07-UT,OK
+464,ESF,CNT,SF 31-115,,5,Associação Florestal de Entre Douro e Tâmega,Marco de Canaveses,"41,176913","-8,145437",962122537,pedro@maisfloresta.com,Marco de Canaveses,Tâmega e Sousa,NORTE,3260522,NULL,VLCI AX-42-RN,OK
+465,ESF,CNT,SF 39-115,BRIG 01-115,5,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-1-115,Penafiel,"41,169124","-8,340047",919698154,alexandre.vieira@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260592,3260591,VLCI 35-VL-22,OK
+466,ESF,CNT,SF 40-115,BRIG 01-115,5,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-1-115,Penafiel,"41,169124","-8,340047",919698154,alexandre.vieira@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260594,3260593,VLCI 35-VL-23,OK
+467,ESF,CNT,SF 41-115,BRIG 01-115,5,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-1-115,Penafiel,"41,169124","-8,340047",919698154,alexandre.vieira@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260596,3260595,VLCI 35-VL-14,OK
+468,ESF,CNT,SF 43-115,BRIG 02-115,5,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-2-115,Penafiel,"41,169124","-8,340047",962869739,rui.moreda@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260597,3260598,VLCI 55-VO-21,OK
+469,ESF,CNT,SF 44-115,BRIG 02-115,5,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-2-115,Penafiel,"41,169124","-8,340047",962869739,rui.moreda@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260599,3260600,VLCI 55-VO-23,OK
+470,ESF,CNT,SF 45-115,BRIG 02-115,4,Comunidade Intermunicipal do Tâmega e Sousa - BRIG-2-115,Penafiel,"41,169124","-8,340047",962869739,rui.moreda@cimtamegaesousa.pt,Penafiel,Tâmega e Sousa,NORTE,3260601,3260602,VLCI 55-VO-34,OK
+471,ESF,CNT,SF 06-113,,5,ASVA - Associação de Silvicultores do Vale do Ave,Santo Tirso,"41,337842","-8,559472",938351111,manuelramos.asva@gmail.com,Santo Tirso,Área Metropolitana do Porto,NORTE,3260577,NULL,VLCI AT-10-UT,OK
+472,ESF,CNT,SF 03-114,,5,PORTUCALEA - Associação Florestal do Grande Porto,Valongo,"41,157279","-8,549065",935631872,helenabarbosa@portucalea.pt,Valongo,Área Metropolitana do Porto,NORTE,4260626,3260570,VLCI 53-VA-38,OK
+473,ESF,CNT,SF 02-114,,6,PORTUCALEA - Associação Florestal do Grande Porto,Vila do Conde,"41,157279","-8,549065",935631871,helenabarbosa@portucalea.pt,Vila do Conde,Área Metropolitana do Porto,NORTE,3260568,NULL,VLCI 67-TX-45,OK
+474,ESF,CNT,SF 01-114,,5,PORTUCALEA - Associação Florestal do Grande Porto,Vila Nova de Gaia,"41,157279","-8,549065",935631870,helenabarbosa@portucalea.pt,Vila Nova de Gaia,Área Metropolitana do Porto,NORTE,3260502,3260641,VLCI 81-PC-10,OK
+475,ESF,CNT,SF 01-113,,4,ASVA - Associação de Silvicultores do Vale do Ave,Trofa,"41,337842","-8,559472",963417538,manuelramos.asva@gmail.com,Trofa,Área Metropolitana do Porto,NORTE,3260501,3260640,VLCI 67-TX-26,OK
+476,ESF,CNT,SF 01-16C,,6,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Abrantes,"39,423486","-8,209714",NULL,NULL,Abrantes,Médio Tejo,LVT,1260500,1260580,VLCI 80-PC-96,OK
+477,ESF,CNT,SF 03-16C,,6,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Abrantes,"39,423486","-8,209714",NULL,NULL,Abrantes,Médio Tejo,LVT,1260534,1260533,VLCI 53-VA-84,OK
+478,ESF,CNT,SF 04-16C,,5,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Abrantes,"39,423486","-8,209714",NULL,NULL,Abrantes,Médio Tejo,LVT,1260538,1260537,VLCI 53-VA-66,OK
+479,ESF,CNT,SF 24-16C,,5,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Abrantes,"39,423486","-8,209714",NULL,NULL,Abrantes,Médio Tejo,LVT,1260563,1260564,VLCI 53-VA-40,OK
+480,ESF,CNT,SF 05-16C,,5,ADSAICA - Associação de Desenvolvimento das Serras de Aire e Candeeiros,Alcanena,"39,646024","-8,619779",NULL,NULL,Alcanena,Médio Tejo,LVT,6260555,6260554,VLCI 53-VA-97,OK
+481,ESF,CNT,SF 11-16C,,4,Município de Alcanena,Alcanena,"39,458727","-8,669993",NULL,NULL,Alcanena,Médio Tejo,LVT,1260544,NULL,VLCI 98-JN-38,OK
+482,ESF,CNT,SF 02-185,,5,ACHAR - Associação dos Agricultores da Charneca,Chamusca,"39,35732","-8,482887",NULL,NULL,Chamusca,Lezíria do Tejo,LVT,1260502,1260578,VLCI 81-PC-91,OK
+483,ESF,CNT,SF 09-16C,,5,Município de Constância,Constância,"39,475666","-8,339446",NULL,NULL,Constância,Médio Tejo,LVT,1260509,NULL,VLCI AU-44-TG,OK
+484,ESF,CNT,SF 01-185,,5,Associação de Produtores Florestais do Concelho de Coruche e Limítrofes,Coruche,"38,95942","-8,522404",NULL,NULL,Coruche,Lezíria do Tejo,LVT,1260501,1260577,VLCI 81-PC-09,OK
+485,ESF,CNT,SF 07-16C,,5,FLORZÊZERE - Associação de Desenvolvimento Florestal do Concelho de Ferreira do Zêzere,Ferreira do Zêzere,"39,770353","-8,268952",NULL,NULL,Ferreira do Zêzere,Médio Tejo,LVT,1260539,1260540,VLCI 57-XI-29,OK
+486,ESF,CNT,SF 08-16C,,5,FLORZÊZERE - Associação de Desenvolvimento Florestal do Concelho de Ferreira do Zêzere,Ferreira do Zêzere,"39,770353","-8,268952",NULL,NULL,Ferreira do Zêzere,Médio Tejo,LVT,1260507,NULL,VLCI AS-05-OG,OK
+487,ESF,CNT,SF 28-16C,,5,FLORZÊZERE - Associação de Desenvolvimento Florestal do Concelho de Ferreira do Zêzere,Ferreira do Zêzere,"39,770353","-8,268952",NULL,NULL,Ferreira do Zêzere,Médio Tejo,LVT,1260571,1260572,VLCI 53-VA-35,OK
+488,ESF,CNT,SF 16-16C,,5,AFLOMAÇÃO - Associação Florestal do Concelho de Mação,Mação,"39,553882","-7,997988",NULL,NULL,Mação,Médio Tejo,LVT,1260551,1260760,VLCI 13-ST-52,OK
+489,ESF,CNT,SF 15-16C,,5,AFLOMAÇÃO - Associação Florestal do Concelho de Mação,Mação,"39,553882","-7,997988",NULL,NULL,Mação,Médio Tejo,LVT,1260549,1260550,VLCI 57-XI-23,OK
+490,ESF,CNT,SF 14-16C,,5,AFLOMAÇÃO - Associação Florestal do Concelho de Mação,Mação,"39,553882","-7,997988",NULL,NULL,Mação,Médio Tejo,LVT,1260548,NULL,VLCI 38-XF-65,OK
+491,ESF,CNT,SF 03-185,,5,"Freguesia de Alcobertas, em representação da Assembleia de Compartes da Freguesia de Alcobertas",Rio Maior,"39,418563","-8,90746",NULL,NULL,Rio Maior,Lezíria do Tejo,LVT,1260503,1260579,VLCI 80-PC-92,OK
+492,ECNAF,PRP,CNAF 45,,2,ICNF - Lisboa e Vale do Tejo,Escaroupim,"39,072174","-8,74854",911121478,NULL,Salvaterra de Magos,Lezíria do Tejo,LVT,1260731,1260732,VLCI 91-XJ-15,OK
+493,ESF,CNT,SF 06-185,BRIG 01-185,5,Comunidade Intermunicipal da Lezíria do Tejo - BRIG-1-185,Santarém,"39,217133","-8,701135",NULL,NULL,Santarém,Lezíria do Tejo,LVT,1260525,1260524,VLCI 53-VA-17,OK
+494,ESF,CNT,SF 07-185,BRIG 01-185,5,Comunidade Intermunicipal da Lezíria do Tejo - BRIG-1-185,Santarém,"39,217133","-8,701135",NULL,NULL,Santarém,Lezíria do Tejo,LVT,1260527,1260526,VLCI 53-VA-33,OK
+495,ESF,CNT,SF 08-185,BRIG 01-185,5,Comunidade Intermunicipal da Lezíria do Tejo - BRIG-1-185,Santarém,"39,217133","-8,701135",NULL,NULL,Santarém,Lezíria do Tejo,LVT,1260529,1260528,VLCI 53-VA-22,OK
+496,EFSBF,PRP,FSBF STR03,,6,ICNF,NULL,"39,105528","-8,837083",NULL,NULL,Santarém,Lezíria do Tejo,NACIONAL,NULL,NULL,NULL,Sem viatura
+497,ESF,CNT,SF 04-185,,5,"Assembleia de Compartes dos Baldios de Valverde, Pé da Pedreira, Barreirinha e Murteira",Santarém,"39,4513","-8,830107",NULL,NULL,Santarém,Lezíria do Tejo,LVT,1260522,NULL,VLCI AZ-73-OQ,OK
+498,ESF,CNT,SF 12-16C,,5,Município de Sardoal,Sardoal,"39,535116","-8,161301",NULL,NULL,Sardoal,Médio Tejo,LVT,1260511,NULL,VLCI 96-FC-88,OK
+499,ESF,CNT,SF 29-16C,,5,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Sardoal,"39,423486","-8,209714",NULL,NULL,Sardoal,Médio Tejo,LVT,1260573,1260574,VLCI 53-VA-14,OK
+500,ESF,CNT,SF 25-16C,BRIG 02-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-2-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260565,1260566,VLCI 35-VL-20,OK
+501,ESF,CNT,SF 26-16C,BRIG 02-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-2-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260567,1260568,VLCI 35-VL-21,OK
+502,ESF,CNT,SF 27-16C,BRIG 02-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-2-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260569,1260570,VLCI 35-VL-24,OK
+503,ESF,CNT,SF 20-16C,BRIG 01-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-1-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260556,1260555,VLCI 53-VA-71,OK
+504,ESF,CNT,SF 21-16C,BRIG 01-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-1-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260558,1260557,VLCI 53-VA-52,OK
+505,ESF,CNT,SF 22-16C,BRIG 01-16C,5,Comunidade Intermunicipal do Médio Tejo - BRIG-1-16C,Tomar,"39,600051","-8,413847",NULL,NULL,Tomar,Médio Tejo,LVT,1260560,1260559,VLCI 53-VA-20,OK
+506,ESF,CNT,SF 19-16C,,5,"Associação dos Agricultores dos Concelhos de Abrantes, Constância, Sardoal e Mação",Vila Nova da Barquinha,"39,423486","-8,209714",NULL,NULL,Vila Nova da Barquinha,Médio Tejo,LVT,1260554,1260553,VLCI 53-VA-36,OK
+507,ESF,CNT,SF 23-16C,,4,Freguesia de Urqueira,Ourém,"39,73027","-8,596877",NULL,NULL,Ourém,Médio Tejo,LVT,1260561,1260562,VLCI 53-VA-77,OK
+508,ESF,CNT,SF 48-115,,5,Município de Mondim de Basto,Mondim de Basto,"41,410832","-7,952304",NULL,NULL,Mondim de Basto,Ave,NORTE,NULL,NULL,VLCI AL-07-LV,Viatura NÃO encontrada
+509,ECNAF,PRP,CNAF 39,,4,ICNF - Alentejo,Valverde,"38,326669","-8,52495",NULL,NULL,Alcácer do Sal,Alentejo Litoral,ALENTEJO,2260521,NULL,VLCI 18-VI-37,OK
+510,ESF,CNT,SF 05-181,,5,Município de Grândola,Grândola,"38,176791","-8,57017",NULL,NULL,Grândola,Alentejo Litoral,ALENTEJO,2260504,NULL,VLCI AT-46-SZ,OK
+511,ESF,CNT,SF 06-181,,5,AMFALA - Associação de Manutenção Florestal dos Amigos do Litoral Alentejano,Santiago do Cacém,"37,964621","-8,867615",NULL,NULL,Santiago do Cacém,Alentejo Litoral,ALENTEJO,2260513,2260512,VLCI 53-VA-73,OK
+512,ESF,CNT,SF 07-181,,6,AMFALA - Associação de Manutenção Florestal dos Amigos do Litoral Alentejano,Sines,"37,964621","-8,867615",NULL,NULL,Sines,Alentejo Litoral,ALENTEJO,2260514,2260515,VLCI 16-XO-48,OK
+513,ECNAF,PRP,CNAF 24,,3,ICNF - Norte,Arcos de Valdevez,"41,885805","-8,313726",NULL,carmo.oliveira@icnf.pt,Arcos de Valdevez,Alto Minho,NORTE,3260667,5260799,VLCI 64-TE-39,OK
+514,ECNAF,PRP,CNAF 25,,4,ICNF - Norte,Arcos de Valdevez,"41,885805","-8,313726",NULL,carmo.oliveira@icnf.pt,Arcos de Valdevez,Alto Minho,NORTE,3260668,2260522,VLCI 64-TE-40,OK
+515,ESF,CNT,SF 05-111,,5,Associação Florestal do Lima,Arcos de Valdevez,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Arcos de Valdevez,Alto Minho,NORTE,3260530,NULL,VLCI 67-TX-48,OK
+516,ESF,CNT,SF 12-111,,5,Assembleia de Compartes dos Baldios da Freguesia de Soajo,Arcos de Valdevez,"41,874471","-8,262699",253203481,carmo.oliveira@icnf.pt,Arcos de Valdevez,Alto Minho,NORTE,3260544,3260545,VLCI 39-XF-09,OK
+517,ESF,CNT,SF 13-111,,5,Assembleia de Compartes dos Baldios da Freguesia de Cabreiro,Arcos de Valdevez,"41,933031","-8,415362",253203481,carmo.oliveira@icnf.pt,Arcos de Valdevez,Alto Minho,NORTE,3260546,3260547,VLCI 38-XF-62,OK
+518,ESF,CNT,SF 10-111,,5,"ATLÂNTICA - Associação Florestal dos Vales do Minho, Coura, Âncora, Vez e Lima",Arcos de Valdevez,"41,918759","-8,352789",966156998,atlantica.associacao.florestal@gmail.com,Arcos de Valdevez,Alto Minho,NORTE,3260540,3260541,VLCI 38-XF-71,OK
+519,ESF,CNT,SF 15-111,,5,Assembleia de Compartes dos Baldios da Freguesia da Gavieira,Arcos de Valdevez,"41,952821","-8,248366",253203481,carmo.oliveira@icnf.pt,Arcos de Valdevez,Alto Minho,NORTE,3260550,3260551,VLCI 38-XF-73,OK
+520,ESF,CNT,SF 01-111,,5,Conselho Directivo dos Baldios da Freguesia de Riba de Âncora,Caminha,"41,857759","-8,786056",964492393,cdbaldiosrancora@sapo.pt,Caminha,Alto Minho,NORTE,3260500,3260639,VLCI 81-PC-06,OK
+521,ESF,CNT,SF 25-111,,5,Associação de Produtores Florestais do Vale do Minho,Caminha,"42,022403","-8,640607",966410349,mbarbosa@valminhoflorestal.com,Caminha,Alto Minho,NORTE,3260561,NULL,VLCI 13-ST-43,OK
+522,ESF,CNT,SF 24-111,,5,Município de Melgaço,Melgaço,"42,113047","-8,258815",961726836,gtf_melgaco@cm-melgaco.pt,Melgaço,Alto Minho,NORTE,3260519,NULL,VLCI 58-II-71,OK
+523,ESF,CNT,SF 22-111,,2,Conselho Directivo dos Baldios da Freguesia de Castro Laboreiro,Melgaço,"42,032382","-8,158351",253203481,Carmo.Oliveira@icnf.pt,Melgaço,Alto Minho,NORTE,3260517,NULL,VLCI AU-45-TG,OK
+524,ECNAF,PRP,CNAF 31,,4,ICNF - Norte,Lamas de Mouro,"42,039175","-8,195795",NULL,carlos.pinto@icnf.pt,Melgaço,Alto Minho,NORTE,3260671,4265029,VLCI 17-TX-33,OK
+525,ECNAF,PRP,CNAF 32,,3,ICNF - Norte,Lamas de Mouro,"42,039175","-8,195795",NULL,carlos.pinto@icnf.pt,Melgaço,Alto Minho,NORTE,3260657,4265030,VLCI 17-TX-32,OK
+526,ESF,CNT,SF 27-111,,5,Associação de Produtores Florestais do Vale do Minho,Monção,"42,022403","-8,640607",963779545,earaujo@valminhoflorestal.com,Monção,Alto Minho,NORTE,3260566,3260565,VLCI 53-VA-60,OK
+527,ESF,CNT,SF 17-111,,5,"ATLÂNTICA - Associação Florestal dos Vales do Minho, Coura, Âncora, Vez e Lima",Monção,"41,918759","-8,352789",966156998,atlantica.associacao.florestal@gmail.com,Monção,Alto Minho,NORTE,3260553,NULL,VLCI AS-22-OG,OK
+528,ESF,CNT,SF 06-111,,5,Assembleia de Compartes dos Baldios da Freguesia de Merufe,Monção,"42,016724","-8,388499",962124633,gtf@cm-moncao.pt,Monção,Alto Minho,NORTE,3260532,NULL,VLCI 67-TX-41,OK
+529,ESF,CNT,SF 07-111,,4,Associação de Produtores Florestais do Vale do Minho,Paredes de Coura,"42,022403","-8,640607",963779545,earaujo@valminhoflorestal.com,Paredes de Coura,Alto Minho,NORTE,3260534,NULL,VLCI 17-TX-25,OK
+530,ESF,CNT,SF 23-111,,5,Associação de Produtores Florestais do Vale do Minho,Paredes de Coura,"42,022403","-8,640607",963779545,earaujo@valminhoflorestal.com,Paredes de Coura,Alto Minho,NORTE,3260559,NULL,VLCI 35-JB-02,OK
+531,ESF,CNT,SF 14-111,,6,Conselho Directivo dos Baldios da Freguesia de Entre Ambos-os-Rios,Ponte da Barca,"41,814715","-8,250378",NULL,carlos.pinto@icnf.pt,Ponte da Barca,Alto Minho,NORTE,3260548,3260549,VLCI 38-XF-76,OK
+532,ESF,CNT,SF 11-111,,5,Conselho Directivo dos Baldios da Freguesia de Lindoso,Ponte da Barca,"41,859894","-8,245511",NULL,carlos.pinto@icnf.pt,Ponte da Barca,Alto Minho,NORTE,3260542,3260543,VLCI 38-XF-87,OK
+533,ESF,CNT,SF 09-111,,5,Associação Florestal do Lima,Ponte da Barca,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Ponte da Barca,Alto Minho,NORTE,3260538,3260539,VLCI 57-XI-27,OK
+534,ECNAF,PRP,CNAF 26,,4,ICNF - Norte,Lindoso,"41,865939","-8,199137",NULL,carlos.pinto@icnf.pt,Ponte da Barca,Alto Minho,NORTE,3260669,NULL,VLCI 64-TE-41,OK
+535,ECNAF,PRP,CNAF 28,,5,ICNF - Norte,Entre Ambos-os-Rios,"41,819924","-8,315113",NULL,carlos.pinto@icnf.pt,Ponte da Barca,Alto Minho,NORTE,3260653,4265026,VLCI 17-TX-34,OK
+536,ECNAF,PRP,CNAF 14A,,3,ICNF - Norte,Ponte de Lima,"41,759801","-8,576001",NULL,rui.batista@icnf.pt,Ponte de Lima,Alto Minho,NORTE,3260649,3260648,VLCI 18-VI-40,OK
+537,EFSBF,PRP,FSBF CBAS01,,,ICNF,NULL,NULL,NULL,NULL,NULL,Ponte de Lima,Alto Minho,NACIONAL,1260617,NULL,NULL,Sem viatura
+538,ESF,CNT,SF 04-111,,5,Associação Florestal do Lima,Ponte de Lima,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Ponte de Lima,Alto Minho,NORTE,3260528,NULL,VLCI 67-TX-38,OK
+539,ESF,CNT,SF 26-111,,5,Associação Florestal do Lima,Ponte de Lima,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Ponte de Lima,Alto Minho,NORTE,3260563,NULL,VLCI 13-ST-47,OK
+540,ECNAF,PRP,CNAF 14,,3,ICNF - Norte,Ponte de Lima,"41,759801","-8,576001",NULL,rui.batista@icnf.pt,Ponte de Lima,Alto Minho,NORTE,3260663,3260652,VLCI 18-VI-22,OK
+541,ESF,CNT,SF 16-111,,5,Associação Florestal do Lima,Ponte de Lima,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Ponte de Lima,Alto Minho,NORTE,3260511,NULL,VLCI AS-12-OG,OK
+542,ESF,CNT,SF 18-111,,5,Associação Florestal do Lima,Ponte de Lima,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Ponte de Lima,Alto Minho,NORTE,3260513,NULL,VLCI AS-14-OG,OK
+543,ESF,CNT,SF 19-111,,5,Associação de Produtores Florestais do Vale do Minho,Valença,"42,022403","-8,640607",NULL,jafonso@cm-valenca.pt,Valença,Alto Minho,NORTE,3260555,NULL,VLCI 39-FA-72,OK
+544,ESF,CNT,SF 21-111,,5,ACEB - Associação para a Cooperação Entre Baldios,Viana do Castelo,"41,697366","-8,822558",967641973,acebviana@gmail.com,Viana do Castelo,Alto Minho,NORTE,3260557,NULL,VLCI AS-13-OG,OK
+545,ECNAF,PRP,CNAF 15,,5,ICNF - Norte,Viana do Castelo,"41,79613","-8,733841",NULL,silverio.carvalho@icnf.pt,Viana do Castelo,Alto Minho,NORTE,3260654,NULL,VLCI 09-FH-61,OK
+546,ESF,CNT,SF 03-111,,5,Comunidade Local dos Baldios de Carvoeiro,Viana do Castelo,"41,65466","-8,696619",963087145,baldioscar@gmail.com,Viana do Castelo,Alto Minho,NORTE,3260526,NULL,VLCI 67-TX-37,OK
+547,ESF,CNT,SF 08-111,,5,Associação Florestal do Lima,Viana do Castelo,"41,793083","-8,593885",962052956,mariano.aflima@gmail.com,Viana do Castelo,Alto Minho,NORTE,3260537,3260536,VLCI 53-VA-41,OK
+548,ECNAF,PRP,CNAF 41,,2,ICNF - Norte,Viana do Castelo,NULL,NULL,,rui.batista@icnf.pt,Viana do Castelo,Alto Minho,NORTE,3260673,NULL,VLCI 84-11-ZH,OK
+549,ECNAF,PRP,CNAF 16,,4,ICNF - Norte,Vila Nova de Cerveira,NULL,NULL,NULL,silverio.carvalho@icnf.pt,Vila Nova de Cerveira,Alto Minho,NORTE,3260661,NULL,VLCI 42-DA-17,OK
+550,ESF,CNT,SF 20-111,,5,Associação de Produtores Florestais do Vale do Minho,Vila Nova de Cerveira,"42,022403","-8,640607",966410349,mbarbosa@valminhoflorestal.com,Vila Nova de Cerveira,Alto Minho,NORTE,3260515,NULL,VLCI 96-FC-80,OK
+551,ESF,CNT,SF 10-117,,5,AFLODOUNORTE - Associação Florestal do Vale do Douro Norte,Alijó,"41,46002","-7,469137",NULL,NULL,Alijó,Douro,NORTE,4260653,4260654,VLCI AT-09-UT,OK
+552,ESF,CNT,SF 25-118,,5,Município de Boticas,Boticas,"41,68747","-7,66854",934167140,claudiabarbosa@cm-boticas.pt,Boticas,Alto Tâmega e Barroso,NORTE,4260514,NULL,VLCI AX-40-RN,OK
+553,ESF,CNT,SF 18-118,,5,CAPOLIB - Cooperativa Agro Rural de Boticas,Boticas,"41,709747","-7,638509",927510011,angelo@capolib.pt,Boticas,Alto Tâmega e Barroso,NORTE,4260542,4260543,VLCI 39-XF-03,OK
+554,ESF,CNT,SF 02-118,,5,Comunidade Local dos Baldios de Couto de Dornelas,Boticas,"41,700023","-7,719769",965762287,sara.cnavreal@sapo.pt,Boticas,Alto Tâmega e Barroso,NORTE,4260526,4260527,VLCI 80-PC-93,OK
+555,ESF,CNT,SF 45-118,,5,Comunidade Local dos Baldios de Covas do Barroso,Boticas,"41,635456","-7,783215",969723187,angelo@capolib.pt,Boticas,Alto Tâmega e Barroso,NORTE,4260578,4260577,VLCI 91-XJ-02,OK
+556,ESF,CNT,SF 43-118,,5,Município de Boticas,Boticas,"41,68747","-7,66854",924431058,claudiabarbosa@cm-boticas.pt,Boticas,Alto Tâmega e Barroso,NORTE,4260576,NULL,VLCI 18-97-ZV,OK
+557,ESF,CNT,SF 36-118,BRIG 01-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-1-118,Chaves,"41,743268","-7,471331",964412470,nuno.moutinho@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260563,4260562,VLCI 53-VA-46,OK
+558,ESF,CNT,SF 37-118,BRIG 01-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-1-118,Chaves,"41,743268","-7,471331",964412470,nuno.moutinho@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260565,4260564,VLCI 53-VA-99,OK
+559,ESF,CNT,SF 38-118,BRIG 01-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-1-118,Chaves,"41,743268","-7,471331",964412470,nuno.moutinho@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260569,4260568,VLCI 53-VA-42,OK
+560,ESF,CNT,SF 50-118,BRIG 02-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-2-118,Chaves,"41,743268","-7,471331",919943127,pedro.penedones@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260523,NULL,VLCI 38-XF-88,OK
+561,ESF,CNT,SF 51-118,BRIG 02-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-2-118,Chaves,"41,743268","-7,471331",919943127,pedro.penedones@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260524,NULL,VLCI 38-XF-91,OK
+562,ESF,CNT,SF 52-118,BRIG 02-118,5,Comunidade Intermunicipal do Alto Tâmega - BRIG-2-118,Chaves,"41,743268","-7,471331",919943127,pedro.penedones@cimat.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260525,NULL,VLCI 57-XI-33,OK
+563,ESF,CNT,SF 58-118,,5,AFACC - Associação Florestal e Ambiental do Concelho de Chaves,Chaves,"41,73822","-7,478369",936718649,diogopereira@afacc.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260716,NULL,VLCI 77-AA-35,OK
+564,ESF,CNT,SF 12-118,,5,AFACC - Associação Florestal e Ambiental do Concelho de Chaves,Chaves,"41,73822","-7,478369",938498344,diogopereira@afacc.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260506,4260671,VLCI 67-TX-23,OK
+565,ESF,CNT,SF 27-118,,5,AFACC - Associação Florestal e Ambiental do Concelho de Chaves,Chaves,"41,73822","-7,478369",939802432,diogopereira@afacc.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260516,NULL,VLCI 29-IU-26,OK
+566,ESF,CNT,SF 30-118,,6,Município de Chaves,Chaves,"41,739956","-7,471248",916851485,silvio.silva@chaves.pt,Chaves,Alto Tâmega e Barroso,NORTE,4260556,4260557,VLCI 13-ST-46,OK
+567,EVN,PRP,SF 3VN04,,3,Parque Natural Serra Aires e Candeeiros,Rio Maior,"39,336631","-8,942102",917297381,NULL,Rio Maior,Lezíria do Tejo,LVT,1260706,NULL,VLCI 94-VJ-56,OK
+568,EVN,PRP,SF 3VN05,,3,Parque Natural Serra Aires e Candeeiros,Rio Maior,"39,336631","-8,942102",914205324,NULL,Rio Maior,Lezíria do Tejo,LVT,NULL,1260705,VLCI 38-XF-83,OK
+569,EVN,PRP,SF 3VN06,,0,Parque Natural Serra Aires e Candeeiros,Rio Maior,"39,336631","-8,942102",917297396,NULL,Rio Maior,Lezíria do Tejo,LVT,1260707,NULL,VLCI 17-TX-63,OK
+570,EVN,PRP,SF 3VN07,,2,Reserva Natural do Estuário do Sado,Setúbal,"38,520659","-8,892115",917295991,NULL,Setúbal,Alentejo Litoral,ALENTEJO,1260710,NULL,VLCI 89-BV-76,OK
+571,EVN,PRP,SF 3VN10,,3,Reserva Natural do Estuário do Tejo,Alcochete,"38,756885","-8,960914",917297409,NULL,Alcochete,Lezíria do Tejo,LVT,1260712,NULL,VLCI 38-XF-58,OK
+572,EVN,PRP,SF 3VN11,,2,Paisagem Protegida da Arriba Fóssil da Costa da Caparica,Costa da Caparica,"38,576871","-9,194715",917297379,NULL,Almada,Península de Setúbal,LVT,1260711,NULL,VLCI 93-AG-05,OK
+573,EVN,PRP,SF 3VN12,,3,Reserva Natural do Paul do Boquilobo,Golegã,"39,401614","-8,487126",914206889,NULL,Golegã,Lezíria do Tejo,LVT,1260713,NULL,VLCI 89-BV-82,OK
+574,EVN,PRP,SF 4VN01,,2,Parque Natural da Serra de São Mamede - PNSSM / Monumento Natural das Portas de Ródão,Portalegre,"39,300863","-7,430818",964589313,NULL,Portalegre,Alto Alentejo,ALENTEJO,6260604,NULL,VLCI 38-XF-86,OK
+575,EVN,PRP,SF 4VN02,,2,Reserva Natural das Lagoas de Santo André e da Sancha - RNLSAS,Vila Nova Santo André,"38,10363","-8,77964",914206253,NULL,Santiago do Cacém,Alentejo Litoral,ALENTEJO,2260519,NULL,VLCI 17-TX-65,OK
+576,EVN,PRP,SF 4VN03,,2,Parque Natural do Vale do Guadiana - PNVG,Mértola,"37,637701","-7,663381",914206297,NULL,Mértola,Baixo Alentejo,ALENTEJO,7260544,NULL,VLCI 38-XF-89,OK
+577,EVN,PRP,SF 4VN04,,2,Rede Natura Alto Alentejo,Ponte de Sor,"39,248675","-8,012582",242207082,NULL,Ponte de Sor,Alto Alentejo,ALENTEJO,6260605,NULL,49-07-QM,OK
+578,EVN,PRP,SF 4VN05,,2,Rede Natura Alentejo Central,Évora,"38,574732","-7,908132",266737370,NULL,Évora,Alentejo Litoral,ALENTEJO,2260520,NULL,VLCI 94-VJ-61,OK
+579,EVN,PRP,SF 4VN06,,2,Rede Natura  Baixo Alentejo,Beja,"38,022129","-7,866577",284389544,NULL,Beja,Baixo Alentejo,ALENTEJO,7260545,NULL,VLCI 17-TX-64,OK
+580,EVN,PRP,SF 5VN01,,3,Reserva Natural do Sapal de Castro Marim/MN_Dunas litorais de VRSA/MN Terras da Ordem/PF Conceição de Tavira,Castro Marim,"37,2312","-7,425914",914199363,NULL,Castro Marim,Algarve,ALGARVE,NULL,7260546,VLCI 17-TX-67,OK
+581,EVN,PRP,SF 5VN02,,2,Parque Natural do Sudoeste Alentejano e Costa Vicentina,Lagos,"37,131597","-8,66763",914197447,NULL,Lagos,Algarve,ALGARVE,NULL,7260547,VLCI 94-VJ-63,OK
+582,EVN,PRP,SF 5VN03,,2,Parque Natural do Sudoeste Alentejano e Costa Vicentina,Lagos,"37,131597","-8,66763",914197447,NULL,Lagos,Algarve,ALGARVE,NULL,7260548,VLCI 39-XF-08,OK
+583,EVN,PRP,SF 5VN04,,2,Parque Natural do Sudoeste Alentejano e Costa Vicentina,Lagos,"37,131597","-8,66763",914197447,NULL,Lagos,Algarve,ALGARVE,7260550,NULL,VLCI 17-TX-66,OK
+584,EVN,PRP,SF 5VN05,,3,Parque Natural da Ria Formosa/PF Conceição Tavira,Olhão,"37,03248","-7,817947",914200757,NULL,Olhão,Algarve,ALGARVE,NULL,7260549,VLCI  94-VJ-64,OK
+585,EVN,PRP,SF 5VN06,,3,Parque Natural do Sudoeste Alentejano e Costa Vicentina,Odemira,"37,597208","-8,639516",914197377,NULL,Odemira,Algarve,ALGARVE,7260551,NULL,VLCI 94-VJ-62,OK
+586,EVN,PRP,SF 5VN07,,3,Parque Natural da Ria Formosa,Olhão,"37,03248","-7,817947",914200757,NULL,Olhão,Algarve,ALGARVE,7260552,NULL,VLCI 10-MB-38,OK
+587,EVN,PRP,SF 5VN08,,2,Parque Natural da Ria Formosa,Olhão,"37,03248","-7,817947",914200757,NULL,Olhão,Algarve,ALGARVE,7260553,NULL,VLCI 39-XF-10,OK
+588,EVN,PRP,SF 1VN01,,2,Equipa do PN Montesinho,Bragança,"41,799671","-6,761314",964589372,NULL,Bragança,Terras de Trás-Os-Montes,NORTE,3260678,NULL,VLCI 94-VJ-52,OK
+589,EVN,PRP,SF 1VN02,,2,Equipa do PN Alvão ,Vila Real,"41,293904","-7,746218",964613570,NULL,Vila Real,Douro,NORTE,4260697,NULL,NULL,Sem viatura
+590,EVN,PRP,SF 1VN03,,2,Equipa do PN Litoral Norte ,Esposende,"41,532619","-8,781083",964614687,NULL,Esposende,Cávado,NORTE,4260688,NULL,NULL,Sem viatura
+591,EVN,PRP,SF 1VN04,,2,Equipa do PN Douro Internacional,Mogadouro,"41,339951","-6,714053",964614517,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,3260674,NULL,VLCI 28-XF-57,OK
+592,EVN,PRP,SF 1VN05,,2,Parque Nacional da Peneda-Gerês,Gerês,"41,737619","-8,158567",964565249,NULL,Terras de Bouro,Cávado,NORTE,4260681,NULL,VLCI 94-VJ-50,OK
+593,EVN,PRP,SF 1VN06,,2,Parque Nacional da Peneda-Gerês,Arcos Valdevez,"41,844307","-8,421123",964614019,NULL,Arcos Valdevez,Alto Minho,NORTE,3260664,NULL,VLCI 17-TX-58,OK
+594,EVN,PRP,SF 2VN01,,2,Parque Natural da Serra da Estrela - Seia,Seia,"40,419765","-7,702054",914200232,NULL,Seia,Beiras e Serra da Estrela,CENTRO,NULL,5260788,VLCI 94-VJ-53,OK
+595,EVN,PRP,SF 2VN02,,2,Parque Natural da Serra da Estrela - Manteigas,Manteigas,"40,402398","-7,537512",914197804,NULL,Manteigas,Beiras e Serra da Estrela,CENTRO,NULL,5260789,VLCI 38-XF-66,OK
+596,EVN,PRP,SF 2VN03,,2,Reserva Natural da Serra da Malcata - Sabugal,Sabugal,"40,331119","-7,098171",914220276,NULL,Sabugal,Beiras e Serra da Estrela,CENTRO,5260790,NULL,VLCI 89-BV-75,OK
+597,EVN,PRP,SF 2VN05,,2,Reserva Natural das Dunas de São Jacinto,São Jacinto,"40,670926","-8,724708",914199486,NULL,Aveiro,Região de Aveiro,CENTRO,NULL,6260603,VLCI 17-TX-61,OK
+598,EVN,PRP,SF 2VN06,,2,Paisagem Protegida da Serra do Açôr - Benfeita/Arganil,Arganil,"40,216424","-7,919146",914199700,NULL,Arganil,Região de Coimbra,CENTRO,NULL,5260792,VLCI 38-XF-70,OK
+599,EVN,PRP,SF 2VN08,,2,Reserva Natural do Paul de Arzila - Choupal/Coimbra,Coimbra,"40,221088","-8,446523",914199847,NULL,Coimbra,Região de Coimbra,CENTRO,NULL,5260793,VLCI 94-VJ-54,OK
+600,EVN,PRP,SF 2VN10,,2,Parque Natural do Tejo Internacional - Castelo Branco,Castelo Branco,"39,816269","-7,510944",914196475,NULL,Castelo Branco,Beira Baixa,CENTRO,NULL,5260791,VLCI 94-VJ-55,OK
+601,EVN,PRP,SF 3VN01,,2,Parque Natural Sintra Cascais,Sintra,"38,800368","-9,381725",917297057,NULL,Sintra,Grande Lisboa,LVT,NULL,1260708,VLCI 94-VJ-58,OK
+602,EVN,PRP,SF 3VN02,,3,Parque Natural da Arrábida,Setúbal,"38,520659","-8,892115",961678843,NULL,Setúbal,Península de Setúbal,LVT,1260709,NULL,VLCI 17-TX-62,OK
+603,EVN,PRP,SF 3VN03,,3,Parque Natural da Arrábida,Setúbal,"38,520659","-8,892115",917297427,NULL,Setúbal,Península de Setúbal,LVT,NULL,1260729,VLCI 94-VJ-57,OK
+604,EVN,PRP,SF 3VN08,,2,Reserva Natural do Estuário do Sado,Setúbal,"38,520659","-8,892115",968669623,NULL,Setúbal,Alentejo Litoral,ALENTEJO,2260518,NULL,VLCI 87-IB-71,OK
+605,ECNAF,PRP,CNAF 17,,0,ICNF - Norte,Ribeira de Pena,NULL,NULL,NULL,NULL,Ribeira de Pena,Alto Tâmega e Barroso,NORTE,4260689,NULL,VLCI 32-11-OP,OK
+606,ECNAF,PRP,CNAF 56,,3,ICNF-Algarve,Ria Formosa,NULL,NULL,NULL,NULL,NULL,Algarve,ALGARVE,7260543,NULL,VLCI 16-XO-43,OK
+607,ECNAF,PRP,CNAF 57,,5,ICNF-Algarve,Ria Formosa,NULL,NULL,NULL,NULL,NULL,Algarve,ALGARVE,7260541,NULL,VLCI 16-XO-44,OK
+608,TGFR,PRP,ALEXANDRA SOFIA GOUVEIA CARVALHO,,1,LVT,Bairro,"39,572322","-8,588076",914153766,alexandra.carvalho@icnf.pt,Ourém,Médio Tejo ,LVT,NULL,NULL,NULL,Sem viatura
+609,TGFR,PRP,MARIA JOÃO CIRÍACO ROSADO,,1,Alentejo,Évora,NULL,NULL,NULL,Maria.Rosado@icnf.pt,NULL,Alentejo Central,ALENTEJO,NULL,NULL,NULL,Sem viatura
+610,ESF,CNT,SF 28-111,,5,Associação de Produtores Florestais do Vale do Minho,Melgaço,"42,05426","-8,245025",963779545,earaujo@valminhoflorestal.com,Melgaço,Alto Minho,NORTE,3260521,NULL,VLCI 91-XJ-09,Viatura NÃO encontrada
+611,ECNAF,PRP,CNAF 42,,4,ICNF - Norte,Vila Real,NULL,NULL,NULL,NULL,Vila Real,Douro,NORTE,4260687,NULL,NULL,Sem viatura
+612,ESF,CNT,SF 10-181,,5,Município de Odemira,Odemira,"37,596312","-8,641849",NULL,NULL,Odemira,Alentejo Litoral,ALENTEJO,2260532,NULL,NULL,Sem viatura
+613,ESF,CNT,SF 47-115,,5,Município de Cabeceiras de Basto,Cabeceiras de Basto,"41,513918","-7,993614",NULL,NULL,Cabeceiras de Basto,Ave,NORTE,4260718,NULL,VLCI 69-DV-11,OK
+614,ESF,CNT,SF 61-118,,5,APATA - Associação de Produtores Agrícolas Tradicionais e Ambientais,Miranda do Douro,"41,495113","-6,274345",NULL,NULL,Miranda do Douro,Terras de Trás-Os-Montes,NORTE,NULL,NULL,VLCI BT-04-GD,Viatura NÃO encontrada
+615,ESF,CNT,SF 62-118,,4,Junta de Freguesia de Mirandela,Mirandela,"41,458859","-7,185982",NULL,NULL,Mirandela,Terras de Trás-Os-Montes,NORTE,NULL,NULL,VLCI 33-QS-64,Viatura NÃO encontrada
+616,ESF,CNT,SF 10-16B,BRIG 01-16B,4,Comunidade Intermunicipal do Oeste - BRIG-1-16B,Caldas da Rainha,"39,411263","-9,135802",NULL,NULL,Caldas da Rainha,Oeste,LVT,NULL,NULL,VLCI 18-VI-41,Viatura NÃO encontrada
+617,ECNAF,PRP,CNAF 51,,2,ICNF - Norte,Monção,NULL,NULL,NULL,silverio.carvalho@icnf.pt,Monção,Alto Minho,NORTE,NULL,NULL,NULL,Sem viatura
+618,ESF,CNT,SF 59-118,,5,APFNT - Associação de Produtores Florestais do Nordeste Transmontano,Mogadouro,"41,339382","-6,706159",NULL,NULL,Mogadouro,Terras de Trás-Os-Montes,NORTE,NULL,NULL,VLCI 77-NS-40,OK
+619,EMR,PRP,MR M04,,1,,,,,,,,,NACIONAL,,,MR M04,OK
+620,EMR,PRP,MR M01,,1,,,,,,,,,NACIONAL,,,MR M01,OK
+621,EMR,PRP,MR M03,,1,,,,,,,,,NACIONAL,,,MR M03,OK
+622,EMR,PRP,MR M10,,1,,,,,,,,,NACIONAL,,,MR M10,OK
+623,EMR,PRP,MR M02,,1,,,,,,,,,NACIONAL,,,MR M02,OK
+624,EMR,PRP,MR M08,,1,,,,,,,,,NACIONAL,,,MR M08,OK
+625,ECNAF,PRP,CNAF 49,,,,,,,,,,,ALENTEJO,,,VLCI 16-XO-25,OK
+626,ECNAF,PRP,CNAF 48,,,,,,,,,,,LVT,,,VLCI 16-XO-28,OK
+627,ECNAF,PRP,CNAF 47,,,,,,,,,,,LVT,,,VLCI 16-XO-30,OK
+628,ECNAF,PRP,CNAF 52,,,,,,,,,,,ALENTEJO,,,VLCI 16-XO-37,OK
+629,ECNAF,PRP,CNAF 53 ,,,,,,,,,,,ALENTEJO,,,VLCI 16-XO-68,OK
+630,ECNAF,PRP,CNAF 54,,,,,,,,,,,CENTRO,,,VLCI 16-XO-72,OK
+631,ECNAF,PRP,CNAF 37,,,,,,,,,,,CENTRO,,,VLCI 17-TX-28,OK
+632,ECNAF,PRP,CNAF 36,,,,,,,,,,,CENTRO,,,VLCI 17-TX-39,OK
+633,ECNAF,PRP,CNAF 06,,,,,,,,,,,CENTRO,,,VLCI 18-VI-20,OK
+634,ECNAF,PRP,CNAF 05,,,,,,,,,,,CENTRO,,,VLCI 18-VI-27,OK
+635,ECNAF,PRP,CNAF 01,,,,,,,,,,,CENTRO,,,VLCI 18-VI-31,OK
+636,ECNAF,PRP,CNAF 40,,,,,,,,,,,ALGARVE,,,VLCI 18-VI-33,OK
+637,ECNAF,PRP,CNAF 18A,,,,,,,,,,,NORTE,,,VLCI 18-VI-39,OK
+638,ECNAF,PRP,CNAF 33,,,,,,,,,,,NORTE,,,VLCI 18-VI-43,OK
+639,ECNAF,PRP,CNAF 08,,,,,,,,,,,CENTRO,,,VLCI 41-FH-36,OK
+640,ECNAF,PRP,CNAF 51,,,,,,,,,,,NORTE,,,VLCI 41-FH-53,OK
+641,ECNAF,PRP,CNAF 42,,,,,,,,,,,NORTE,,,VLCI 43-61-RU,OK
+642,ECNAF,PRP,CNAF 55,,,,,,,,,,,ALENTEJO,,,VLCI 81-AO-85,OK
+643,ECNAF,PRP,CNAF 46,,,,,,,,,,,LVT,,,VLCI 90-XJ-97,OK
+644,ECNAF,PRP,CNAF 13,,,,,,,,,,,CENTRO,,,VLCI 96-FC-92,OK
+645,EMR,PRP,MR M09,,1,,,,,,,,,NACIONAL,,,MR M09,OK
+646,EMR,PRP,MR M07,,1,,,,,,,,,NACIONAL,,,MR M07,OK
+647,EMR,PRP,MR M05,,1,,,,,,,,,NACIONAL,,,MR M05,OK
+648,EMR,PRP,MR M06,,1,,,,,,,,,NACIONAL,,,MR M06,OK
+649,EMR,PRP,TL01,,1,,,,,,,,,NACIONAL,,,TR TL01,OK
+650,EMR,PRP,TL02,,1,,,,,,,,,NACIONAL,,,TR TL02,OK
+651,EMR,PRP,TL03,,1,,,,,,,,,NACIONAL,,,TR TL03,OK
+652,EMR,PRP,GG01,,1,,,,,,,,,NACIONAL,,,GR GG01,OK
+653,EMR,PRP,GG02,,1,,,,,,,,,NACIONAL,,,GR GG02,OK
+654,EMR,PRP,GG03,,1,,,,,,,,,NACIONAL,,,GR GG03,OK
+655,EMR,PRP,DR01,,1,,,,,,,,,NACIONAL,,,DR DR01,OK
+656,EMR,PRP,DR02,,1,,,,,,,,,NACIONAL,,,DR DR02,OK
+657,EMR,PRP,VT01,,1,,,,,,,,,NACIONAL,,,PM VT01,OK
+658,EMR,PRP,VT02,,1,,,,,,,,,NACIONAL,,,PM VT02,OK
+659,EMR,PRP,VT03,,1,,,,,,,,,NACIONAL,,,PM VT03,OK
+660,EMR,PRP,TFA1,,1,,,,,,,,,NACIONAL,,,TB TFA1,OK
+661,EMR,PRP,TFF1,,1,,,,,,,,,NACIONAL,,,TB TFF1,OK
+662,EMR,PRP,TL04,,1,,,,,,,,,NACIONAL,,,TR TL04,OK
+663,EMR,PRP,TL05,,1,,,,,,,,,NACIONAL,,,TR TL05,OK
+664,EMR,PRP,TL06,,1,,,,,,,,,NACIONAL,,,TR TL06,OK
+665,EMR,PRP,TFF2,,1,,,,,,,,,NACIONAL,,,TB TFF2,OK
+666,EMR,PRP,TFA2,,1,,,,,,,,,NACIONAL,,,TB TFA2,OK
+667,EMR,PRP,TFA3,,1,,,,,,,,,NACIONAL,,,TB TFA3,OK
+668,EMR,PRP,TFA4,,1,,,,,,,,,NACIONAL,,,TB TFA4,OK
+669,EMR,PRP,TFA5,,1,,,,,,,,,NACIONAL,,,TB TFA5,OK
+670,EMR,PRP,TFA6,,1,,,,,,,,,NACIONAL,,,TB TFA6,OK
+671,EMR,PRP,TFA7,,1,,,,,,,,,NACIONAL,,,TB TFA7,OK
+672,EMR,PRP,TFA8,,1,,,,,,,,,NACIONAL,,,TB TFA8,OK
+673,EMR,PRP,TFA9,,1,,,,,,,,,NACIONAL,,,TB TFA9,OK
+674,EMR,PRP,TFA10,,1,,,,,,,,,NACIONAL,,,TB TFA10,OK
+675,EMR,PRP,M11,,1,,,,,,,,,NACIONAL,,,MR M11,OK
+676,EMR,PRP,M12,,1,,,,,,,,,NACIONAL,,,MR M12,OK
+677,EMR,PRP,M13,,1,,,,,,,,,NACIONAL,,,MR M13,OK
+678,EMR,PRP,TF1,,1,,,,,,,,,NACIONAL,,,TB TF1,OK
+679,EMR,PRP,TF2,,1,,,,,,,,,NACIONAL,,,TB TF2,OK
+680,EMR,PRP,TF3,,1,,,,,,,,,NACIONAL,,,TB TF3,OK
+681,EMR,PRP,TF4,,1,,,,,,,,,NACIONAL,,,TB TF4,OK
+682,EMR,PRP,TF5,,1,,,,,,,,,NACIONAL,,,TB TF5,OK
+683,EMR,PRP,TF6,,1,,,,,,,,,NACIONAL,,,TB TF6,OK
+684,EMR,PRP,TF7,,1,,,,,,,,,NACIONAL,,,TB TF7,OK
+685,EMR,PRP,TF8,,1,,,,,,,,,NACIONAL,,,TB TF8,OK
+686,EMR,PRP,TF9,,1,,,,,,,,,NACIONAL,,,TB TF9,OK
+687,EMR,PRP,TF10,,1,,,,,,,,,NACIONAL,,,TB TF10,OK
+688,EMR,PRP,TF11,,1,,,,,,,,,NACIONAL,,,TB TF11,OK
+689,EMR,PRP,TF12,,1,,,,,,,,,NACIONAL,,,TB TF12,OK
+690,EMR,PRP,TL07,,1,,,,,,,,,NACIONAL,,,TR TL07,OK
+691,EMR,PRP,TL08,,1,,,,,,,,,NACIONAL,,,TR TL08,OK
+692,EMR,PRP,TL09,,1,,,,,,,,,NACIONAL,,,TR TL09,OK
+693,EMR,PRP,TL010,,1,,,,,,,,,NACIONAL,,,TR TL10,OK
+694,EMR,PRP,TFF3,,1,,,,,,,,,NACIONAL,,,TB TFF3,OK
+695,EMR,PRP,TFF4,,1,,,,,,,,,NACIONAL,,,TB TFF4,OK
+696,EMR,PRP,TFF5,,1,,,,,,,,,NACIONAL,,,TB TFF5,OK
+697,EMR,PRP,TFF6,,1,,,,,,,,,NACIONAL,,,TB TFF6,OK
+698,EMR,PRP,TFF7,,1,,,,,,,,,NACIONAL,,,TB TFF7,OK
+699,EMR,PRP,TFF8,,1,,,,,,,,,NACIONAL,,,TB TFF8,OK
+700,EMR,PRP,TFF9,,1,,,,,,,,,NACIONAL,,,TB TFF9,OK
+701,EMR,PRP,TFF10,,1,,,,,,,,,NACIONAL,,,TB TFF10,OK
+702,EMR,PRP,TFF11,,1,,,,,,,,,NACIONAL,,,TB TFF11,OK
+703,EMR,PRP,TFF12,,1,,,,,,,,,NACIONAL,,,TB TFF12,OK
+704,EMR,PRP,TFF13,,1,,,,,,,,,NACIONAL,,,TB TFF13,OK
+705,EMR,PRP,GG04,,1,,,,,,,,,NACIONAL,,,GR GG04,OK
+706,EMR,PRP,GG05,,1,,,,,,,,,NACIONAL,,,GR GG05,OK
+707,EMR,PRP,GG06,,1,,,,,,,,,NACIONAL,,,GR GG06,OK
+708,EMR,PRP,GG07,,1,,,,,,,,,NACIONAL,,,GR GG07,OK
+709,EMR,PRP,M17,,1,,,,,,,,,NACIONAL,,,MR M17,OK
+710,EMR,PRP,M18,,1,,,,,,,,,NACIONAL,,,MR M18,OK
+711,EMR,PRP,M19,,1,,,,,,,,,NACIONAL,,,MR M19,OK
+712,EMR,PRP,M20,,1,,,,,,,,,NACIONAL,,,MR M20,OK
+713,EMR,PRP,M21,,1,,,,,,,,,NACIONAL,,,MR M21,OK
+714,EMR,PRP,M22,,1,,,,,,,,,NACIONAL,,,MR M22,OK
+715,EMR,PRP,M23,,1,,,,,,,,,NACIONAL,,,MR M23,OK
+716,EMR,PRP,MR M14,,1,,,,,,,,,NACIONAL,,,MR M14,OK
+717,EMR,PRP,MR M15,,1,,,,,,,,,NACIONAL,,,MR M15,OK
+718,EMR,PRP,MR M16,,1,,,,,,,,,NACIONAL,,,MR M16,OK
+719,EMR,PRP,MR M24,,1,,,,,,,,,NACIONAL,,,MR M24,OK
+720,EMR,PRP,TFA11,,1,,,,,,,,,NACIONAL,,,TB TFA11,OK
+721,EMR,PRP,TFA12,,1,,,,,,,,,NACIONAL,,,TB TFA12,OK
+722,EMR,PRP,TFA13,,1,,,,,,,,,NACIONAL,,,TB TFA13,OK
+723,EMR,PRP,TFA14,,1,,,,,,,,,NACIONAL,,,TB TFA14,OK
+724,EMR,PRP,TFA15,,1,,,,,,,,,NACIONAL,,,TB TFA15,OK
+725,EMR,PRP,TFA16,,1,,,,,,,,,NACIONAL,,,TB TFA16,OK
+726,EMR,PRP,TFA17,,1,,,,,,,,,NACIONAL,,,TB TFA17,OK
+727,EMR,PRP,TFA18,,1,,,,,,,,,NACIONAL,,,TB TFA18,OK
+728,EMR,PRP,TFA19,,1,,,,,,,,,NACIONAL,,,TB TFA19,OK
+729,EMR,PRP,TFA20,,1,,,,,,,,,NACIONAL,,,TB TFA20,OK
+730,EMR,PRP,TFA21,,1,,,,,,,,,NACIONAL,,,TB TFA21,OK
+731,EMR,PRP,TFA22,,1,,,,,,,,,NACIONAL,,,TB TFA22,OK
+732,EMR,PRP,TFA23,,1,,,,,,,,,NACIONAL,,,TB TFA23,OK
+733,EMR,PRP,TFA24,,1,,,,,,,,,NACIONAL,,,TB TFA24,OK
+734,EMR,PRP,TFA25,,1,,,,,,,,,NACIONAL,,,TB TFA25,OK
+735,EMR,PRP,TFA26,,1,,,,,,,,,NACIONAL,,,TB TFA26,OK
+736,EMR,PRP,TFA27,,1,,,,,,,,,NACIONAL,,,TB TFA27,OK
+737,EVN,PRP,SF 4VN01,,,,,,,,,,,ALENTEJO,,,VLCI 94-VJ-60,OK
+738,EVN,PRP,SF 4VN01,,,,,,,,,,,ALENTEJO,,,VLCI 89-BV-85,OK
+739,EMR,PRP,TFA28,,1,,,,,,,,,NACIONAL,,,TB TFA28,OK
+740,EMR,PRP,TFA29,,1,,,,,,,,,NACIONAL,,,TB TFA29,OK
+741,EMR,PRP,TFA30,,1,,,,,,,,,NACIONAL,,,TB TFA30,OK
+742,EMR,PRP,TFA31,,1,,,,,,,,,NACIONAL,,,TB TFA31,OK
+743,EMR,PRP,TFA32,,1,,,,,,,,,NACIONAL,,,TB TFA32,OK
+744,EMR,PRP,TFA33,,1,,,,,,,,,NACIONAL,,,TB TFA33,OK
+745,EMR,PRP,TFA34,,1,,,,,,,,,NACIONAL,,,TB TFA34,OK
+746,EMR,PRP,TFA35,,1,,,,,,,,,NACIONAL,,,TB TFA35,OK
+747,EMR,PRP,TFA36,,1,,,,,,,,,NACIONAL,,,TB TFA36,OK
+748,EMR,PRP,TFA37,,1,,,,,,,,,NACIONAL,,,TB TFA37,OK
+749,EMR,PRP,TFA38,,1,,,,,,,,,NACIONAL,,,TB TFA38,OK
+750,EMR,PRP,TFA39,,1,,,,,,,,,NACIONAL,,,TB TFA39,OK
+751,EMR,PRP,TFA40,,1,,,,,,,,,NACIONAL,,,TB TFA40,OK
+752,EMR,PRP,TFA41,,1,,,,,,,,,NACIONAL,,,TB TFA41,OK
+753,EMR,PRP,TFA42,,1,,,,,,,,,NACIONAL,,,TB TFA42,OK
+754,EMR,PRP,TFA43,,1,,,,,,,,,NACIONAL,,,TB TFA43,OK
+755,EMR,PRP,TFA44,,1,,,,,,,,,NACIONAL,,,TB TFA44,OK
+756,EMR,PRP,TFA45,,1,,,,,,,,,NACIONAL,,,TB TFA45,OK
+757,EMR,PRP,TFA46,,1,,,,,,,,,NACIONAL,,,TB TFA46,OK
+758,EMR,PRP,TFA47,,1,,,,,,,,,NACIONAL,,,TB TFA47,OK
+759,EMR,PRP,TFA48,,1,,,,,,,,,NACIONAL,,,TB TFA48,OK
+760,EMR,PRP,TFA49,,1,,,,,,,,,NACIONAL,,,TB TFA49,OK
+761,EMR,PRP,TFA50,,1,,,,,,,,,NACIONAL,,,TB TFA50,OK
+762,EMR,PRP,TFA51,,1,,,,,,,,,NACIONAL,,,TB TFA51,OK
+763,EMR,PRP,TFA52,,1,,,,,,,,,NACIONAL,,,TB TFA52,OK
+764,EMR,PRP,TFA53,,1,,,,,,,,,NACIONAL,,,TB TFA53,OK
+765,EMR,PRP,E,,1,,,,,,,,,NACIONAL,,,PM E,OK
+766,EMR,PRP,VT04,,1,,,,,,,,,NACIONAL,,,PM VT04,OK
+767,EMR,PRP,VT05,,1,,,,,,,,,NACIONAL,,,PM VT05,OK
+768,EMR,PRP,VT06,,1,,,,,,,,,NACIONAL,,,PM VT06,OK
+769,EMR,PRP,VT07,,1,,,,,,,,,NACIONAL,,,PM VT07,OK
+770,EMR,PRP,VT08,,1,,,,,,,,,NACIONAL,,,PM VT08,OK
+771,EMR,PRP,VT09,,1,,,,,,,,,NACIONAL,,,PM VT09,OK
+772,EMR,PRP,VT10,,1,,,,,,,,,NACIONAL,,,PM VT10,OK
+773,EMR,PRP,VT11,,1,,,,,,,,,NACIONAL,,,MU VT11,OK
+774,EMR,PRP,VT12,,1,,,,,,,,,NACIONAL,,,MU VT12,OK
+775,EMR,PRP,VT13,,1,,,,,,,,,NACIONAL,,,MU VT13,OK
+776,EMR,PRP,VT14,,1,,,,,,,,,NACIONAL,,,MU VT14,OK
+777,EMR,PRP,VT15,,1,,,,,,,,,NACIONAL,,,MU VT15,OK
+778,EFSBF,PRP,FSBF CBAS03,,,,,,,,,,,NACIONAL,,,VLCI 08-XL-45,OK
+779,EFSBF,PRP,FSBF VPA01,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-50,OK
+780,EFSBF,PRP,FSBF PRN02,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-55,OK
+781,EFSBF,PRP,FSBF GD03,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-57,OK
+782,EFSBF,PRP,FSBF GD04,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-59,OK
+783,EFSBF,PRP,FSBF MG01,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-62,OK
+784,EFSBF,PRP,FSBF LOU01,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-63,OK
+785,EFSBF,PRP,FSBF STR03,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-69,OK
+786,EFSBF,PRP,FSBF STR03,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-75,OK
+787,EFSBF,PRP,FSBF PTG03,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-77,OK
+788,EFSBF,PRP,FSBF PTG04,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-78,OK
+789,EFSBF,PRP,FSBF PTG04,,,,,,,,,,,NACIONAL,,,VLCI 16-XO-81,OK
+790,EFSBF,PRP,FSBF STR01,,,,,,,,,,,NACIONAL,,,VLCI 55-VO-27,OK
+791,EFSBF,PRP,FSBF STR02,,,,,,,,,,,NACIONAL,,,VLCI 55-VO-28,OK
+792,EFSBF,PRP,FSBF STR01,,,,,,,,,,,NACIONAL,,,VCOT 55-VO-29,OK
+793,EFSBF,PRP,FSBF VPA01,,,,,,,,,,,NACIONAL,,,VCOT 85-CT-47,OK
