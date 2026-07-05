@@ -363,6 +363,35 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_meio_delete_requests_pending
     ON meio_delete_requests(meio_id) WHERE status = 'pending';
 
 -- ══════════════════════════════════════════════════════════════════
+--  OPERACIONAIS PREDEFINIDOS
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS operacionais_predefinidos (
+    id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome      TEXT NOT NULL,
+    categoria TEXT,
+    contacto  TEXT,
+    notas     TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- ══════════════════════════════════════════════════════════════════
+--  FITA DO TEMPO
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS ocorrencia_timeline (
+    id            SERIAL PRIMARY KEY,
+    ocorrencia_id UUID        NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    ts            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    categoria     TEXT        NOT NULL,
+    titulo        TEXT,
+    descricao     TEXT,
+    dados         JSONB,
+    autor_nome    TEXT,
+    autor_id      UUID        REFERENCES utilizadores(id),
+    meio_id       UUID        REFERENCES meios(id)
+);
+CREATE INDEX IF NOT EXISTS idx_timeline_occ ON ocorrencia_timeline(ocorrencia_id, ts DESC);
+
+-- ══════════════════════════════════════════════════════════════════
 --  SECTORES PREDEFINIDOS
 -- ══════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS sectores (
