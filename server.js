@@ -514,111 +514,13 @@ app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) 
 
 // ─── Startup migrations ──────────────────────────────────────────
 async function runMigrations() {
-  // Add new columns (idempotent)
-  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS tipo_equipa TEXT`);
-  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS subregiao   TEXT`);
-  await pool.query(`ALTER TABLE equipas ADD COLUMN IF NOT EXISTS concelho    TEXT`);
+  const fs = require('fs');
 
-  // Previsto state: new columns + extend CHECK constraint
-  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS previsto_data DATE`);
-  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS previsto_hora TIME`);
-  // Drop old CHECK and re-add with 'previsto' included (idempotent via constraint name)
-  await pool.query(`
-    DO $$ BEGIN
-      IF EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'meios_estado_check' AND conrelid = 'meios'::regclass
-      ) THEN
-        ALTER TABLE meios DROP CONSTRAINT meios_estado_check;
-      END IF;
-    END $$
-  `);
-  await pool.query(`
-    ALTER TABLE meios ADD CONSTRAINT meios_estado_check
-      CHECK (estado IN ('transito','operacao','descanso','desmobilizado','previsto'))
-  `);
-
-  // Rename role 'gestor' -> 'ofligacao' (idempotent)
-  await pool.query(`
-    DO $$ BEGIN
-      IF EXISTS (
-        SELECT 1 FROM pg_constraint
-        WHERE conname = 'utilizadores_role_check' AND conrelid = 'utilizadores'::regclass
-      ) THEN
-        ALTER TABLE utilizadores DROP CONSTRAINT utilizadores_role_check;
-      END IF;
-    END $$
-  `);
-  await pool.query(`UPDATE utilizadores SET role = 'ofligacao' WHERE role = 'gestor'`);
-  await pool.query(`
-    ALTER TABLE utilizadores ADD CONSTRAINT utilizadores_role_check
-      CHECK (role IN ('admin','ofligacao','operacional','visualizador'))
-  `);
-
-  // MR/PM: ligação ao catálogo de equipas + transporte associado
-  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS equipa_id UUID REFERENCES equipas(id) ON DELETE SET NULL`);
-  await pool.query(`ALTER TABLE meios ADD COLUMN IF NOT EXISTS transporte_id UUID REFERENCES meios(id) ON DELETE SET NULL`);
-  // Um mesmo meio predefinido não pode estar activo (trânsito/operação/descanso) em mais de uma ocorrência
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_equipa_active
-      ON meios(equipa_id)
-      WHERE equipa_id IS NOT NULL AND estado IN ('transito','operacao','descanso')
-  `);
-
-  // Pedidos de remoção de meios (oficial de ligação solicita, admin aprova/rejeita)
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS meio_delete_requests (
-      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      meio_id        UUID NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
-      ocorrencia_id  UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
-      meio_eq        TEXT NOT NULL,
-      meio_tipo      TEXT,
-      motivo         TEXT,
-      status         TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
-      requested_by   UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
-      requested_nome TEXT,
-      resolved_by    UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
-      resolved_nome  TEXT,
-      resolved_at    TIMESTAMPTZ,
-      created_at     TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_meio_delete_requests_pending
-      ON meio_delete_requests(meio_id) WHERE status = 'pending'
-  `);
-
-  // Oficial de Ligação responsável pela ocorrência (registado na Fita do Tempo)
-  await pool.query(`ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS oficial_ligacao_id UUID REFERENCES utilizadores(id) ON DELETE SET NULL`);
-  await pool.query(`ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS oficial_ligacao_nome TEXT`);
-
-  // Fita do Tempo: tabela de entradas manuais da timeline
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS ocorrencia_timeline (
-      id            SERIAL PRIMARY KEY,
-      ocorrencia_id UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
-      ts            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      categoria     TEXT NOT NULL,
-      titulo        TEXT,
-      descricao     TEXT,
-      dados         JSONB,
-      autor_nome    TEXT,
-      autor_id      UUID REFERENCES utilizadores(id),
-      meio_id       UUID REFERENCES meios(id)
-    )
-  `);
-
-  // Seed ICNF/ANEPC 2026 data if table is empty
-  const { rows: cnt } = await pool.query('SELECT COUNT(*) FROM equipas');
-  if (parseInt(cnt[0].count) === 0) {
-    const fs = require('fs');
-    const sqlPath = require('path').join(__dirname, 'migration_v2_equipas.sql');
-    if (fs.existsSync(sqlPath)) {
-      const sql = fs.readFileSync(sqlPath, 'utf8');
-      await pool.query(sql);
-      console.log('Meios predefinidos ICNF/ANEPC 2026 importados.');
-    }
-  }
+  // Aplicar schema base (idempotente — usa CREATE TABLE/INDEX IF NOT EXISTS)
+  const schemaPath = path.join(__dirname, 'schema.sql');
+  const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+  await pool.query(schemaSql);
+  console.log('Schema aplicado.');
 }
 
 // ─── Start ────────────────────────────────────────────────────────
