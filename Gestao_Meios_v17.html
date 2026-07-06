@@ -949,9 +949,13 @@
                 <option value="">Classe…</option>
               </select>
               <select class="form-select" id="gicnf-v-megfr" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
-                <option value="">MEGFR…</option>
+                <option value="">Tipologia…</option>
+                <option value="BSF">BSF</option>
+                <option value="CNAF">CNAF</option>
                 <option value="EGFR">EGFR</option>
-                <option value="EMR">EMR</option>
+                <option value="ESF">ESF</option>
+                <option value="FSBF">FSBF</option>
+                <option value="VN">VN</option>
               </select>
               <select class="form-select" id="gicnf-v-dispon" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
                 <option value="">Todas</option>
@@ -962,7 +966,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>MEGFR</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Tipologia</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
               <tbody id="gicnf-v-tbody"></tbody>
             </table>
           </div>
@@ -5610,11 +5614,15 @@ async function editEgfrEntry(id, nome, capSup){
           <input class="form-input" id="nv-classe" placeholder="Ex: VLCI, VCOT…"/>
         </div>
         <div class="form-field">
-          <label class="form-label">MEGFR</label>
+          <label class="form-label">Tipologia (MEGFR)</label>
           <select class="form-select" id="nv-megfr">
             <option value="">—</option>
+            <option value="BSF">BSF</option>
+            <option value="CNAF">CNAF</option>
             <option value="EGFR">EGFR</option>
-            <option value="EMR">EMR</option>
+            <option value="ESF">ESF</option>
+            <option value="FSBF">FSBF</option>
+            <option value="VN">VN</option>
           </select>
         </div>
         <div class="form-field">
