@@ -897,6 +897,21 @@
             <div class="section-title">Recursos <span id="gicnf-r-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <input class="form-input" id="gicnf-r-q" placeholder="🔍 Código / entidade…" oninput="renderICNFRecursos()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-r-tipo" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Tipo…</option>
+                <option value="DIR">DIR</option>
+                <option value="ECNAF">ECNAF</option>
+                <option value="EFSBF">EFSBF</option>
+                <option value="EMR">EMR</option>
+                <option value="ESF">ESF</option>
+                <option value="EVN">EVN</option>
+                <option value="OLN">OLN</option>
+                <option value="TFSBF">TFSBF</option>
+                <option value="TGFR">TGFR</option>
+              </select>
+              <select class="form-select" id="gicnf-r-subregiao" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Sub-região…</option>
+              </select>
               <select class="form-select" id="gicnf-r-fonte" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
                 <option value="">Todas as fontes</option>
                 <option value="SF">SF</option>
@@ -4970,14 +4985,28 @@ async function renderICNFRecursos(){
   const fp  = document.getElementById('gicnf-r-prontidao')?.value||'';
   const ff  = document.getElementById('gicnf-r-fonte')?.value||'';
   const fa  = document.getElementById('gicnf-r-ativo')?.value;
+  const ft  = document.getElementById('gicnf-r-tipo')?.value||'';
+  const fsr = document.getElementById('gicnf-r-subregiao')?.value||'';
   const params = new URLSearchParams();
   if(ff) params.set('fonte', ff);
   if(fa!==undefined && fa!=='') params.set('ativo', fa);
   const { data, error } = await apiFetch('/api/gestao/recursos?'+params);
   if(error){ toast('Erro ao carregar recursos.','err'); return; }
   let rows = data || [];
-  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
-  if(fp) rows = rows.filter(r=>r.prontidao===fp);
+
+  // Populate sub-região dropdown from current data (preserve selection)
+  const srEl = document.getElementById('gicnf-r-subregiao');
+  if(srEl){
+    const current = srEl.value;
+    const subregioes = [...new Set(rows.map(r=>r.subregiao).filter(Boolean))].sort();
+    srEl.innerHTML = '<option value="">Sub-região…</option>' +
+      subregioes.map(s=>`<option value="${esc(s)}"${s===current?' selected':''}>${esc(s)}</option>`).join('');
+  }
+
+  if(q)   rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
+  if(fp)  rows = rows.filter(r=>r.prontidao===fp);
+  if(ft)  rows = rows.filter(r=>r.tipo===ft);
+  if(fsr) rows = rows.filter(r=>r.subregiao===fsr);
   rows.forEach(r => _gestaoRecursos[r.id] = r);
   document.getElementById('gicnf-r-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gicnf-r-tbody');
