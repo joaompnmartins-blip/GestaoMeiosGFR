@@ -5300,7 +5300,7 @@ async function renderICNFEgfr(){
   // Filter by turno if selected
   const filtered = selectedTurno ? groups.filter(g=>g.turno===selectedTurno) : groups;
 
-  const isCCON = _currentUser && (_currentUser.role==='admin'||_currentUser.role==='ofligacao_ccon');
+  const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
 
   const viatOpts = viaturas.map(v=>`<option value="${v.id}">${esc(v.matricula)}${v.designacao?' – '+esc(v.designacao):''}</option>`).join('');
 
