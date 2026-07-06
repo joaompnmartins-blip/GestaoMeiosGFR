@@ -549,6 +549,15 @@ app.get('/api/recursos', requireAuth('visualizador'), wrap(async (req, res) => {
 }));
 
 // §5.1 — Recurso com viaturas e rádios (payload de despacho)
+app.get('/api/recursos/tipos', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT rt.codigo, rt.categoria, f.codigo AS fonte
+    FROM recurso_tipos rt JOIN fontes f ON f.id = rt.fonte_id
+    ORDER BY f.codigo, rt.codigo
+  `);
+  res.json(rows);
+}));
+
 app.get('/api/recursos/:id', requireAuth('visualizador'), wrap(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT r.*,
@@ -776,7 +785,7 @@ const ROLE_FONTE = { gestor_sf: 'SF', gestor_fsbf: 'FSBF', gestor_icnf: 'ICNF' }
 
 // Garante que o gestor só altera recursos/viaturas da sua fonte
 async function assertFonteAccess(client, recursoId, userRole) {
-  if (userRole === 'admin') return;
+  if (userRole === 'admin' || userRole === 'gestor_icnf') return;
   const fonteEsperada = ROLE_FONTE[userRole];
   if (!fonteEsperada) throw Object.assign(new Error('Sem permissão.'), { status: 403 });
   const { rows } = await client.query(
@@ -800,10 +809,9 @@ app.get('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap(
   const { tipo, subregiao, ativo, fonte } = req.query;
   const atvFilter = ativo === undefined ? null : ativo === 'true';
 
-  // Gestores só vêem a sua própria fonte (a menos que sejam admin)
-  const fonteEfetiva = req.user.role === 'admin'
-    ? (fonte || null)
-    : ROLE_FONTE[req.user.role];
+  // gestor_icnf e admin vêem todas as fontes; outros gestores só a sua
+  const fullAccess = req.user.role === 'admin' || req.user.role === 'gestor_icnf';
+  const fonteEfetiva = fullAccess ? (fonte || null) : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
     SELECT r.*, rt.categoria, f.codigo AS fonte,
@@ -940,7 +948,7 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
   const { recurso_id, classe, ativo, disponivel } = req.query;
   const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
   const dispFilter = disponivel === undefined ? null : disponivel === 'true';
-  const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
+  const fonteEfetiva = (req.user.role === 'admin' || req.user.role === 'gestor_icnf') ? null : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
     SELECT v.*, r.codigo AS recurso_codigo, f.codigo AS fonte
@@ -985,7 +993,7 @@ app.get('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(as
   const { recurso_id, viatura_id, tipo, ativo, disponivel } = req.query;
   const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
   const dispFilter = disponivel === undefined ? null : disponivel === 'true';
-  const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
+  const fonteEfetiva = (req.user.role === 'admin' || req.user.role === 'gestor_icnf') ? null : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
     SELECT rd.*,

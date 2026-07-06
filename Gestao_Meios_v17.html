@@ -315,6 +315,12 @@
     tbody tr:hover{background:var(--surface2);}
     td.mono{font-family:'IBM Plex Mono',monospace;font-size:11px;}
 
+    /* MODULE TABS */
+    .icnf-tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0;}
+    .icnf-tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:7px 16px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;margin-bottom:-1px;transition:color .12s,border-color .12s;}
+    .icnf-tab-btn:hover{color:var(--fg);}
+    .icnf-tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
     /* VIEW TOGGLE */
     .view-toggle{display:flex;gap:4px;}
     .view-btn{padding:5px 10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;border-radius:2px;transition:all .12s;}
@@ -872,32 +878,134 @@
 
       <!-- ══════════ PAGE: GESTÃO ICNF ══════════ -->
       <div class="page" id="page-gestao-icnf">
-        <div class="section-hdr">
-          <div class="section-title">Recursos ICNF <span id="gicnf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input class="form-input" id="gicnf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoICNF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
-            <select class="form-select" id="gicnf-filter-prontidao" onchange="renderGestaoICNF()" style="font-size:12px;padding:5px 8px;">
-              <option value="">Prontidão…</option>
-              <option value="operacional">Operacional</option>
-              <option value="inoperacional">Inoperacional</option>
-            </select>
-          </div>
+        <!-- Tab navigation -->
+        <div class="icnf-tabs">
+          <button class="icnf-tab-btn active" onclick="icnfSwitchTab('recursos',this)">Recursos</button>
+          <button class="icnf-tab-btn" onclick="icnfSwitchTab('viaturas',this)">Viaturas</button>
+          <button class="icnf-tab-btn" onclick="icnfSwitchTab('radios',this)">Rádios</button>
+          <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
+          <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Contacto</th><th>Prontidão</th><th></th></tr></thead>
-            <tbody id="gicnf-tbody"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:24px;">
-          <div class="section-hdr" style="margin-bottom:12px;">
-            <div class="section-title" style="font-size:14px;">Escala OLN</div>
-            <button class="btn btn-primary btn-sm" onclick="openNewOlnSlot()">+ Novo Slot</button>
+
+        <!-- Tab 1: Recursos -->
+        <div id="icnf-tab-recursos">
+          <div class="section-hdr">
+            <div class="section-title">Recursos <span id="gicnf-r-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" id="gicnf-r-q" placeholder="🔍 Código / entidade…" oninput="renderICNFRecursos()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-r-fonte" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Todas as fontes</option>
+                <option value="SF">SF</option>
+                <option value="FSBF">FSBF</option>
+                <option value="ICNF">ICNF</option>
+              </select>
+              <select class="form-select" id="gicnf-r-prontidao" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Prontidão…</option>
+                <option value="operacional">Operacional</option>
+                <option value="inoperacional">Inoperacional</option>
+              </select>
+              <select class="form-select" id="gicnf-r-ativo" onchange="renderICNFRecursos()" style="font-size:12px;padding:5px 8px;">
+                <option value="true">Ativos</option>
+                <option value="">Todos</option>
+                <option value="false">Inativos</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="openNewRecursoModal()">+ Novo</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Recurso</th><th>Início</th><th>Fim</th><th>Notas</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Tipo</th><th>Fonte</th><th>Sub-região</th><th>Contacto</th><th>Prontidão</th><th>Viat.</th><th>Rád.</th><th></th></tr></thead>
+              <tbody id="gicnf-r-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2: Viaturas -->
+        <div id="icnf-tab-viaturas" style="display:none">
+          <div class="section-hdr">
+            <div class="section-title">Viaturas <span id="gicnf-v-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" id="gicnf-v-q" placeholder="🔍 Código / matrícula…" oninput="renderICNFViaturas()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-v-megfr" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">MEGFR…</option>
+                <option value="EGFR">EGFR</option>
+                <option value="EMR">EMR</option>
+              </select>
+              <select class="form-select" id="gicnf-v-dispon" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Todas</option>
+                <option value="true">Disponíveis</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="openNewViaturaModal()">+ Nova</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Classe</th><th>MEGFR</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <tbody id="gicnf-v-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 3: Rádios -->
+        <div id="icnf-tab-radios" style="display:none">
+          <div class="section-hdr">
+            <div class="section-title">Rádios <span id="gicnf-rd-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" id="gicnf-rd-q" placeholder="🔍 DDI / alias…" oninput="renderICNFRadios()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-rd-tipo" onchange="renderICNFRadios()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Tipo…</option>
+                <option value="Portatil">Portátil</option>
+                <option value="Viatura">Viatura</option>
+              </select>
+              <select class="form-select" id="gicnf-rd-dispon" onchange="renderICNFRadios()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Todos</option>
+                <option value="true">Disponíveis</option>
+              </select>
+              <button class="btn btn-primary btn-sm" onclick="openNewRadioModal()">+ Novo</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>DDI</th><th>Tipo</th><th>Alias</th><th>Recurso</th><th>Viatura</th><th></th></tr></thead>
+              <tbody id="gicnf-rd-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 4: OLN -->
+        <div id="icnf-tab-oln" style="display:none">
+          <div class="section-hdr">
+            <div class="section-title">Escala OLN CCON</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="month" class="form-input" id="gicnf-oln-mes" onchange="renderICNFOln()" style="font-size:12px;padding:5px 8px;"/>
+              <button class="btn btn-primary btn-sm" onclick="openNewOlnSlot()">+ Novo Slot</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Recurso OLN</th><th>Notas</th><th></th></tr></thead>
               <tbody id="gicnf-oln-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 5: EGFR -->
+        <div id="icnf-tab-egfr" style="display:none">
+          <div class="section-hdr">
+            <div class="section-title">Escala EGFR</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="date" class="form-input" id="gicnf-egfr-data" onchange="renderICNFEgfr()" style="font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-egfr-turno" onchange="renderICNFEgfr()" style="font-size:12px;padding:5px 8px;">
+                <option value="Prontidão (A)">Prontidão (A)</option>
+                <option value="Prevenção (B)">Prevenção (B)</option>
+                <option value="">Todos os turnos</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Equipa</th><th>Turno</th><th>Pos.</th><th>Nome</th><th>Cap. Supressão</th><th></th></tr></thead>
+              <tbody id="gicnf-egfr-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -4559,6 +4667,8 @@ function openGestaoRecursoModal(id){
   const r = _gestaoRecursos[id];
   if(!r){ toast('Registo não encontrado.','err'); return; }
   document.getElementById('grec-id').value        = r.id;
+  document.getElementById('grec-mode').value      = 'edit';
+  document.getElementById('grec-create-fields').style.display = 'none';
   document.getElementById('grec-codigo').textContent = r.codigo;
   document.getElementById('grec-entidade').value  = r.entidade  || '';
   document.getElementById('grec-contacto').value  = r.contacto  || '';
@@ -4587,7 +4697,8 @@ function openGestaoRecursoModal(id){
 }
 
 async function saveGestaoRecurso(){
-  const id = document.getElementById('grec-id').value;
+  const id   = document.getElementById('grec-id').value;
+  const mode = document.getElementById('grec-mode').value;
   const payload = {
     entidade:     document.getElementById('grec-entidade').value.trim()   || null,
     contacto:     document.getElementById('grec-contacto').value.trim()   || null,
@@ -4601,9 +4712,17 @@ async function saveGestaoRecurso(){
     subregiao:    document.getElementById('grec-subregiao').value         || null,
     concelho:     document.getElementById('grec-concelho').value.trim()   || null,
   };
-  const { error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'PATCH', body:JSON.stringify(payload) });
+  let error;
+  if(mode === 'create'){
+    payload.codigo = document.getElementById('grec-new-codigo').value.trim();
+    payload.tipo   = document.getElementById('grec-new-tipo').value;
+    if(!payload.codigo || !payload.tipo){ toast('Código e tipo são obrigatórios.','err'); return; }
+    ({ error } = await apiFetch('/api/gestao/recursos', { method:'POST', body:JSON.stringify(payload) }));
+  } else {
+    ({ error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'PATCH', body:JSON.stringify(payload) }));
+  }
   if(error){ toast(error.message,'err'); return; }
-  toast('Recurso actualizado.','ok');
+  toast(mode==='create' ? 'Recurso criado.' : 'Recurso actualizado.','ok');
   closeModal('modal-gestao-recurso');
   const activePage = document.querySelector('.page.active')?.id;
   if(activePage==='page-gestao-sf')   renderGestaoSF();
@@ -4820,75 +4939,299 @@ async function renderGestaoFSBF(){
 
 // ── Gestão ICNF ──────────────────────────────────────────────────
 
+// ── ICNF Module — tab controller ─────────────────────────────────
+
+let _icnfTab = 'recursos';
+let _olnRecursos = [];
+let _recursoTipos = [];
+
+function icnfSwitchTab(tab, btn){
+  _icnfTab = tab;
+  document.querySelectorAll('.icnf-tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  ['recursos','viaturas','radios','oln','egfr'].forEach(t=>{
+    const el = document.getElementById('icnf-tab-'+t);
+    if(el) el.style.display = t===tab ? '' : 'none';
+  });
+  renderGestaoICNF();
+}
+
 async function renderGestaoICNF(){
-  const q  = (document.getElementById('gicnf-filter-text')?.value||'').toLowerCase();
-  const fp = document.getElementById('gicnf-filter-prontidao')?.value||'';
-  const [{ data, error }, { data: olnData }] = await Promise.all([
-    apiFetch('/api/gestao/recursos?fonte=ICNF'),
-    apiFetch('/api/gestao/oln'),
-  ]);
-  if(error){ toast('Erro ao carregar recursos ICNF.','err'); return; }
+  if(_icnfTab==='recursos') await renderICNFRecursos();
+  else if(_icnfTab==='viaturas') await renderICNFViaturas();
+  else if(_icnfTab==='radios')   await renderICNFRadios();
+  else if(_icnfTab==='oln')      await renderICNFOln();
+  else if(_icnfTab==='egfr')     await renderICNFEgfr();
+}
+
+// ── Tab 1: Recursos ───────────────────────────────────────────────
+
+async function renderICNFRecursos(){
+  const q   = (document.getElementById('gicnf-r-q')?.value||'').toLowerCase();
+  const fp  = document.getElementById('gicnf-r-prontidao')?.value||'';
+  const ff  = document.getElementById('gicnf-r-fonte')?.value||'';
+  const fa  = document.getElementById('gicnf-r-ativo')?.value;
+  const params = new URLSearchParams();
+  if(ff) params.set('fonte', ff);
+  if(fa!==undefined && fa!=='') params.set('ativo', fa);
+  const { data, error } = await apiFetch('/api/gestao/recursos?'+params);
+  if(error){ toast('Erro ao carregar recursos.','err'); return; }
   let rows = data || [];
-  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.contacto||'')).toLowerCase().includes(q));
+  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
   if(fp) rows = rows.filter(r=>r.prontidao===fp);
   rows.forEach(r => _gestaoRecursos[r.id] = r);
-  document.getElementById('gicnf-count').textContent = `(${rows.length})`;
-  const tbody = document.getElementById('gicnf-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; }
-  else tbody.innerHTML = rows.map(r=>`<tr>
+  document.getElementById('gicnf-r-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gicnf-r-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r=>`<tr>
     <td><strong>${esc(r.codigo)}</strong></td>
     <td><span class="badge badge-y">${esc(r.tipo||'—')}</span></td>
+    <td><span class="badge badge-info">${esc(r.fonte||'—')}</span></td>
     <td>${esc(r.subregiao||'—')}</td>
-    <td>${esc(r.concelho||'—')}</td>
     <td class="mono">${esc(r.contacto||'—')}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td style="display:flex;gap:4px;">
-      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
-      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
+    <td class="mono" style="text-align:center">${r.radios_count||0}</td>
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}')">✕</button>
     </td>
-  </tr>`).join('');
-
-  // OLN escala
-  const olnRows = olnData || [];
-  const otbody = document.getElementById('gicnf-oln-tbody');
-  if(!olnRows.length){ otbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:12px">Sem slots na escala.</td></tr>'; return; }
-  otbody.innerHTML = olnRows.map(s=>`<tr>
-    <td><strong>${esc(s.recurso_codigo||'—')}</strong></td>
-    <td class="mono">${new Date(s.inicio).toLocaleString('pt-PT')}</td>
-    <td class="mono">${new Date(s.fim).toLocaleString('pt-PT')}</td>
-    <td style="font-size:11px;color:var(--muted)">${esc(s.notas||'—')}</td>
-    <td><button class="btn btn-danger btn-xs" onclick="deleteOlnSlot('${s.id}')">✕</button></td>
   </tr>`).join('');
 }
 
-// OLN slot create/delete
-let _olnRecursos = [];
+async function deleteRecurso(id, codigo){
+  if(!confirm(`Desativar recurso "${codigo}"?`)) return;
+  const { error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Recurso desativado.','info');
+  renderICNFRecursos();
+}
 
-async function openNewOlnSlot(){
+async function openNewRecursoModal(){
+  if(!_recursoTipos.length){
+    const { data } = await apiFetch('/api/recursos/tipos');
+    _recursoTipos = data || [];
+  }
+  document.getElementById('grec-id').value = '';
+  document.getElementById('grec-mode').value = 'create';
+  document.getElementById('grec-codigo').textContent = 'Novo Recurso';
+  document.getElementById('grec-create-fields').style.display = '';
+  document.getElementById('grec-new-codigo').value = '';
+  const sel = document.getElementById('grec-new-tipo');
+  sel.innerHTML = '<option value="">— Selecionar tipo —</option>' +
+    _recursoTipos.map(t=>`<option value="${t.codigo}">${esc(t.codigo)} — ${esc(t.fonte||'')}</option>`).join('');
+  // Clear form fields
+  ['entidade','contacto','email','agfr','subregiao','concelho','local-base','notas'].forEach(f=>{
+    const el = document.getElementById('grec-'+f);
+    if(el) el.value='';
+  });
+  document.getElementById('grec-num-elem').value = '1';
+  document.getElementById('grec-regime').value = '';
+  document.getElementById('grec-ativo').checked = true;
+  document.getElementById('grec-viaturas-linked').innerHTML='';
+  document.getElementById('grec-radios-linked').innerHTML='';
+  document.getElementById('grec-viatura-select').innerHTML='';
+  document.getElementById('grec-radio-select').innerHTML='';
+  openModal('modal-gestao-recurso');
+}
+
+// ── Tab 2: Viaturas ───────────────────────────────────────────────
+
+async function renderICNFViaturas(){
+  const q  = (document.getElementById('gicnf-v-q')?.value||'').toLowerCase();
+  const fm = document.getElementById('gicnf-v-megfr')?.value||'';
+  const fd = document.getElementById('gicnf-v-dispon')?.value||'';
+  const params = new URLSearchParams();
+  if(fd) params.set('disponivel', fd);
+  const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
+  if(error){ toast('Erro ao carregar viaturas.','err'); return; }
+  let rows = data || [];
+  if(q)  rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
+  if(fm) rows = rows.filter(v=>v.megfr===fm);
+  document.getElementById('gicnf-v-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gicnf-v-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem viaturas.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(v=>`<tr>
+    <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
+    <td class="mono">${esc(v.matricula||'—')}</td>
+    <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
+    <td>${v.megfr?`<span class="badge badge-info">${esc(v.megfr)}</span>`:'—'}</td>
+    <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openNewViaturaModal(){
+  ['cod','matricula','classe','tipologia','entidade','base','ddi'].forEach(f=>{ document.getElementById('nv-'+f).value=''; });
+  document.getElementById('nv-megfr').value='';
+  openModal('modal-new-viatura');
+}
+
+async function saveNewViatura(){
+  const body = {
+    viatura_cod: document.getElementById('nv-cod').value.trim(),
+    matricula:   document.getElementById('nv-matricula').value.trim()||null,
+    classe:      document.getElementById('nv-classe').value.trim()||null,
+    megfr:       document.getElementById('nv-megfr').value||null,
+    tipologia:   document.getElementById('nv-tipologia').value.trim()||null,
+    entidade:    document.getElementById('nv-entidade').value.trim()||null,
+    base:        document.getElementById('nv-base').value.trim()||null,
+    ddi_viatura: document.getElementById('nv-ddi').value.trim()||null,
+  };
+  if(!body.viatura_cod){ toast('Código obrigatório.','err'); return; }
+  const { error } = await apiFetch('/api/gestao/viaturas', { method:'POST', body:JSON.stringify(body) });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Viatura criada.','ok');
+  closeModal('modal-new-viatura');
+  renderICNFViaturas();
+}
+
+async function deleteViatura(id, cod){
+  if(!confirm(`Eliminar viatura "${cod}"?`)) return;
+  const { error } = await apiFetch(`/api/gestao/viaturas/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Viatura eliminada.','info');
+  renderICNFViaturas();
+}
+
+// ── Tab 3: Rádios ─────────────────────────────────────────────────
+
+async function renderICNFRadios(){
+  const q  = (document.getElementById('gicnf-rd-q')?.value||'').toLowerCase();
+  const ft = document.getElementById('gicnf-rd-tipo')?.value||'';
+  const fd = document.getElementById('gicnf-rd-dispon')?.value||'';
+  const params = new URLSearchParams();
+  if(ft) params.set('tipo', ft);
+  if(fd) params.set('disponivel', fd);
+  const { data, error } = await apiFetch('/api/gestao/radios?'+params);
+  if(error){ toast('Erro ao carregar rádios.','err'); return; }
+  let rows = data || [];
+  if(q) rows = rows.filter(r=>(r.ddi+' '+(r.alias||'')).toLowerCase().includes(q));
+  document.getElementById('gicnf-rd-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gicnf-rd-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem rádios.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong class="mono">${esc(r.ddi)}</strong></td>
+    <td><span class="badge badge-y">${esc(r.tipo)}</span></td>
+    <td>${esc(r.alias||'—')}</td>
+    <td style="font-size:11px">${r.recurso_codigo?`<span class="badge badge-ok">${esc(r.recurso_codigo)}</span>`:'—'}</td>
+    <td style="font-size:11px">${r.viatura_cod?`<span class="badge badge-info">${esc(r.viatura_cod)}</span>`:'—'}</td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-danger btn-xs" onclick="deleteRadio('${r.id}','${esc(r.ddi)}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openNewRadioModal(){
+  ['ddi','alias','indicativo','entidade','subregiao'].forEach(f=>{ document.getElementById('nr-'+f).value=''; });
+  document.getElementById('nr-tipo').value='Portatil';
+  openModal('modal-new-radio');
+}
+
+async function saveNewRadio(){
+  const body = {
+    ddi:        document.getElementById('nr-ddi').value.trim(),
+    tipo:       document.getElementById('nr-tipo').value,
+    alias:      document.getElementById('nr-alias').value.trim()||null,
+    indicativo: document.getElementById('nr-indicativo').value.trim()||null,
+    entidade:   document.getElementById('nr-entidade').value.trim()||null,
+    subregiao:  document.getElementById('nr-subregiao').value.trim()||null,
+  };
+  if(!body.ddi){ toast('DDI obrigatório.','err'); return; }
+  const { error } = await apiFetch('/api/gestao/radios', { method:'POST', body:JSON.stringify(body) });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Rádio criado.','ok');
+  closeModal('modal-new-radio');
+  renderICNFRadios();
+}
+
+async function deleteRadio(id, ddi){
+  if(!confirm(`Eliminar rádio "${ddi}"?`)) return;
+  const { error } = await apiFetch(`/api/gestao/radios/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Rádio eliminado.','info');
+  renderICNFRadios();
+}
+
+// ── Tab 4: OLN ────────────────────────────────────────────────────
+
+async function renderICNFOln(){
+  const mes = document.getElementById('gicnf-oln-mes')?.value;
+  const params = new URLSearchParams();
+  if(mes){
+    params.set('de',  mes+'-01T00:00:00Z');
+    const [y,m] = mes.split('-').map(Number);
+    const lastDay = new Date(y, m, 0).getDate();
+    params.set('ate', `${mes}-${lastDay}T23:59:59Z`);
+  }
+  const { data, error } = await apiFetch('/api/gestao/oln?'+params);
+  if(error){ toast('Erro ao carregar escala OLN.','err'); return; }
+  const rows = data || [];
+  const tbody = document.getElementById('gicnf-oln-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="4" style="color:var(--muted);padding:12px;">Sem slots.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(s=>`<tr>
+    <td class="mono">${new Date(s.inicio).toLocaleDateString('pt-PT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}</td>
+    <td><strong>${esc(s.recurso_codigo||'—')}</strong></td>
+    <td style="font-size:11px;color:var(--muted)">${esc(s.notas||'—')}</td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="editOlnSlot('${s.id}','${s.recurso_id}','${s.inicio}','${s.fim}','${esc(s.notas||'')}')">✎</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteOlnSlot('${s.id}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+async function _loadOlnRecursos(){
   if(!_olnRecursos.length){
-    const { data } = await apiFetch('/api/gestao/recursos?fonte=ICNF');
+    const { data } = await apiFetch('/api/gestao/recursos?tipo=OLN');
     _olnRecursos = data || [];
   }
+}
+
+async function openNewOlnSlot(){
+  await _loadOlnRecursos();
   const sel = document.getElementById('oln-recurso-id');
   sel.innerHTML = '<option value="">— Selecionar recurso —</option>' +
     _olnRecursos.map(r=>`<option value="${r.id}">${esc(r.codigo)}</option>`).join('');
+  document.getElementById('oln-edit-id').value = '';
+  document.getElementById('oln-modal-title').textContent = 'Novo Slot OLN';
   document.getElementById('oln-inicio').value = '';
   document.getElementById('oln-fim').value = '';
   document.getElementById('oln-notas').value = '';
   openModal('modal-oln');
 }
 
+async function editOlnSlot(id, recursoId, inicio, fim, notas){
+  await _loadOlnRecursos();
+  const sel = document.getElementById('oln-recurso-id');
+  sel.innerHTML = '<option value="">— Selecionar recurso —</option>' +
+    _olnRecursos.map(r=>`<option value="${r.id}"${r.id===recursoId?' selected':''}>${esc(r.codigo)}</option>`).join('');
+  document.getElementById('oln-edit-id').value = id;
+  document.getElementById('oln-modal-title').textContent = 'Editar Slot OLN';
+  document.getElementById('oln-inicio').value = inicio ? new Date(inicio).toISOString().slice(0,16) : '';
+  document.getElementById('oln-fim').value    = fim    ? new Date(fim).toISOString().slice(0,16)    : '';
+  document.getElementById('oln-notas').value  = notas;
+  openModal('modal-oln');
+}
+
 async function saveOlnSlot(){
+  const editId     = document.getElementById('oln-edit-id').value;
   const recurso_id = document.getElementById('oln-recurso-id').value;
   const inicio     = document.getElementById('oln-inicio').value;
   const fim        = document.getElementById('oln-fim').value;
   const notas      = document.getElementById('oln-notas').value.trim() || null;
   if(!recurso_id || !inicio || !fim){ toast('Recurso, início e fim são obrigatórios.','err'); return; }
-  const { error } = await apiFetch('/api/gestao/oln', { method:'POST', body:JSON.stringify({ recurso_id, inicio, fim, notas }) });
+  const method = editId ? 'PATCH' : 'POST';
+  const url    = editId ? `/api/gestao/oln/${editId}` : '/api/gestao/oln';
+  const { error } = await apiFetch(url, { method, body:JSON.stringify({ recurso_id, inicio, fim, notas }) });
   if(error){ toast(error.message,'err'); return; }
-  toast('Slot criado.','ok');
+  toast(editId ? 'Slot atualizado.' : 'Slot criado.', 'ok');
   closeModal('modal-oln');
-  renderGestaoICNF();
+  renderICNFOln();
 }
 
 async function deleteOlnSlot(id){
@@ -4896,7 +5239,44 @@ async function deleteOlnSlot(id){
   const { error } = await apiFetch(`/api/gestao/oln/${id}`, { method:'DELETE' });
   if(error){ toast(error.message,'err'); return; }
   toast('Slot removido.','info');
-  renderGestaoICNF();
+  renderICNFOln();
+}
+
+// ── Tab 5: EGFR ───────────────────────────────────────────────────
+
+async function renderICNFEgfr(){
+  const dataEl  = document.getElementById('gicnf-egfr-data');
+  const turnoEl = document.getElementById('gicnf-egfr-turno');
+  if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
+  const params = new URLSearchParams({ de: dataEl.value, ate: dataEl.value });
+  if(turnoEl.value) params.set('turno', turnoEl.value);
+  const { data, error } = await apiFetch('/api/gestao/egfr-escala?'+params);
+  if(error){ toast('Erro ao carregar escala EGFR.','err'); return; }
+  const rows = data || [];
+  const tbody = document.getElementById('gicnf-egfr-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);padding:12px;">Sem registos para este dia.</td></tr>'; return; }
+  tbody.innerHTML = rows.map(e=>`<tr>
+    <td><span class="badge badge-y">${esc(e.equipa)}</span></td>
+    <td style="font-size:11px">${esc(e.turno)}</td>
+    <td class="mono">${esc(e.posicao)}</td>
+    <td>${esc(e.nome)}</td>
+    <td style="text-align:center">${e.capacidade_supressao?'<span class="badge badge-ok">Sim</span>':'<span class="badge badge-warn">Não</span>'}</td>
+    <td><button class="btn btn-ghost btn-xs" onclick="editEgfrEntry('${e.id}','${esc(e.nome)}',${e.capacidade_supressao})">✎</button></td>
+  </tr>`).join('');
+}
+
+async function editEgfrEntry(id, nome, capSup){
+  const novoNome = prompt('Nome:', nome);
+  if(novoNome===null) return;
+  const novaCapStr = prompt('Capacidade de supressão? (sim/não):', capSup?'sim':'não');
+  if(novaCapStr===null) return;
+  const capacidade_supressao = novaCapStr.trim().toLowerCase()==='sim';
+  const { error } = await apiFetch(`/api/gestao/egfr-escala/${id}`, {
+    method:'PATCH', body:JSON.stringify({ nome: novoNome.trim(), capacidade_supressao })
+  });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Registo atualizado.','ok');
+  renderICNFEgfr();
 }
 </script>
 
@@ -4909,6 +5289,25 @@ async function deleteOlnSlot(id){
     </div>
     <div class="modal-body">
       <input type="hidden" id="grec-id"/>
+      <input type="hidden" id="grec-mode" value="edit"/>
+      <!-- Create-only fields (hidden on edit) -->
+      <div id="grec-create-fields" style="display:none;margin-bottom:14px;">
+        <div class="form-grid-3">
+          <div class="form-field span3" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="form-field">
+              <label class="form-label">Código *</label>
+              <input class="form-input" id="grec-new-codigo" placeholder="Nome/identificador do recurso"/>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Tipo *</label>
+              <select class="form-select" id="grec-new-tipo">
+                <option value="">— Selecionar tipo —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:10px 0 14px;"/>
+      </div>
       <div class="form-grid-3">
         <div class="form-field">
           <label class="form-label">Entidade</label>
@@ -5012,6 +5411,99 @@ async function deleteOlnSlot(id){
   </div>
 </div>
 
+<!-- Modal: nova viatura -->
+<div class="modal-overlay" id="modal-new-viatura" onclick="if(event.target===this)closeModal('modal-new-viatura')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Nova Viatura</div><button class="modal-close" onclick="closeModal('modal-new-viatura')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">Código *</label>
+          <input class="form-input" id="nv-cod" placeholder="Ex: VLCI-SF-001"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Matrícula</label>
+          <input class="form-input" id="nv-matricula" placeholder="Ex: AB-12-CD"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Classe</label>
+          <input class="form-input" id="nv-classe" placeholder="Ex: VLCI, VCOT…"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">MEGFR</label>
+          <select class="form-select" id="nv-megfr">
+            <option value="">—</option>
+            <option value="EGFR">EGFR</option>
+            <option value="EMR">EMR</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tipologia</label>
+          <input class="form-input" id="nv-tipologia" placeholder="Ex: Veículo de Apoio de Fogo Rural"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Entidade</label>
+          <input class="form-input" id="nv-entidade" placeholder="Ex: ICNF, AGIF…"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Base</label>
+          <input class="form-input" id="nv-base" placeholder="Localização da base"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">DDI Viatura</label>
+          <input class="form-input" id="nv-ddi" placeholder="DDI do rádio de viatura"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-viatura')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewViatura()">Criar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: novo rádio -->
+<div class="modal-overlay" id="modal-new-radio" onclick="if(event.target===this)closeModal('modal-new-radio')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Novo Rádio</div><button class="modal-close" onclick="closeModal('modal-new-radio')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="form-label">DDI *</label>
+          <input class="form-input" id="nr-ddi" placeholder="Ex: 4260123"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tipo *</label>
+          <select class="form-select" id="nr-tipo">
+            <option value="Portatil">Portátil</option>
+            <option value="Viatura">Viatura</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Alias</label>
+          <input class="form-input" id="nr-alias" placeholder="Nome identificativo"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Indicativo</label>
+          <input class="form-input" id="nr-indicativo" placeholder="Ex: ALFA-1"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Entidade</label>
+          <input class="form-input" id="nr-entidade" placeholder="Ex: SF, FSBF…"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Sub-região</label>
+          <input class="form-input" id="nr-subregiao" placeholder="Ex: Norte"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-new-radio')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewRadio()">Criar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: editar prontidão -->
 <div class="modal-overlay" id="modal-prontidao" onclick="if(event.target===this)closeModal('modal-prontidao')">
   <div class="modal" style="max-width:380px;">
@@ -5039,7 +5531,8 @@ async function deleteOlnSlot(id){
 <!-- Modal: novo slot OLN -->
 <div class="modal-overlay" id="modal-oln" onclick="if(event.target===this)closeModal('modal-oln')">
   <div class="modal" style="max-width:420px;">
-    <div class="modal-header"><div class="modal-title">Novo Slot OLN</div><button class="modal-close" onclick="closeModal('modal-oln')">✕</button></div>
+    <div class="modal-header"><div class="modal-title" id="oln-modal-title">Slot OLN</div><button class="modal-close" onclick="closeModal('modal-oln')">✕</button></div>
+    <input type="hidden" id="oln-edit-id"/>
     <div class="modal-body">
       <div class="form-field">
         <label class="form-label">Recurso ICNF</label>
@@ -5062,7 +5555,7 @@ async function deleteOlnSlot(id){
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-oln')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveOlnSlot()">Criar Slot</button>
+      <button class="btn btn-primary" onclick="saveOlnSlot()">Guardar</button>
     </div>
   </div>
 </div>
