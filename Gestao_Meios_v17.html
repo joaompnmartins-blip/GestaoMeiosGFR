@@ -887,7 +887,7 @@
             <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
             <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
           </div>
-          <button class="btn btn-ghost btn-xs auth-admin" id="btn-etl-sync" onclick="runEtlSync()" style="margin-bottom:4px;">⟳ Importar Escalas</button>
+          <button class="btn btn-ghost btn-xs auth-gestor-icnf" id="btn-etl-sync" onclick="runEtlSync()" style="margin-bottom:4px;">⟳ Importar Escalas</button>
         </div>
         <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
 
@@ -5264,8 +5264,11 @@ async function renderICNFEgfr(){
   const escalaParams = new URLSearchParams({ de: selectedData, ate: selectedData });
   if(selectedTurno) escalaParams.set('turno', selectedTurno);
 
+  const hojeParams = new URLSearchParams({ data: selectedData });
+  if(selectedTurno) hojeParams.set('turno', selectedTurno);
+
   const [hojRes, escRes, viatRes] = await Promise.all([
-    apiFetch(`/api/egfr/hoje?data=${selectedData}`),
+    apiFetch('/api/egfr/hoje?'+hojeParams),
     apiFetch('/api/gestao/egfr-escala?'+escalaParams),
     apiFetch('/api/gestao/viaturas')
   ]);
