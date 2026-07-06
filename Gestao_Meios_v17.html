@@ -514,6 +514,15 @@
       <div class="nav-item auth-admin" data-page="utilizadores" onclick="navTo('utilizadores',this)" style="display:none;">
         <span class="nav-icon">👤</span><span>Utilizadores</span>
       </div>
+      <div class="nav-item auth-gestor-sf" data-page="gestao-sf" onclick="navTo('gestao-sf',this)" style="display:none;">
+        <span class="nav-icon">🌲</span><span>Gestão SF</span>
+      </div>
+      <div class="nav-item auth-gestor-fsbf" data-page="gestao-fsbf" onclick="navTo('gestao-fsbf',this)" style="display:none;">
+        <span class="nav-icon">🚒</span><span>Gestão FSBF</span>
+      </div>
+      <div class="nav-item auth-gestor-icnf" data-page="gestao-icnf" onclick="navTo('gestao-icnf',this)" style="display:none;">
+        <span class="nav-icon">📋</span><span>Gestão ICNF</span>
+      </div>
       <div class="nav-item" onclick="window.open('/manual_utilizador.html','_blank')" title="Abrir manual do utilizador">
         <span class="nav-icon">📖</span><span>Manual</span>
       </div>
@@ -798,6 +807,101 @@
         </div>
       </div>
 
+      <!-- ══════════ PAGE: GESTÃO SF ══════════ -->
+      <div class="page" id="page-gestao-sf">
+        <div class="section-hdr">
+          <div class="section-title">Recursos SF <span id="gsf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input class="form-input" id="gsf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoSF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+            <select class="form-select" id="gsf-filter-prontidao" onchange="renderGestaoSF()" style="font-size:12px;padding:5px 8px;">
+              <option value="">Prontidão…</option>
+              <option value="operacional">Operacional</option>
+              <option value="inoperacional">Inoperacional</option>
+            </select>
+            <select class="form-select" id="gsf-filter-ativo" onchange="renderGestaoSF()" style="font-size:12px;padding:5px 8px;">
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Elementos</th><th>Viaturas</th><th>Rádios</th><th>Prontidão</th><th></th></tr></thead>
+            <tbody id="gsf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══════════ PAGE: GESTÃO FSBF ══════════ -->
+      <div class="page" id="page-gestao-fsbf">
+        <div class="section-hdr">
+          <div class="section-title">Recursos FSBF <span id="gfsbf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input class="form-input" id="gfsbf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoFSBF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+            <select class="form-select" id="gfsbf-filter-prontidao" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
+              <option value="">Prontidão…</option>
+              <option value="operacional">Operacional</option>
+              <option value="inoperacional">Inoperacional</option>
+            </select>
+            <select class="form-select" id="gfsbf-filter-ativo" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Elementos</th><th>Viaturas</th><th>Rádios</th><th>Prontidão</th><th></th></tr></thead>
+            <tbody id="gfsbf-tbody"></tbody>
+          </table>
+        </div>
+        <div id="gfsbf-composicoes-section" style="margin-top:24px;">
+          <div class="section-hdr" style="margin-bottom:12px;">
+            <div class="section-title" style="font-size:14px;">Composições (BSF/EGFR/EMR)</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Membros</th><th>Prontidão derivada</th></tr></thead>
+              <tbody id="gfsbf-comp-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════ PAGE: GESTÃO ICNF ══════════ -->
+      <div class="page" id="page-gestao-icnf">
+        <div class="section-hdr">
+          <div class="section-title">Recursos ICNF <span id="gicnf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input class="form-input" id="gicnf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoICNF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+            <select class="form-select" id="gicnf-filter-prontidao" onchange="renderGestaoICNF()" style="font-size:12px;padding:5px 8px;">
+              <option value="">Prontidão…</option>
+              <option value="operacional">Operacional</option>
+              <option value="inoperacional">Inoperacional</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Contacto</th><th>Prontidão</th><th></th></tr></thead>
+            <tbody id="gicnf-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:24px;">
+          <div class="section-hdr" style="margin-bottom:12px;">
+            <div class="section-title" style="font-size:14px;">Escala OLN</div>
+            <button class="btn btn-primary btn-sm" onclick="openNewOlnSlot()">+ Novo Slot</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Recurso</th><th>Início</th><th>Fim</th><th>Notas</th><th></th></tr></thead>
+              <tbody id="gicnf-oln-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -1725,6 +1829,13 @@ function applyRoleUI(){
   const isOp     = ['admin','ofligacao','operacional'].includes(currentRole);
   // Admin-only elements
   document.querySelectorAll('.auth-admin').forEach(el=>el.style.display=isAdmin?'':'none');
+  // Module gestor nav items
+  const isSF   = isAdmin || currentRole==='gestor_sf';
+  const isFSBF = isAdmin || currentRole==='gestor_fsbf';
+  const isICNF = isAdmin || currentRole==='gestor_icnf';
+  document.querySelectorAll('.auth-gestor-sf').forEach(el=>el.style.display=isSF?'':'none');
+  document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
+  document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
   // Oficial de Ligação: sem acesso a Meios (catálogo) e Arquivo
   ['equipas','arquivo'].forEach(p=>{
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
@@ -1953,20 +2064,25 @@ function addEventLog(t, msg){
 let currentOccId=null, currentView='sector';
 
 function navTo(page,el){
+  const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':'gestor_fsbf','gestao-icnf':'gestor_icnf'};
   if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
   if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação.','err'); return; }
+  if(MODULE_PAGES[page] && currentRole!=='admin' && currentRole!==MODULE_PAGES[page]){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   if(el) el.classList.add('active');
   else{ const f=document.querySelector(`[data-page="${page}"]`); if(f) f.classList.add('active'); }
   const cfg={
-    ocorrencias:{title:'Ocorrências',sub:'Gestão de meios em ocorrências ativas',btn:'+ Nova Ocorrência',btnFn:'openNewOcorrencia()'},
-    detalhe:{title:null,sub:null,btn:null},
-    utilizadores:{title:'Utilizadores',sub:'Gestão de acessos e roles',btn:null},
-    equipas:{title:'Meios Predefinidos',sub:'Catálogo de meios para atribuição rápida',btn:'+ Novo Meio',btnFn:'openNewEquipa()'},
-    arquivo:{title:'Arquivo',sub:'Ocorrências fechadas — consulta e exportação',btn:null},
-    pedidos:{title:'Pedidos de Remoção',sub:'Aprovação de pedidos de remoção de meios',btn:null},
+    ocorrencias:{'title':'Ocorrências','sub':'Gestão de meios em ocorrências ativas','btn':'+ Nova Ocorrência','btnFn':'openNewOcorrencia()'},
+    detalhe:{'title':null,'sub':null,'btn':null},
+    utilizadores:{'title':'Utilizadores','sub':'Gestão de acessos e roles','btn':null},
+    equipas:{'title':'Meios Predefinidos','sub':'Catálogo de meios para atribuição rápida','btn':'+ Novo Meio','btnFn':'openNewEquipa()'},
+    arquivo:{'title':'Arquivo','sub':'Ocorrências fechadas — consulta e exportação','btn':null},
+    pedidos:{'title':'Pedidos de Remoção','sub':'Aprovação de pedidos de remoção de meios','btn':null},
+    'gestao-sf':{'title':'Gestão SF','sub':'Recursos Sapadores Florestais — prontidão e viaturas','btn':null},
+    'gestao-fsbf':{'title':'Gestão FSBF','sub':'Recursos FSBF — prontidão, viaturas e composições','btn':null},
+    'gestao-icnf':{'title':'Gestão ICNF','sub':'Recursos ICNF — prontidão e escala OLN','btn':null},
   };
   const c=cfg[page];
   if(c){
@@ -1981,6 +2097,9 @@ function navTo(page,el){
   if(page==='equipas'){ renderEquipas(); renderOperacionais(); }
   if(page==='utilizadores') renderUsers();
   if(page==='pedidos') renderDeleteRequests();
+  if(page==='gestao-sf')   renderGestaoSF();
+  if(page==='gestao-fsbf') renderGestaoFSBF();
+  if(page==='gestao-icnf') renderGestaoICNF();
 }
 
 function setView(v){
@@ -4377,6 +4496,255 @@ function createOcorrenciaFromFogos(inc) {
 function titleCase(str) {
   return str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — shared helpers
+// ══════════════════════════════════════════════════════════════════
+
+function prontidaoBadge(p, motivo){
+  const ok = p === 'operacional';
+  const tip = motivo ? ` title="${esc(motivo)}"` : '';
+  return `<span class="badge ${ok?'badge-ok':'badge-danger'}"${tip}>${ok?'OPER.':'INOP.'}</span>`;
+}
+
+// Prontidão edit modal (shared by SF / FSBF / ICNF)
+let _prontidaoTarget = null; // { type: 'recurso'|'viatura', id, currentProntidao }
+
+function openProntidaoModal(type, id, currentProntidao){
+  _prontidaoTarget = { type, id };
+  document.getElementById('pront-estado').value = currentProntidao || 'operacional';
+  document.getElementById('pront-motivo').value = '';
+  openModal('modal-prontidao');
+}
+
+async function saveProntidao(){
+  if(!_prontidaoTarget) return;
+  const { type, id } = _prontidaoTarget;
+  const prontidao = document.getElementById('pront-estado').value;
+  const motivo    = document.getElementById('pront-motivo').value.trim() || null;
+  const url = type === 'viatura'
+    ? `/api/gestao/viaturas/${id}/prontidao`
+    : `/api/gestao/recursos/${id}/prontidao`;
+  const { error } = await apiFetch(url, { method:'POST', body:JSON.stringify({ prontidao, motivo }) });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Prontidão actualizada.','ok');
+  closeModal('modal-prontidao');
+  // Refresh active gestao page
+  const activePage = document.querySelector('.page.active')?.id;
+  if(activePage==='page-gestao-sf')   renderGestaoSF();
+  if(activePage==='page-gestao-fsbf') renderGestaoFSBF();
+  if(activePage==='page-gestao-icnf') renderGestaoICNF();
+  // Keep db.recursos in sync
+  const { data } = await apiFetch('/api/recursos');
+  if(data) db.recursos = data;
+}
+
+// ── Gestão SF ────────────────────────────────────────────────────
+
+async function renderGestaoSF(){
+  const q  = (document.getElementById('gsf-filter-text')?.value||'').toLowerCase();
+  const fp = document.getElementById('gsf-filter-prontidao')?.value||'';
+  const fa = document.getElementById('gsf-filter-ativo')?.value;
+  const atvParam = fa==='' ? '' : `&ativo=${fa}`;
+  const { data, error } = await apiFetch(`/api/gestao/recursos?fonte=SF${atvParam}`);
+  if(error){ toast('Erro ao carregar recursos SF.','err'); return; }
+  let rows = data || [];
+  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
+  if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  document.getElementById('gsf-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gsf-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${esc(r.codigo)}</strong></td>
+    <td><span class="badge badge-y">${esc(r.tipo||'—')}</span></td>
+    <td>${esc(r.subregiao||'—')}</td>
+    <td>${esc(r.concelho||'—')}</td>
+    <td class="mono" style="text-align:center">${r.num_elementos||'—'}</td>
+    <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
+    <td class="mono" style="text-align:center">${r.radios_count||0}</td>
+    <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
+    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+  </tr>`).join('');
+}
+
+// ── Gestão FSBF ──────────────────────────────────────────────────
+
+async function renderGestaoFSBF(){
+  const q  = (document.getElementById('gfsbf-filter-text')?.value||'').toLowerCase();
+  const fp = document.getElementById('gfsbf-filter-prontidao')?.value||'';
+  const fa = document.getElementById('gfsbf-filter-ativo')?.value;
+  const atvParam = fa==='' ? '' : `&ativo=${fa}`;
+  const [{ data, error }, { data: compData }] = await Promise.all([
+    apiFetch(`/api/gestao/recursos?fonte=FSBF${atvParam}`),
+    apiFetch('/api/composicoes'),
+  ]);
+  if(error){ toast('Erro ao carregar recursos FSBF.','err'); return; }
+  let rows = data || [];
+  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
+  if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  document.getElementById('gfsbf-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gfsbf-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; }
+  else tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${esc(r.codigo)}</strong></td>
+    <td><span class="badge badge-y">${esc(r.tipo||'—')}</span></td>
+    <td>${esc(r.subregiao||'—')}</td>
+    <td>${esc(r.concelho||'—')}</td>
+    <td class="mono" style="text-align:center">${r.num_elementos||'—'}</td>
+    <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
+    <td class="mono" style="text-align:center">${r.radios_count||0}</td>
+    <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
+    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+  </tr>`).join('');
+
+  // Composições
+  const comps = (compData||[]).filter(c=>['BSF','EGFR','EMR'].includes(c.tipo));
+  const ctbody = document.getElementById('gfsbf-comp-tbody');
+  if(!comps.length){ ctbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:12px">Sem composições.</td></tr>'; return; }
+  ctbody.innerHTML = comps.map(c=>{
+    const membros = Array.isArray(c.membros) ? c.membros : [];
+    return `<tr>
+      <td><strong>${esc(c.codigo)}</strong></td>
+      <td><span class="badge badge-y">${esc(c.tipo)}</span></td>
+      <td>${esc(c.subregiao||'—')}</td>
+      <td class="mono" style="text-align:center">${membros.length}</td>
+      <td>${prontidaoBadge(c.prontidao_derivada)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Gestão ICNF ──────────────────────────────────────────────────
+
+async function renderGestaoICNF(){
+  const q  = (document.getElementById('gicnf-filter-text')?.value||'').toLowerCase();
+  const fp = document.getElementById('gicnf-filter-prontidao')?.value||'';
+  const [{ data, error }, { data: olnData }] = await Promise.all([
+    apiFetch('/api/gestao/recursos?fonte=ICNF'),
+    apiFetch('/api/gestao/oln'),
+  ]);
+  if(error){ toast('Erro ao carregar recursos ICNF.','err'); return; }
+  let rows = data || [];
+  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.contacto||'')).toLowerCase().includes(q));
+  if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  document.getElementById('gicnf-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gicnf-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; }
+  else tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${esc(r.codigo)}</strong></td>
+    <td><span class="badge badge-y">${esc(r.tipo||'—')}</span></td>
+    <td>${esc(r.subregiao||'—')}</td>
+    <td>${esc(r.concelho||'—')}</td>
+    <td class="mono">${esc(r.contacto||'—')}</td>
+    <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
+    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+  </tr>`).join('');
+
+  // OLN escala
+  const olnRows = olnData || [];
+  const otbody = document.getElementById('gicnf-oln-tbody');
+  if(!olnRows.length){ otbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:12px">Sem slots na escala.</td></tr>'; return; }
+  otbody.innerHTML = olnRows.map(s=>`<tr>
+    <td><strong>${esc(s.recurso_codigo||'—')}</strong></td>
+    <td class="mono">${new Date(s.inicio).toLocaleString('pt-PT')}</td>
+    <td class="mono">${new Date(s.fim).toLocaleString('pt-PT')}</td>
+    <td style="font-size:11px;color:var(--muted)">${esc(s.notas||'—')}</td>
+    <td><button class="btn btn-danger btn-xs" onclick="deleteOlnSlot('${s.id}')">✕</button></td>
+  </tr>`).join('');
+}
+
+// OLN slot create/delete
+let _olnRecursos = [];
+
+async function openNewOlnSlot(){
+  if(!_olnRecursos.length){
+    const { data } = await apiFetch('/api/gestao/recursos?fonte=ICNF');
+    _olnRecursos = data || [];
+  }
+  const sel = document.getElementById('oln-recurso-id');
+  sel.innerHTML = '<option value="">— Selecionar recurso —</option>' +
+    _olnRecursos.map(r=>`<option value="${r.id}">${esc(r.codigo)}</option>`).join('');
+  document.getElementById('oln-inicio').value = '';
+  document.getElementById('oln-fim').value = '';
+  document.getElementById('oln-notas').value = '';
+  openModal('modal-oln');
+}
+
+async function saveOlnSlot(){
+  const recurso_id = document.getElementById('oln-recurso-id').value;
+  const inicio     = document.getElementById('oln-inicio').value;
+  const fim        = document.getElementById('oln-fim').value;
+  const notas      = document.getElementById('oln-notas').value.trim() || null;
+  if(!recurso_id || !inicio || !fim){ toast('Recurso, início e fim são obrigatórios.','err'); return; }
+  const { error } = await apiFetch('/api/gestao/oln', { method:'POST', body:JSON.stringify({ recurso_id, inicio, fim, notas }) });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Slot criado.','ok');
+  closeModal('modal-oln');
+  renderGestaoICNF();
+}
+
+async function deleteOlnSlot(id){
+  if(!confirm('Remover este slot da escala?')) return;
+  const { error } = await apiFetch(`/api/gestao/oln/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Slot removido.','info');
+  renderGestaoICNF();
+}
 </script>
+
+<!-- Modal: editar prontidão -->
+<div class="modal-overlay" id="modal-prontidao" style="display:none;" onclick="if(event.target===this)closeModal('modal-prontidao')">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header"><div class="modal-title">Alterar Prontidão</div><button class="modal-close" onclick="closeModal('modal-prontidao')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label class="form-label">Estado</label>
+        <select class="form-select" id="pront-estado">
+          <option value="operacional">Operacional</option>
+          <option value="inoperacional">Inoperacional</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Motivo (opcional)</label>
+        <input class="form-input" id="pront-motivo" placeholder="Ex: avaria mecânica, manutenção…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-prontidao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProntidao()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: novo slot OLN -->
+<div class="modal-overlay" id="modal-oln" style="display:none;" onclick="if(event.target===this)closeModal('modal-oln')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><div class="modal-title">Novo Slot OLN</div><button class="modal-close" onclick="closeModal('modal-oln')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label class="form-label">Recurso ICNF</label>
+        <select class="form-select" id="oln-recurso-id"><option value="">— Selecionar —</option></select>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-field">
+          <label class="form-label">Início</label>
+          <input class="form-input" type="datetime-local" id="oln-inicio"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Fim</label>
+          <input class="form-input" type="datetime-local" id="oln-fim"/>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Notas (opcional)</label>
+        <input class="form-input" id="oln-notas" placeholder="Obs…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-oln')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveOlnSlot()">Criar Slot</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
