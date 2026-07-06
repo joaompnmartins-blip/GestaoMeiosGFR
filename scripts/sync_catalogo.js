@@ -438,12 +438,12 @@ async function syncOlnEscala(report) {
   console.log('\n── Fase 5: OLN Escala (escala_oflig_ccon_2026.csv) ──────────');
   const rows = readEscalaCsv('escala_oflig_ccon_2026.csv');
 
-  // nome → recurso_id (case-insensitive)
+  // codigo (= Meios_v1.Meio = nome da pessoa) → recurso_id
   const { rows: recursos } = await pool.query(
-    `SELECT id, nome FROM recursos WHERE tipo = 'OLN' AND ativo = true`
+    `SELECT id, codigo FROM recursos WHERE tipo = 'OLN' AND ativo = true`
   );
   const nameMap = {};
-  for (const r of recursos) nameMap[r.nome.toLowerCase()] = r.id;
+  for (const r of recursos) nameMap[r.codigo.toLowerCase()] = r.id;
 
   // Apagar entradas existentes para o intervalo do CSV
   const dates = rows.map(r => r.data).sort();
