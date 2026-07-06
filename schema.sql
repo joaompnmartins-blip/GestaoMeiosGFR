@@ -235,6 +235,22 @@ ALTER TABLE oln_escala DROP CONSTRAINT IF EXISTS oln_escala_sem_sobreposicao;
 ALTER TABLE oln_escala ADD CONSTRAINT oln_escala_sem_sobreposicao
     EXCLUDE USING gist (tstzrange(inicio, fim) WITH &&);
 
+CREATE TABLE IF NOT EXISTS egfr_escala (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    data                 DATE        NOT NULL,
+    semana_ano           INT,
+    semana_escala        INT,
+    turno                TEXT        NOT NULL,
+    equipa               TEXT        NOT NULL,
+    posicao              TEXT        NOT NULL,
+    nome                 TEXT        NOT NULL,
+    capacidade_supressao BOOLEAN     NOT NULL DEFAULT false,
+    created_at           TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (data, equipa, posicao)
+);
+CREATE INDEX IF NOT EXISTS idx_egfr_escala_data   ON egfr_escala(data);
+CREATE INDEX IF NOT EXISTS idx_egfr_escala_equipa ON egfr_escala(equipa);
+
 -- ══════════════════════════════════════════════════════════════════
 --  OCORRÊNCIAS
 -- ══════════════════════════════════════════════════════════════════

@@ -14,7 +14,8 @@ const pool = new Pool({
      : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false),
 });
 
-const CSV_DIR = path.resolve(process.argv[2] || path.join(__dirname, '..', 'new_db_tables'));
+const CSV_DIR     = path.resolve(process.argv[2] || path.join(__dirname, '..', 'new_db_tables'));
+const ESCALAS_DIR = path.resolve(process.argv[3] || path.join(__dirname, '..', 'escalas'));
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
 
@@ -27,6 +28,12 @@ function readCsv(filename) {
     trim: true,
     relax_column_count: true,   // a coluna C não tem cabeçalho
   });
+}
+
+function readEscalaCsv(filename) {
+  const filePath = path.join(ESCALAS_DIR, filename);
+  const content  = fs.readFileSync(filePath, 'utf8');
+  return parse(content, { columns: true, skip_empty_lines: true, trim: true });
 }
 
 // Coordenadas do xlsx usam vírgula como separador decimal (pt-PT)
@@ -425,6 +432,86 @@ async function seedBSF(report) {
   if (warnings.length) warnings.forEach(w => console.warn('  ⚠', w));
 }
 
+// ── Fase 5 — OLN Escala ───────────────────────────────────────────────────────
+
+async function syncOlnEscala(report) {
+  console.log('\n── Fase 5: OLN Escala (escala_oflig_ccon_2026.csv) ──────────');
+  const rows = readEscalaCsv('escala_oflig_ccon_2026.csv');
+
+  // nome → recurso_id (case-insensitive)
+  const { rows: recursos } = await pool.query(
+    `SELECT id, nome FROM recursos WHERE tipo = 'OLN' AND ativo = true`
+  );
+  const nameMap = {};
+  for (const r of recursos) nameMap[r.nome.toLowerCase()] = r.id;
+
+  // Apagar entradas existentes para o intervalo do CSV
+  const dates = rows.map(r => r.data).sort();
+  if (dates.length) {
+    await pool.query(
+      `DELETE FROM oln_escala WHERE inicio::date >= $1 AND inicio::date <= $2`,
+      [dates[0], dates[dates.length - 1]]
+    );
+  }
+
+  let inserted = 0, skipped = 0, warnings = [];
+  for (const row of rows) {
+    const recursoId = nameMap[row.nome.toLowerCase()];
+    if (!recursoId) {
+      warnings.push(`Nome não encontrado em recursos (OLN): '${row.nome}'`);
+      skipped++;
+      continue;
+    }
+    // Intervalo: [dia 00:00, dia+1 00:00) — exclusivo no fim, sem sobreposição
+    await pool.query(
+      `INSERT INTO oln_escala (recurso_id, inicio, fim, notas)
+       VALUES ($1, $2::date::timestamptz, $2::date::timestamptz + interval '1 day', $3)`,
+      [recursoId, row.data, nullify(row.uo)]
+    );
+    inserted++;
+  }
+
+  report.oln = { total: rows.length, inserted, skipped, warnings };
+  console.log(`  Inseridos: ${inserted}  Ignorados: ${skipped}`);
+  if (warnings.length) warnings.forEach(w => console.warn('  ⚠', w));
+}
+
+// ── Fase 6 — EGFR Escala ──────────────────────────────────────────────────────
+
+async function syncEgfrEscala(report) {
+  console.log('\n── Fase 6: EGFR Escala (escala_egfr_2026_elementos.csv) ─────');
+  const rows = readEscalaCsv('escala_egfr_2026_elementos.csv');
+
+  let upserted = 0;
+  for (const row of rows) {
+    await pool.query(
+      `INSERT INTO egfr_escala
+         (data, semana_ano, semana_escala, turno, equipa, posicao, nome, capacidade_supressao)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (data, equipa, posicao) DO UPDATE SET
+         nome                 = EXCLUDED.nome,
+         turno                = EXCLUDED.turno,
+         semana_ano           = EXCLUDED.semana_ano,
+         semana_escala        = EXCLUDED.semana_escala,
+         capacidade_supressao = EXCLUDED.capacidade_supressao`,
+      [
+        row.data,
+        parseInt(row.semana_ano)    || null,
+        parseInt(row.semana_escala) || null,
+        row.turno,
+        row.equipa,
+        row.posicao,
+        row.nome,
+        row.capacidade_supressao?.toLowerCase() === 'sim',
+      ]
+    );
+    upserted++;
+  }
+
+  report.egfr = { total: rows.length, upserted };
+  console.log(`  Registos: ${upserted}`);
+}
+
 // ── Relatório final ───────────────────────────────────────────────────────────
 
 function printReport(report) {
@@ -452,6 +539,13 @@ function printReport(report) {
   console.log(`\nComposições BSF: ${b.brigadas} brigadas  Criadas: ${b.inserted}  Já existiam: ${b.skipped}`);
   if (b.warnings.length) b.warnings.forEach(w => console.warn('  ⚠', w));
 
+  const o = report.oln;
+  console.log(`\nOLN Escala: ${o.total} dias  Inseridos: ${o.inserted}  Ignorados: ${o.skipped}`);
+  if (o.warnings.length) o.warnings.forEach(w => console.warn('  ⚠', w));
+
+  const e = report.egfr;
+  console.log(`\nEGFR Escala: ${e.total} registos  Upserted: ${e.upserted}`);
+
   console.log('\n════════════════════════════════════════════════════════════\n');
 }
 
@@ -465,6 +559,8 @@ async function main() {
     await syncViaturas(report);
     await syncRadios(report);
     await seedBSF(report);
+    await syncOlnEscala(report);
+    await syncEgfrEscala(report);
     printReport(report);
   } finally {
     await pool.end();
