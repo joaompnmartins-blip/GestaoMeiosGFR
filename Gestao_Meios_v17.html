@@ -957,6 +957,15 @@
                 <option value="FSBF">FSBF</option>
                 <option value="VN">VN</option>
               </select>
+              <select class="form-select" id="gicnf-v-agfr" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Região…</option>
+                <option value="Alentejo">Alentejo</option>
+                <option value="Algarve">Algarve</option>
+                <option value="Centro">Centro</option>
+                <option value="LVT">LVT</option>
+                <option value="Nacional">Nacional</option>
+                <option value="Norte">Norte</option>
+              </select>
               <select class="form-select" id="gicnf-v-dispon" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
                 <option value="">Todas</option>
                 <option value="true">Disponíveis</option>
@@ -966,7 +975,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Tipologia</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Tipologia</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
               <tbody id="gicnf-v-tbody"></tbody>
             </table>
           </div>
@@ -5078,6 +5087,7 @@ async function renderICNFViaturas(){
   const fm  = document.getElementById('gicnf-v-megfr')?.value||'';
   const fd  = document.getElementById('gicnf-v-dispon')?.value||'';
   const fcl = document.getElementById('gicnf-v-classe')?.value||'';
+  const fag = document.getElementById('gicnf-v-agfr')?.value||'';
   const params = new URLSearchParams();
   if(fd) params.set('disponivel', fd);
   const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
@@ -5096,15 +5106,17 @@ async function renderICNFViaturas(){
   if(q)   rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
   if(fm)  rows = rows.filter(v=>v.megfr===fm);
   if(fcl) rows = rows.filter(v=>v.classe===fcl);
+  if(fag) rows = rows.filter(v=>v.agfr===fag);
   document.getElementById('gicnf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gicnf-v-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem viaturas.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem viaturas.</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(v=>`<tr>
     <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
     <td class="mono">${esc(v.matricula||'—')}</td>
     <td style="font-size:11px">${[v.marca,v.modelo].filter(Boolean).map(esc).join(' ') || '—'}</td>
     <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
     <td>${v.megfr?`<span class="badge badge-info">${esc(v.megfr)}</span>`:'—'}</td>
+    <td style="font-size:11px">${esc(v.agfr||'—')}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
     <td style="display:flex;gap:4px;white-space:nowrap;">
