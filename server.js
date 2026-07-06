@@ -969,8 +969,8 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
 
 app.patch('/api/gestao/viaturas/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   const b = req.body;
-  const ALLOWED = ['recurso_id','matricula','marca','modelo','base','estado','agfr',
-                   'lat_base','long_base','ddi_viatura','ativo'];
+  const ALLOWED = ['recurso_id','matricula','marca','modelo','classe','tipologia','entidade',
+                   'base','estado','agfr','lat_base','long_base','ddi_viatura','ativo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }

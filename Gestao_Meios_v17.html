@@ -945,6 +945,9 @@
             <div class="section-title">Viaturas <span id="gicnf-v-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <input class="form-input" id="gicnf-v-q" placeholder="🔍 Código / matrícula…" oninput="renderICNFViaturas()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gicnf-v-classe" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Classe…</option>
+              </select>
               <select class="form-select" id="gicnf-v-megfr" onchange="renderICNFViaturas()" style="font-size:12px;padding:5px 8px;">
                 <option value="">MEGFR…</option>
                 <option value="EGFR">EGFR</option>
@@ -959,7 +962,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Matrícula</th><th>Classe</th><th>MEGFR</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>MEGFR</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
               <tbody id="gicnf-v-tbody"></tbody>
             </table>
           </div>
@@ -5067,27 +5070,41 @@ async function openNewRecursoModal(){
 // ── Tab 2: Viaturas ───────────────────────────────────────────────
 
 async function renderICNFViaturas(){
-  const q  = (document.getElementById('gicnf-v-q')?.value||'').toLowerCase();
-  const fm = document.getElementById('gicnf-v-megfr')?.value||'';
-  const fd = document.getElementById('gicnf-v-dispon')?.value||'';
+  const q   = (document.getElementById('gicnf-v-q')?.value||'').toLowerCase();
+  const fm  = document.getElementById('gicnf-v-megfr')?.value||'';
+  const fd  = document.getElementById('gicnf-v-dispon')?.value||'';
+  const fcl = document.getElementById('gicnf-v-classe')?.value||'';
   const params = new URLSearchParams();
   if(fd) params.set('disponivel', fd);
   const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
   if(error){ toast('Erro ao carregar viaturas.','err'); return; }
   let rows = data || [];
-  if(q)  rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
-  if(fm) rows = rows.filter(v=>v.megfr===fm);
+
+  // Populate classe dropdown from loaded data
+  const clEl = document.getElementById('gicnf-v-classe');
+  if(clEl){
+    const cur = clEl.value;
+    const classes = [...new Set(rows.map(v=>v.classe).filter(Boolean))].sort();
+    clEl.innerHTML = '<option value="">Classe…</option>' +
+      classes.map(c=>`<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
+  }
+
+  if(q)   rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
+  if(fm)  rows = rows.filter(v=>v.megfr===fm);
+  if(fcl) rows = rows.filter(v=>v.classe===fcl);
   document.getElementById('gicnf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gicnf-v-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem viaturas.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem viaturas.</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(v=>`<tr>
     <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
     <td class="mono">${esc(v.matricula||'—')}</td>
+    <td style="font-size:11px">${[v.marca,v.modelo].filter(Boolean).map(esc).join(' ') || '—'}</td>
     <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
     <td>${v.megfr?`<span class="badge badge-info">${esc(v.megfr)}</span>`:'—'}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
-    <td style="display:flex;gap:4px;">
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="openEditViaturaModal(${JSON.stringify(v).replace(/"/g,'&quot;')})">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
       <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
     </td>
@@ -5095,26 +5112,58 @@ async function renderICNFViaturas(){
 }
 
 function openNewViaturaModal(){
-  ['cod','matricula','classe','tipologia','entidade','base','ddi'].forEach(f=>{ document.getElementById('nv-'+f).value=''; });
+  document.getElementById('nv-id').value = '';
+  document.getElementById('nv-title').textContent = 'Nova Viatura';
+  document.getElementById('nv-save-btn').textContent = 'Criar';
+  document.getElementById('nv-cod-field').style.display = '';
+  ['cod','matricula','classe','tipologia','marca','modelo','entidade','base','ddi'].forEach(f=>{
+    document.getElementById('nv-'+f).value='';
+  });
   document.getElementById('nv-megfr').value='';
   openModal('modal-new-viatura');
 }
 
-async function saveNewViatura(){
+function openEditViaturaModal(v){
+  document.getElementById('nv-id').value = v.id;
+  document.getElementById('nv-title').textContent = 'Editar Viatura';
+  document.getElementById('nv-save-btn').textContent = 'Guardar';
+  document.getElementById('nv-cod-field').style.display = 'none';
+  document.getElementById('nv-matricula').value = v.matricula||'';
+  document.getElementById('nv-classe').value    = v.classe||'';
+  document.getElementById('nv-megfr').value     = v.megfr||'';
+  document.getElementById('nv-marca').value     = v.marca||'';
+  document.getElementById('nv-modelo').value    = v.modelo||'';
+  document.getElementById('nv-tipologia').value = v.tipologia||'';
+  document.getElementById('nv-entidade').value  = v.entidade||'';
+  document.getElementById('nv-base').value      = v.base||'';
+  document.getElementById('nv-ddi').value       = v.ddi_viatura||'';
+  openModal('modal-new-viatura');
+}
+
+async function saveViatura(){
+  const id = document.getElementById('nv-id').value;
+  const isEdit = !!id;
   const body = {
-    viatura_cod: document.getElementById('nv-cod').value.trim(),
     matricula:   document.getElementById('nv-matricula').value.trim()||null,
     classe:      document.getElementById('nv-classe').value.trim()||null,
     megfr:       document.getElementById('nv-megfr').value||null,
+    marca:       document.getElementById('nv-marca').value.trim()||null,
+    modelo:      document.getElementById('nv-modelo').value.trim()||null,
     tipologia:   document.getElementById('nv-tipologia').value.trim()||null,
     entidade:    document.getElementById('nv-entidade').value.trim()||null,
     base:        document.getElementById('nv-base').value.trim()||null,
     ddi_viatura: document.getElementById('nv-ddi').value.trim()||null,
   };
-  if(!body.viatura_cod){ toast('Código obrigatório.','err'); return; }
-  const { error } = await apiFetch('/api/gestao/viaturas', { method:'POST', body:JSON.stringify(body) });
+  let error;
+  if(isEdit){
+    ({ error } = await apiFetch(`/api/gestao/viaturas/${id}`, { method:'PATCH', body:JSON.stringify(body) }));
+  } else {
+    body.viatura_cod = document.getElementById('nv-cod').value.trim();
+    if(!body.viatura_cod){ toast('Código obrigatório.','err'); return; }
+    ({ error } = await apiFetch('/api/gestao/viaturas', { method:'POST', body:JSON.stringify(body) }));
+  }
   if(error){ toast(error.message,'err'); return; }
-  toast('Viatura criada.','ok');
+  toast(isEdit ? 'Viatura atualizada.' : 'Viatura criada.','ok');
   closeModal('modal-new-viatura');
   renderICNFViaturas();
 }
@@ -5544,10 +5593,11 @@ async function editEgfrEntry(id, nome, capSup){
 <!-- Modal: nova viatura -->
 <div class="modal-overlay" id="modal-new-viatura" onclick="if(event.target===this)closeModal('modal-new-viatura')">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">Nova Viatura</div><button class="modal-close" onclick="closeModal('modal-new-viatura')">✕</button></div>
+    <div class="modal-header"><div class="modal-title" id="nv-title">Nova Viatura</div><button class="modal-close" onclick="closeModal('modal-new-viatura')">✕</button></div>
     <div class="modal-body">
+      <input type="hidden" id="nv-id"/>
       <div class="form-grid">
-        <div class="form-field">
+        <div class="form-field" id="nv-cod-field">
           <label class="form-label">Código *</label>
           <input class="form-input" id="nv-cod" placeholder="Ex: VLCI-SF-001"/>
         </div>
@@ -5566,6 +5616,14 @@ async function editEgfrEntry(id, nome, capSup){
             <option value="EGFR">EGFR</option>
             <option value="EMR">EMR</option>
           </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Marca</label>
+          <input class="form-input" id="nv-marca" placeholder="Ex: Mitsubishi"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Modelo</label>
+          <input class="form-input" id="nv-modelo" placeholder="Ex: L200 4WD"/>
         </div>
         <div class="form-field">
           <label class="form-label">Tipologia</label>
@@ -5587,7 +5645,7 @@ async function editEgfrEntry(id, nome, capSup){
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-new-viatura')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveNewViatura()">Criar</button>
+      <button class="btn btn-primary" id="nv-save-btn" onclick="saveViatura()">Criar</button>
     </div>
   </div>
 </div>
