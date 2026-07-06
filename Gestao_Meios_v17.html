@@ -4501,6 +4501,8 @@ function titleCase(str) {
 //  MÓDULOS DE GESTÃO — shared helpers
 // ══════════════════════════════════════════════════════════════════
 
+let _gestaoRecursos = {}; // id → row (populated on each render)
+
 function prontidaoBadge(p, motivo){
   const ok = p === 'operacional';
   const tip = motivo ? ` title="${esc(motivo)}"` : '';
@@ -4539,6 +4541,53 @@ async function saveProntidao(){
   if(data) db.recursos = data;
 }
 
+// Edit recurso modal
+function openGestaoRecursoModal(id){
+  const r = _gestaoRecursos[id];
+  if(!r){ toast('Registo não encontrado.','err'); return; }
+  document.getElementById('grec-id').value        = r.id;
+  document.getElementById('grec-codigo').textContent = r.codigo;
+  document.getElementById('grec-entidade').value  = r.entidade  || '';
+  document.getElementById('grec-contacto').value  = r.contacto  || '';
+  document.getElementById('grec-email').value     = r.email     || '';
+  document.getElementById('grec-num-elem').value  = r.num_elementos || '';
+  document.getElementById('grec-local-base').value= r.local_base|| '';
+  document.getElementById('grec-agfr').value      = r.agfr      || '';
+  document.getElementById('grec-notas').value     = r.notas     || '';
+  document.getElementById('grec-ativo').checked   = r.ativo !== false;
+  document.getElementById('grec-regime').value    = r.regime    || '';
+  populateSubregiaoSelect('grec-subregiao', r.subregiao || '');
+  document.getElementById('grec-concelho').value  = r.concelho  || '';
+  openModal('modal-gestao-recurso');
+}
+
+async function saveGestaoRecurso(){
+  const id = document.getElementById('grec-id').value;
+  const payload = {
+    entidade:     document.getElementById('grec-entidade').value.trim()   || null,
+    contacto:     document.getElementById('grec-contacto').value.trim()   || null,
+    email:        document.getElementById('grec-email').value.trim()      || null,
+    num_elementos:parseInt(document.getElementById('grec-num-elem').value)||null,
+    local_base:   document.getElementById('grec-local-base').value.trim() || null,
+    agfr:         document.getElementById('grec-agfr').value.trim()       || null,
+    notas:        document.getElementById('grec-notas').value.trim()      || null,
+    ativo:        document.getElementById('grec-ativo').checked,
+    regime:       document.getElementById('grec-regime').value            || null,
+    subregiao:    document.getElementById('grec-subregiao').value         || null,
+    concelho:     document.getElementById('grec-concelho').value.trim()   || null,
+  };
+  const { error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'PATCH', body:JSON.stringify(payload) });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Recurso actualizado.','ok');
+  closeModal('modal-gestao-recurso');
+  const activePage = document.querySelector('.page.active')?.id;
+  if(activePage==='page-gestao-sf')   renderGestaoSF();
+  if(activePage==='page-gestao-fsbf') renderGestaoFSBF();
+  if(activePage==='page-gestao-icnf') renderGestaoICNF();
+  const { data } = await apiFetch('/api/recursos');
+  if(data) db.recursos = data;
+}
+
 // ── Gestão SF ────────────────────────────────────────────────────
 
 async function renderGestaoSF(){
@@ -4551,6 +4600,7 @@ async function renderGestaoSF(){
   let rows = data || [];
   if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
   if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  rows.forEach(r => _gestaoRecursos[r.id] = r);
   document.getElementById('gsf-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gsf-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; return; }
@@ -4563,7 +4613,10 @@ async function renderGestaoSF(){
     <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
     <td class="mono" style="text-align:center">${r.radios_count||0}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    </td>
   </tr>`).join('');
 }
 
@@ -4582,6 +4635,7 @@ async function renderGestaoFSBF(){
   let rows = data || [];
   if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
   if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  rows.forEach(r => _gestaoRecursos[r.id] = r);
   document.getElementById('gfsbf-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; }
@@ -4594,7 +4648,10 @@ async function renderGestaoFSBF(){
     <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
     <td class="mono" style="text-align:center">${r.radios_count||0}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    </td>
   </tr>`).join('');
 
   // Composições
@@ -4626,6 +4683,7 @@ async function renderGestaoICNF(){
   let rows = data || [];
   if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.contacto||'')).toLowerCase().includes(q));
   if(fp) rows = rows.filter(r=>r.prontidao===fp);
+  rows.forEach(r => _gestaoRecursos[r.id] = r);
   document.getElementById('gicnf-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gicnf-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem recursos.</div></div></td></tr>'; }
@@ -4636,7 +4694,10 @@ async function renderGestaoICNF(){
     <td>${esc(r.concelho||'—')}</td>
     <td class="mono">${esc(r.contacto||'—')}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td><button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">✎ Pront.</button></td>
+    <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    </td>
   </tr>`).join('');
 
   // OLN escala
@@ -4690,6 +4751,73 @@ async function deleteOlnSlot(id){
   renderGestaoICNF();
 }
 </script>
+
+<!-- Modal: editar recurso (gestão SF/FSBF/ICNF) -->
+<div class="modal-overlay" id="modal-gestao-recurso" onclick="if(event.target===this)closeModal('modal-gestao-recurso')">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Editar Recurso — <span id="grec-codigo" style="color:var(--accent);font-family:'IBM Plex Mono',monospace;"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-gestao-recurso')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="grec-id"/>
+      <div class="form-grid-3">
+        <div class="form-field">
+          <label class="form-label">Entidade</label>
+          <input class="form-input" id="grec-entidade" placeholder="Ex: AGIF, ICNF…"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Contacto</label>
+          <input class="form-input" id="grec-contacto" placeholder="9xx xxx xxx"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="grec-email" type="email" placeholder="email@exemplo.pt"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Nº Elementos</label>
+          <input class="form-input" type="number" id="grec-num-elem" min="1" placeholder="1"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Regime</label>
+          <select class="form-select" id="grec-regime">
+            <option value="">—</option>
+            <option value="CNT">CNT</option>
+            <option value="PRP">PRP</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">AGFR</label>
+          <input class="form-input" id="grec-agfr" placeholder="Ex: AGFR Norte"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Sub-região</label>
+          <select class="form-select" id="grec-subregiao"></select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Concelho</label>
+          <input class="form-input" id="grec-concelho" placeholder="Ex: Viseu"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Local de base</label>
+          <input class="form-input" id="grec-local-base" placeholder="Ex: Parque florestal…"/>
+        </div>
+        <div class="form-field span3">
+          <label class="form-label">Notas</label>
+          <input class="form-input" id="grec-notas" placeholder="Observações internas…"/>
+        </div>
+        <div class="form-field span3" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="grec-ativo" style="width:16px;height:16px;"/>
+          <label for="grec-ativo" class="form-label" style="margin:0;">Ativo</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-gestao-recurso')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveGestaoRecurso()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: editar prontidão -->
 <div class="modal-overlay" id="modal-prontidao" onclick="if(event.target===this)closeModal('modal-prontidao')">
