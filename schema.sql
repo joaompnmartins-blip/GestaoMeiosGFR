@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS utilizadores (
     role          TEXT        NOT NULL DEFAULT 'visualizador'
                                 CHECK (role IN (
                                     'admin',
+                                    'ofligacao_ccon',
                                     'ofligacao',
                                     'operacional',
                                     'visualizador',

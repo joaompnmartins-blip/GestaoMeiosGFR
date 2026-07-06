@@ -1254,7 +1254,11 @@
         <select class="form-select" id="user-role" onchange="toggleInviteSubregiao(this.value)">
           <option value="visualizador">Visualizador — só leitura</option>
           <option value="operacional">Operacional — ver + registar eventos</option>
-          <option value="ofligacao">OfLigacao — criar/editar ocorrências e meios</option>
+          <option value="ofligacao">OfLigacao — criar/editar ocorrências e meios (regional)</option>
+          <option value="ofligacao_ccon">OfLigacao CCON — nacional, EGFR/EMR</option>
+          <option value="gestor_sf">Gestor SF — módulo Sapadores Florestais</option>
+          <option value="gestor_fsbf">Gestor FSBF — módulo Bombeiros</option>
+          <option value="gestor_icnf">Gestor ICNF — módulo ICNF + OLN</option>
           <option value="admin">Admin — acesso total</option>
         </select>
       </div>
@@ -1824,11 +1828,14 @@ async function completeLogin(authData){
 }
 
 function applyRoleUI(){
-  const isAdmin  = currentRole==='admin';
-  const isOfLigacao = ['admin','ofligacao'].includes(currentRole);
-  const isOp     = ['admin','ofligacao','operacional'].includes(currentRole);
+  const isAdmin     = currentRole==='admin';
+  const isCCON      = isAdmin || currentRole==='ofligacao_ccon';
+  const isOfLigacao = isAdmin || ['ofligacao','ofligacao_ccon'].includes(currentRole);
+  const isOp        = isAdmin || ['ofligacao','ofligacao_ccon','operacional'].includes(currentRole);
   // Admin-only elements
   document.querySelectorAll('.auth-admin').forEach(el=>el.style.display=isAdmin?'':'none');
+  // CCON-only elements (EGFR/EMR deploy, OLN management)
+  document.querySelectorAll('.auth-ccon').forEach(el=>el.style.display=isCCON?'':'none');
   // Module gestor nav items
   const isSF   = isAdmin || currentRole==='gestor_sf';
   const isFSBF = isAdmin || currentRole==='gestor_fsbf';
@@ -1836,13 +1843,13 @@ function applyRoleUI(){
   document.querySelectorAll('.auth-gestor-sf').forEach(el=>el.style.display=isSF?'':'none');
   document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
   document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
-  // Oficial de Ligação: sem acesso a Meios (catálogo) e Arquivo
+  // ofligacao regional: sem acesso a Meios (catálogo) e Arquivo
   ['equipas','arquivo'].forEach(p=>{
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
     if(navEl) navEl.style.display = currentRole==='ofligacao' ? 'none' : '';
   });
-  // Sub-região filter: visível para admin, e para ofligacao "nacional" (sem sub-região fixa)
-  const showSrFilter = isAdmin || (currentRole==='ofligacao' && !currentSubregiao);
+  // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
+  const showSrFilter = isAdmin || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   // OfLigacao+ elements
@@ -2066,7 +2073,7 @@ let currentOccId=null, currentView='sector';
 function navTo(page,el){
   const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':'gestor_fsbf','gestao-icnf':'gestor_icnf'};
   if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
-  if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação.','err'); return; }
+  if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação regionais.','err'); return; }
   if(MODULE_PAGES[page] && currentRole!=='admin' && currentRole!==MODULE_PAGES[page]){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2263,7 +2270,7 @@ function arqCardHtml(o){
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="event.stopPropagation();exportArqLog('${o.id}')">⬇ Log</button>
-        ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-warn btn-sm" style="font-size:10px;" onclick="event.stopPropagation();reopenOcorrencia('${o.id}')">↩ Reabrir</button>`:''}
+        ${['admin','ofligacao','ofligacao_ccon'].includes(currentRole)?`<button class="btn btn-warn btn-sm" style="font-size:10px;" onclick="event.stopPropagation();reopenOcorrencia('${o.id}')">↩ Reabrir</button>`:''}
       </div>
     </div>
   </div>`;
@@ -4124,7 +4131,7 @@ async function renderUsers(){
     <td>${u.ativo?'<span class="badge badge-ok">Ativo</span>':'<span class="badge badge-closed">Inativo</span>'}</td>
     <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
       <select class="user-role-sel" onchange="changeUserRole('${u.id}',this.value)">
-        ${['admin','ofligacao','operacional','visualizador'].map(r=>`<option value="${r}"${r===u.role?' selected':''}>${r}</option>`).join('')}
+        ${['admin','ofligacao_ccon','ofligacao','gestor_sf','gestor_fsbf','gestor_icnf','operacional','visualizador'].map(r=>`<option value="${r}"${r===u.role?' selected':''}>${r}</option>`).join('')}
       </select>
       <select class="user-role-sel" style="max-width:130px;" onchange="changeUserSubregiao('${u.id}',this.value)" title="Sub-região">
         <option value="">— Sub-região —</option>

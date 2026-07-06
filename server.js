@@ -20,7 +20,7 @@ app.use(express.static(__dirname));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'Gestao_Meios_v17.html')));
 
 // ─── Role ordering ────────────────────────────────────────────────
-const ROLE_ORDER   = ['visualizador', 'operacional', 'ofligacao', 'admin'];
+const ROLE_ORDER   = ['visualizador', 'operacional', 'ofligacao', 'ofligacao_ccon', 'admin'];
 const MODULE_ROLES = ['gestor_sf', 'gestor_fsbf', 'gestor_icnf'];
 
 function requireAuth(minRole = 'visualizador') {
@@ -54,6 +54,14 @@ function requireModule(...moduleRoles) {
     if (role === 'admin' || moduleRoles.includes(role)) return next();
     return res.status(403).json({ error: 'Sem permissão para este módulo.' });
   };
+}
+
+// Middleware para rotas exclusivas do CCON (OL nacional)
+function requireCCON(req, res, next) {
+  const role = req.user?.role;
+  if (!role) return res.status(401).json({ error: 'Não autenticado.' });
+  if (role === 'admin' || role === 'ofligacao_ccon') return next();
+  return res.status(403).json({ error: 'Reservado ao Oficial de Ligação CCON.' });
 }
 
 function wrap(fn) {
@@ -460,7 +468,7 @@ app.delete('/api/operacionais/:id', requireAuth('ofligacao'), wrap(async (req, r
 app.get('/api/utilizadores/ofligacao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, nome, subregiao FROM utilizadores
-     WHERE role IN ('ofligacao','admin') AND ativo = true ORDER BY nome`
+     WHERE role IN ('ofligacao','ofligacao_ccon','admin') AND ativo = true ORDER BY nome`
   );
   res.json(rows);
 }));
