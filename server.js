@@ -1298,6 +1298,7 @@ async function runMigrations() {
   // ALTER TABLE IF EXISTS is a no-op on fresh databases where the table doesn't exist yet.
   const preSchemaAlters = [
     `ALTER TABLE IF EXISTS egfr_escala ADD COLUMN IF NOT EXISTS recurso_id UUID REFERENCES recursos(id) ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS notas TEXT`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS recursos (
     prontidao_ate   DATE,
     prontidao_by    UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
     prontidao_at    TIMESTAMPTZ,
+    notas           TEXT,
     -- Campos auxiliares de ligação do xlsx
     ddi_portatil    TEXT,
     ddi_viatura     TEXT,
