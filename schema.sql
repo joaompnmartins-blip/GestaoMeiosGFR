@@ -270,6 +270,62 @@ CREATE TABLE IF NOT EXISTS egfr_viatura (
 CREATE INDEX IF NOT EXISTS idx_egfr_viatura_data ON egfr_viatura(data);
 
 -- ══════════════════════════════════════════════════════════════════
+--  CARTA DE MEIOS FSBF (plano diário)
+-- ══════════════════════════════════════════════════════════════════
+
+-- Cabeçalho diário (coordenador + chefe de grupo)
+CREATE TABLE IF NOT EXISTS fsbf_carta (
+    data                  DATE        PRIMARY KEY,
+    coord_nome            TEXT,
+    coord_contacto        TEXT,
+    chefe_nome            TEXT,
+    chefe_contacto        TEXT,
+    chefe_guarnicao       INT,
+    chefe_veiculo_id      UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    chefe_veiculo_texto   TEXT,         -- fallback se veículo não está no catálogo
+    notas_outros_meios    TEXT,
+    updated_by            UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    updated_at            TIMESTAMPTZ DEFAULT now()
+);
+
+-- Equipas BSBF (Norte / Sul / GSBF) — uma linha por veículo/equipa
+CREATE TABLE IF NOT EXISTS fsbf_bsbf_equipa (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    data        DATE        NOT NULL,
+    brigada     TEXT        NOT NULL CHECK (brigada IN ('Norte','Sul','GSBF')),
+    veiculo_id  UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    guarnicao   INT,
+    chefe_nome  TEXT,
+    contacto    TEXT,
+    observacoes TEXT,
+    ordem       INT         DEFAULT 0,
+    created_by  UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fsbf_bsbf_data ON fsbf_bsbf_equipa(data);
+
+-- Equipas EMR (Máquinas de Rasto) — uma linha por máquina
+CREATE TABLE IF NOT EXISTS fsbf_emr_equipa (
+    id                 UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    data               DATE        NOT NULL,
+    base               TEXT,
+    mr_viatura_id      UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    vaop_viatura_id    UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    vpiloto_viatura_id UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    vlci_viatura_id    UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
+    chefe_nome         TEXT,
+    contacto           TEXT,
+    total_op           INT,
+    observacoes        TEXT,
+    ordem              INT         DEFAULT 0,
+    created_by         UUID        REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at         TIMESTAMPTZ DEFAULT now(),
+    updated_at         TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_fsbf_emr_data ON fsbf_emr_equipa(data);
+
+-- ══════════════════════════════════════════════════════════════════
 --  OCORRÊNCIAS
 -- ══════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS ocorrencias (

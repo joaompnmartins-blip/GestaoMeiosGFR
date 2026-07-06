@@ -1273,6 +1273,241 @@ app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => 
 }));
 
 // ══════════════════════════════════════════════════════════════════
+//  CARTA DE MEIOS FSBF
+// ══════════════════════════════════════════════════════════════════
+
+const FSBF_GESTORES = requireModule('gestor_fsbf');
+
+// ── GET /api/fsbf/carta?data= ──────────────────────────────────
+app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const data = req.query.data || new Date().toISOString().slice(0, 10);
+
+  const [cartaRes, bsbfRes, emrRes] = await Promise.all([
+    pool.query(`
+      SELECT c.*, v.viatura_cod AS chefe_veiculo_cod, v.matricula AS chefe_veiculo_matricula
+      FROM fsbf_carta c
+      LEFT JOIN viaturas v ON v.id = c.chefe_veiculo_id
+      WHERE c.data = $1
+    `, [data]),
+    pool.query(`
+      SELECT e.*, v.viatura_cod, v.matricula, v.classe
+      FROM fsbf_bsbf_equipa e
+      LEFT JOIN viaturas v ON v.id = e.veiculo_id
+      WHERE e.data = $1
+      ORDER BY e.brigada, e.ordem, e.created_at
+    `, [data]),
+    pool.query(`
+      SELECT e.*,
+        mr.viatura_cod    AS mr_cod,    mr.matricula    AS mr_matricula,
+        vaop.viatura_cod  AS vaop_cod,  vaop.matricula  AS vaop_matricula,
+        vpil.viatura_cod  AS vpil_cod,  vpil.matricula  AS vpil_matricula,
+        vlci.viatura_cod  AS vlci_cod,  vlci.matricula  AS vlci_matricula
+      FROM fsbf_emr_equipa e
+      LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
+      LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
+      LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
+      LEFT JOIN viaturas vlci ON vlci.id = e.vlci_viatura_id
+      WHERE e.data = $1
+      ORDER BY e.ordem, e.created_at
+    `, [data]),
+  ]);
+
+  res.json({
+    data,
+    carta: cartaRes.rows[0] || null,
+    bsbf:  bsbfRes.rows,
+    emr:   emrRes.rows,
+  });
+}));
+
+// ── PUT /api/fsbf/carta (upsert header) ───────────────────────
+app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const { rows: [carta] } = await pool.query(`
+    INSERT INTO fsbf_carta
+      (data, coord_nome, coord_contacto,
+       chefe_nome, chefe_contacto, chefe_guarnicao,
+       chefe_veiculo_id, chefe_veiculo_texto, notas_outros_meios, updated_by)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    ON CONFLICT (data) DO UPDATE SET
+      coord_nome           = EXCLUDED.coord_nome,
+      coord_contacto       = EXCLUDED.coord_contacto,
+      chefe_nome           = EXCLUDED.chefe_nome,
+      chefe_contacto       = EXCLUDED.chefe_contacto,
+      chefe_guarnicao      = EXCLUDED.chefe_guarnicao,
+      chefe_veiculo_id     = EXCLUDED.chefe_veiculo_id,
+      chefe_veiculo_texto  = EXCLUDED.chefe_veiculo_texto,
+      notas_outros_meios   = EXCLUDED.notas_outros_meios,
+      updated_by           = EXCLUDED.updated_by,
+      updated_at           = now()
+    RETURNING *
+  `, [b.data, b.coord_nome||null, b.coord_contacto||null,
+      b.chefe_nome||null, b.chefe_contacto||null, b.chefe_guarnicao||null,
+      b.chefe_veiculo_id||null, b.chefe_veiculo_texto||null,
+      b.notas_outros_meios||null, req.user.id]);
+  res.json(carta);
+}));
+
+// ── BSBF entries CRUD ──────────────────────────────────────────
+app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.data || !b.brigada) return res.status(400).json({ error: 'data e brigada obrigatórios.' });
+  const { rows: [e] } = await pool.query(`
+    INSERT INTO fsbf_bsbf_equipa
+      (data, brigada, veiculo_id, guarnicao, chefe_nome, contacto, observacoes, ordem, created_by)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,
+      COALESCE($8,(SELECT COALESCE(MAX(ordem)+1,0) FROM fsbf_bsbf_equipa WHERE data=$1 AND brigada=$2)),
+      $9)
+    RETURNING *
+  `, [b.data, b.brigada, b.veiculo_id||null, b.guarnicao||null,
+      b.chefe_nome||null, b.contacto||null, b.observacoes||null,
+      b.ordem != null ? b.ordem : null, req.user.id]);
+  res.json(e);
+}));
+
+app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  const ALLOWED = ['veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ordem'];
+  const sets = [], vals = [req.params.id];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
+  sets.push(`updated_at=now()`);
+  const { rows: [e] } = await pool.query(
+    `UPDATE fsbf_bsbf_equipa SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals
+  );
+  if (!e) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  res.json(e);
+}));
+
+app.delete('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM fsbf_bsbf_equipa WHERE id=$1`, [req.params.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  res.json({ ok: true });
+}));
+
+// ── EMR entries CRUD ───────────────────────────────────────────
+app.post('/api/fsbf/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const { rows: [e] } = await pool.query(`
+    INSERT INTO fsbf_emr_equipa
+      (data, base, mr_viatura_id, vaop_viatura_id, vpiloto_viatura_id, vlci_viatura_id,
+       chefe_nome, contacto, total_op, observacoes, ordem, created_by)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+      COALESCE($11,(SELECT COALESCE(MAX(ordem)+1,0) FROM fsbf_emr_equipa WHERE data=$1)),
+      $12)
+    RETURNING *
+  `, [b.data, b.base||null, b.mr_viatura_id||null, b.vaop_viatura_id||null,
+      b.vpiloto_viatura_id||null, b.vlci_viatura_id||null,
+      b.chefe_nome||null, b.contacto||null, b.total_op||null, b.observacoes||null,
+      b.ordem != null ? b.ordem : null, req.user.id]);
+  res.json(e);
+}));
+
+app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  const ALLOWED = ['base','mr_viatura_id','vaop_viatura_id','vpiloto_viatura_id',
+                   'vlci_viatura_id','chefe_nome','contacto','total_op','observacoes','ordem'];
+  const sets = [], vals = [req.params.id];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
+  sets.push(`updated_at=now()`);
+  const { rows: [e] } = await pool.query(
+    `UPDATE fsbf_emr_equipa SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals
+  );
+  if (!e) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  res.json(e);
+}));
+
+app.delete('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM fsbf_emr_equipa WHERE id=$1`, [req.params.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  res.json({ ok: true });
+}));
+
+// ── POST /api/fsbf/emr/:id/despachar ──────────────────────────
+app.post('/api/fsbf/emr/:id/despachar', requireAuth('ofligacao'), requireCCON, wrap(async (req, res) => {
+  const { ocorrencia_id, estado = 'previsto', data_despacho, hora_despacho, setor, missao, obs } = req.body;
+  if (!ocorrencia_id) return res.status(400).json({ error: 'ocorrencia_id obrigatório.' });
+
+  const { rows: [emr] } = await pool.query(`
+    SELECT e.*,
+      mr.viatura_cod AS mr_cod, mr.matricula AS mr_matricula,
+      vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
+      vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula,
+      vlci.viatura_cod AS vlci_cod, vlci.matricula AS vlci_matricula
+    FROM fsbf_emr_equipa e
+    LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
+    LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
+    LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
+    LEFT JOIN viaturas vlci ON vlci.id = e.vlci_viatura_id
+    WHERE e.id = $1
+  `, [req.params.id]);
+  if (!emr) return res.status(404).json({ error: 'Equipa EMR não encontrada.' });
+
+  const label = emr.mr_cod || `EMR ${emr.base || emr.id.slice(0,8)}`;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Create or reuse a composicao EMR for this team
+    const compCodigo = `EMR-${emr.id.slice(0,8)}-${emr.data}`;
+    const vehicles = [
+      { id: emr.mr_viatura_id,      papel: 'MR'     },
+      { id: emr.vaop_viatura_id,     papel: 'VAOP'   },
+      { id: emr.vpiloto_viatura_id,  papel: 'Piloto' },
+      { id: emr.vlci_viatura_id,     papel: 'VLCI'   },
+    ].filter(v => v.id);
+
+    let { rows: [comp] } = await client.query(
+      `SELECT * FROM composicoes WHERE codigo = $1`, [compCodigo]
+    );
+    if (!comp) {
+      const { rows: [newComp] } = await client.query(
+        `INSERT INTO composicoes (codigo, tipo, notas, created_by)
+         VALUES ($1,'EMR',$2,$3) RETURNING *`,
+        [compCodigo, `Base: ${emr.base||'—'} | ${emr.data}`, req.user.id]
+      );
+      comp = newComp;
+      for (let i = 0; i < vehicles.length; i++) {
+        await client.query(
+          `INSERT INTO composicao_membros (composicao_id, viatura_id, papel, ordem) VALUES ($1,$2,$3,$4)`,
+          [comp.id, vehicles[i].id, vehicles[i].papel, i]
+        );
+      }
+    }
+
+    const totalOp = emr.total_op || vehicles.length || 1;
+    const { rows: [meio] } = await client.query(
+      `INSERT INTO meios
+         (ocorrencia_id, composicao_id, eq, tipo, responsavel, contacto, estado,
+          operacionais, created_by, data_despacho, hora_despacho, setor, missao, obs)
+       VALUES ($1,$2,$3,'EMR',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [ocorrencia_id, comp.id, label, emr.chefe_nome||null, emr.contacto||null,
+       estado, totalOp, req.user.id,
+       data_despacho||null, hora_despacho||null, setor||null, missao||null, obs||null]
+    );
+
+    await client.query('COMMIT');
+    res.json({ ok: true, meio_id: meio.id, composicao_id: comp.id });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
+// ══════════════════════════════════════════════════════════════════
 //  MÓDULOS DE GESTÃO — ETL SYNC
 // ══════════════════════════════════════════════════════════════════
 

@@ -841,29 +841,53 @@
 
       <!-- ══════════ PAGE: GESTÃO FSBF ══════════ -->
       <div class="page" id="page-gestao-fsbf">
-        <div class="section-hdr">
-          <div class="section-title">Recursos FSBF <span id="gfsbf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input class="form-input" id="gfsbf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoFSBF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
-            <select class="form-select" id="gfsbf-filter-prontidao" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
-              <option value="">Prontidão…</option>
-              <option value="operacional">Operacional</option>
-              <option value="inoperacional">Inoperacional</option>
-            </select>
-            <select class="form-select" id="gfsbf-filter-ativo" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
-              <option value="true">Ativos</option>
-              <option value="false">Inativos</option>
-              <option value="">Todos</option>
-            </select>
+        <!-- Tab navigation -->
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0;">
+          <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
+            <button class="icnf-tab-btn active" onclick="fsbfSwitchTab('carta',this)">Carta de Meios</button>
+            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('recursos',this)">Recursos</button>
+            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('composicoes',this)">Composições</button>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Elementos</th><th>Viaturas</th><th>Rádios</th><th>Prontidão</th><th></th></tr></thead>
-            <tbody id="gfsbf-tbody"></tbody>
-          </table>
+        <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
+
+        <!-- ── Tab: Carta de Meios ── -->
+        <div id="fsbf-tab-carta">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
+            <input type="date" class="form-input" id="fsbf-data" onchange="renderFsbfCarta()" style="font-size:12px;padding:5px 8px;"/>
+            <button class="btn btn-ghost btn-xs" onclick="document.getElementById('fsbf-data').value=new Date().toISOString().slice(0,10);renderFsbfCarta()">Hoje</button>
+          </div>
+          <div id="fsbf-carta-body"></div>
         </div>
-        <div id="gfsbf-composicoes-section" style="margin-top:24px;">
+
+        <!-- ── Tab: Recursos ── -->
+        <div id="fsbf-tab-recursos" style="display:none;">
+          <div class="section-hdr">
+            <div class="section-title">Recursos FSBF <span id="gfsbf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" id="gfsbf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoFSBF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gfsbf-filter-prontidao" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Prontidão…</option>
+                <option value="operacional">Operacional</option>
+                <option value="inoperacional">Inoperacional</option>
+              </select>
+              <select class="form-select" id="gfsbf-filter-ativo" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
+                <option value="true">Ativos</option>
+                <option value="false">Inativos</option>
+                <option value="">Todos</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Elementos</th><th>Viaturas</th><th>Rádios</th><th>Prontidão</th><th></th></tr></thead>
+              <tbody id="gfsbf-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Tab: Composições ── -->
+        <div id="fsbf-tab-composicoes" style="display:none;">
           <div class="section-hdr" style="margin-bottom:12px;">
             <div class="section-title" style="font-size:14px;">Composições (BSF/EGFR/EMR)</div>
           </div>
@@ -2243,7 +2267,7 @@ function navTo(page,el){
   if(page==='utilizadores') renderUsers();
   if(page==='pedidos') renderDeleteRequests();
   if(page==='gestao-sf')   renderGestaoSF();
-  if(page==='gestao-fsbf') renderGestaoFSBF();
+  if(page==='gestao-fsbf') renderFsbfPage();
   if(page==='gestao-icnf') renderGestaoICNF();
 }
 
@@ -4679,7 +4703,7 @@ async function saveProntidao(){
   // Refresh active gestao page
   const activePage = document.querySelector('.page.active')?.id;
   if(activePage==='page-gestao-sf')   renderGestaoSF();
-  if(activePage==='page-gestao-fsbf') renderGestaoFSBF();
+  if(activePage==='page-gestao-fsbf') renderFsbfPage();
   if(activePage==='page-gestao-icnf') renderGestaoICNF();
   // Keep db.recursos in sync
   const { data } = await apiFetch('/api/recursos');
@@ -4756,7 +4780,7 @@ async function saveGestaoRecurso(){
   closeModal('modal-gestao-recurso');
   const activePage = document.querySelector('.page.active')?.id;
   if(activePage==='page-gestao-sf')   renderGestaoSF();
-  if(activePage==='page-gestao-fsbf') renderGestaoFSBF();
+  if(activePage==='page-gestao-fsbf') renderFsbfPage();
   if(activePage==='page-gestao-icnf') renderGestaoICNF();
   const { data } = await apiFetch('/api/recursos');
   if(data) db.recursos = data;
@@ -4917,8 +4941,30 @@ async function renderGestaoSF(){
   </tr>`).join('');
 }
 
-// ── Gestão FSBF ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+//  GESTÃO FSBF — tab controller + Carta de Meios
+// ══════════════════════════════════════════════════════════════════
 
+let _fsbfTab = 'carta';
+
+function fsbfSwitchTab(tab, btn){
+  _fsbfTab = tab;
+  document.querySelectorAll('#page-gestao-fsbf .icnf-tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  ['carta','recursos','composicoes'].forEach(t=>{
+    const el = document.getElementById('fsbf-tab-'+t);
+    if(el) el.style.display = t===tab ? '' : 'none';
+  });
+  renderFsbfPage();
+}
+
+async function renderFsbfPage(){
+  if(_fsbfTab==='carta')       await renderFsbfCarta();
+  else if(_fsbfTab==='recursos')    await renderGestaoFSBF();
+  else if(_fsbfTab==='composicoes') await renderGestaoFSBF();
+}
+
+// ── Recursos tab (unchanged logic) ───────────────────────────────
 async function renderGestaoFSBF(){
   const q  = (document.getElementById('gfsbf-filter-text')?.value||'').toLowerCase();
   const fp = document.getElementById('gfsbf-filter-prontidao')?.value||'';
@@ -4954,6 +5000,7 @@ async function renderGestaoFSBF(){
   // Composições
   const comps = (compData||[]).filter(c=>['BSF','EGFR','EMR'].includes(c.tipo));
   const ctbody = document.getElementById('gfsbf-comp-tbody');
+  if(!ctbody) return;
   if(!comps.length){ ctbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:12px">Sem composições.</td></tr>'; return; }
   ctbody.innerHTML = comps.map(c=>{
     const membros = Array.isArray(c.membros) ? c.membros : [];
@@ -4965,6 +5012,310 @@ async function renderGestaoFSBF(){
       <td>${prontidaoBadge(c.prontidao_derivada)}</td>
     </tr>`;
   }).join('');
+}
+
+// ── Carta de Meios ────────────────────────────────────────────────
+
+function fsbfViatOpts(viaturas, classes, selectedId){
+  const list = classes
+    ? viaturas.filter(v => classes.includes(v.classe))
+    : viaturas.filter(v => v.classe !== 'MR');
+  return '<option value="">— sem —</option>' +
+    list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)} ${v.matricula?'('+esc(v.matricula)+')':''}</option>`).join('');
+}
+
+function fsbfBsbfRow(row, allViat, isCarta){
+  const id = row.id;
+  const vOpts = fsbfViatOpts(allViat, null, row.veiculo_id);
+  const mat = row.matricula ? `<span class="mono" style="font-size:11px;color:var(--muted);">${esc(row.matricula)}</span>` : '';
+  return `<tr id="fsbf-bsbf-row-${id}">
+    <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
+    <td>
+      <select class="form-select" style="font-size:12px;" id="fsbf-b-viat-${id}" onchange="fsbfBsbfMatricula('${id}')">
+        ${vOpts}
+      </select>
+      <div id="fsbf-b-mat-${id}" style="margin-top:2px;">${mat}</div>
+    </td>
+    <td><input class="form-input" style="width:50px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/></td>
+    <td><input class="form-input" style="width:140px;font-size:12px;" id="fsbf-b-chefe-${id}" value="${esc(row.chefe_nome||'')}" placeholder="Chefe de equipa"/></td>
+    <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
+    <td><input class="form-input" style="width:120px;font-size:12px;" id="fsbf-b-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Obs"/></td>
+    <td style="white-space:nowrap;">
+      <button class="btn btn-xs btn-primary" onclick="saveFsbfBsbf('${id}')">💾</button>
+      <button class="btn btn-xs btn-ghost" onclick="deleteFsbfBsbf('${id}','${esc(row.brigada)}')">✕</button>
+    </td>
+  </tr>`;
+}
+
+function fsbfEmrCard(row, allViat, isCCON){
+  const id = row.id;
+  const mrOpts   = fsbfViatOpts(allViat, ['MR'],          row.mr_viatura_id);
+  const vaopOpts = fsbfViatOpts(allViat, ['VCOT'],         row.vaop_viatura_id);
+  const vpilOpts = fsbfViatOpts(allViat, ['VTTP'],         row.vpiloto_viatura_id);
+  const vlciOpts = fsbfViatOpts(allViat, ['VLCI'],         row.vlci_viatura_id);
+  const dispBtn  = isCCON
+    ? `<button class="btn btn-xs btn-primary" onclick="openDespacharEmr('${id}')">🚒 Despachar</button>`
+    : '';
+  return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:8px;">
+      <div><label style="font-size:11px;color:var(--muted);">Base</label>
+        <input class="form-input" style="font-size:12px;" id="fsbf-e-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></div>
+      <div><label style="font-size:11px;color:var(--muted);">MR</label>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-mr-${id}">${mrOpts}</select></div>
+      <div><label style="font-size:11px;color:var(--muted);">VAOP</label>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vaop-${id}">${vaopOpts}</select></div>
+      <div><label style="font-size:11px;color:var(--muted);">Vpiloto</label>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vpil-${id}">${vpilOpts}</select></div>
+      <div><label style="font-size:11px;color:var(--muted);">VLCI</label>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vlci-${id}">${vlciOpts}</select></div>
+      <div><label style="font-size:11px;color:var(--muted);">Chefe</label>
+        <input class="form-input" style="font-size:12px;" id="fsbf-e-chefe-${id}" value="${esc(row.chefe_nome||'')}" placeholder="Chefe de equipa"/></div>
+      <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
+        <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
+      <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
+        <input class="form-input" style="font-size:12px;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/></div>
+      <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--muted);">Obs</label>
+        <input class="form-input" style="font-size:12px;width:100%;" id="fsbf-e-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Observações"/></div>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-xs btn-primary" onclick="saveFsbfEmr('${id}')">💾 Guardar</button>
+      <button class="btn btn-xs btn-ghost" onclick="deleteFsbfEmr('${id}')">✕ Remover</button>
+      ${dispBtn}
+    </div>
+  </div>`;
+}
+
+function fsbfBrigadaSection(title, brigada, rows, allViat, data){
+  const rowsHtml = rows.map(r=>fsbfBsbfRow(r, allViat)).join('');
+  const empty = !rows.length ? '<tr><td colspan="7" style="color:var(--muted);padding:8px 0;">Sem equipas.</td></tr>' : '';
+  return `<div style="margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span style="font-weight:600;font-size:13px;">${title}</span>
+      <button class="btn btn-xs btn-ghost" onclick="addFsbfBsbf('${brigada}','${data}')">+ Adicionar</button>
+    </div>
+    <div class="table-wrap" style="overflow-x:auto;">
+      <table style="font-size:12px;">
+        <thead><tr><th>Base</th><th>Veículo / Matrícula</th><th>Guar.</th><th>Chefe de Equipa</th><th>Contacto</th><th>Obs</th><th></th></tr></thead>
+        <tbody id="fsbf-bsbf-${brigada.toLowerCase()}-tbody">${rowsHtml}${empty}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+async function renderFsbfCarta(){
+  const dataEl = document.getElementById('fsbf-data');
+  if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
+  const data = dataEl.value;
+  const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
+  const isFSBF = currentRole==='admin' || currentRole==='gestor_fsbf';
+
+  const [cartaRes, viatRes] = await Promise.all([
+    apiFetch(`/api/fsbf/carta?data=${data}`),
+    apiFetch('/api/gestao/viaturas?megfr=FSBF&ativo=true'),
+  ]);
+
+  if(cartaRes.error){ toast('Erro ao carregar Carta de Meios.','err'); return; }
+
+  const carta   = cartaRes.data?.carta   || {};
+  const bsbf    = cartaRes.data?.bsbf    || [];
+  const emr     = cartaRes.data?.emr     || [];
+  const allViat = viatRes.data            || [];
+
+  const norte = bsbf.filter(r=>r.brigada==='Norte');
+  const sul   = bsbf.filter(r=>r.brigada==='Sul');
+  const gsbf  = bsbf.filter(r=>r.brigada==='GSBF');
+  const emrCards = emr.map(r=>fsbfEmrCard(r, allViat, isCCON)).join('') ||
+    '<p style="color:var(--muted);font-size:13px;">Sem máquinas registadas.</p>';
+
+  const totalMeios = bsbf.length + emr.length + (carta.chefe_nome?1:0);
+  const totalOp = bsbf.reduce((s,r)=>s+(r.guarnicao||0),0)
+                + emr.reduce((s,r)=>s+(r.total_op||0),0)
+                + (carta.chefe_guarnicao||0);
+
+  const chViatOpts = fsbfViatOpts(allViat, null, carta.chefe_veiculo_id);
+
+  document.getElementById('fsbf-carta-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <!-- Coordenador -->
+      <div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Coordenador de Dia</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div><label class="form-label" style="font-size:11px;">Nome</label>
+            <input class="form-input" id="fsbf-coord-nome" value="${esc(carta.coord_nome||'')}" placeholder="Nome" style="font-size:12px;width:180px;"/></div>
+          <div><label class="form-label" style="font-size:11px;">Contacto</label>
+            <input class="form-input" id="fsbf-coord-cont" value="${esc(carta.coord_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
+          <button class="btn btn-xs btn-primary" onclick="saveFsbfHeader('${data}')">💾</button>
+        </div>
+      </div>
+      <!-- Chefe de Grupo -->
+      <div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Chefe de Grupo</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div><label class="form-label" style="font-size:11px;">Nome</label>
+            <input class="form-input" id="fsbf-chefe-nome" value="${esc(carta.chefe_nome||'')}" placeholder="Nome" style="font-size:12px;width:150px;"/></div>
+          <div><label class="form-label" style="font-size:11px;">Veículo (texto)</label>
+            <input class="form-input" id="fsbf-chefe-viat-txt" value="${esc(carta.chefe_veiculo_texto||'')}" placeholder="ex: VM87" style="font-size:12px;width:80px;"/></div>
+          <div><label class="form-label" style="font-size:11px;">ou do catálogo</label>
+            <select class="form-select" id="fsbf-chefe-viat-id" style="font-size:12px;width:170px;">
+              <option value="">— catálogo —</option>${chViatOpts}
+            </select></div>
+          <div><label class="form-label" style="font-size:11px;">Guar.</label>
+            <input class="form-input" id="fsbf-chefe-guar" type="number" min="0" value="${carta.chefe_guarnicao??''}" style="font-size:12px;width:55px;"/></div>
+          <div><label class="form-label" style="font-size:11px;">Contacto</label>
+            <input class="form-input" id="fsbf-chefe-cont" value="${esc(carta.chefe_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
+          <button class="btn btn-xs btn-primary" onclick="saveFsbfHeader('${data}')">💾</button>
+        </div>
+      </div>
+    </div>
+
+    ${fsbfBrigadaSection('BSBF Norte','Norte',norte,allViat,data)}
+    ${fsbfBrigadaSection('BSBF Sul','Sul',sul,allViat,data)}
+    ${fsbfBrigadaSection('GSBF','GSBF',gsbf,allViat,data)}
+
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-weight:600;font-size:13px;">Máquinas de Rasto (EMR)</span>
+        <button class="btn btn-xs btn-ghost" onclick="addFsbfEmr('${data}')">+ Adicionar</button>
+      </div>
+      <div id="fsbf-emr-container">${emrCards}</div>
+    </div>
+
+    <div style="margin-bottom:20px;background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Outros Meios</div>
+      <textarea class="form-input" id="fsbf-outros" rows="3" style="width:100%;font-size:12px;resize:vertical;">${esc(carta.notas_outros_meios||'')}</textarea>
+      <button class="btn btn-xs btn-primary" style="margin-top:6px;" onclick="saveFsbfHeader('${data}')">💾 Guardar</button>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;">
+      Meios listados: <strong>${totalMeios}</strong> &nbsp;|&nbsp; Operacionais declarados: <strong>${totalOp}</strong>
+    </div>`;
+}
+
+async function saveFsbfHeader(data){
+  const body = {
+    data,
+    coord_nome:         document.getElementById('fsbf-coord-nome')?.value.trim()||null,
+    coord_contacto:     document.getElementById('fsbf-coord-cont')?.value.trim()||null,
+    chefe_nome:         document.getElementById('fsbf-chefe-nome')?.value.trim()||null,
+    chefe_contacto:     document.getElementById('fsbf-chefe-cont')?.value.trim()||null,
+    chefe_guarnicao:    parseInt(document.getElementById('fsbf-chefe-guar')?.value)||null,
+    chefe_veiculo_id:   document.getElementById('fsbf-chefe-viat-id')?.value||null,
+    chefe_veiculo_texto:document.getElementById('fsbf-chefe-viat-txt')?.value.trim()||null,
+    notas_outros_meios: document.getElementById('fsbf-outros')?.value.trim()||null,
+  };
+  const { error } = await apiFetch('/api/fsbf/carta', { method:'PUT', body:JSON.stringify(body) });
+  if(error){ toast(error.message||'Erro ao guardar.','err'); return; }
+  toast('Guardado.','ok');
+}
+
+async function addFsbfBsbf(brigada, data){
+  const { data: row, error } = await apiFetch('/api/fsbf/bsbf', {
+    method:'POST', body:JSON.stringify({ data, brigada })
+  });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+async function saveFsbfBsbf(id){
+  const body = {
+    base:       document.getElementById(`fsbf-b-base-${id}`)?.value.trim()||null,
+    veiculo_id: document.getElementById(`fsbf-b-viat-${id}`)?.value||null,
+    guarnicao:  parseInt(document.getElementById(`fsbf-b-guar-${id}`)?.value)||null,
+    chefe_nome: document.getElementById(`fsbf-b-chefe-${id}`)?.value.trim()||null,
+    contacto:   document.getElementById(`fsbf-b-cont-${id}`)?.value.trim()||null,
+    observacoes:document.getElementById(`fsbf-b-obs-${id}`)?.value.trim()||null,
+  };
+  const { error } = await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  toast('Guardado.','ok');
+}
+
+async function deleteFsbfBsbf(id, brigada){
+  if(!confirm(`Remover esta linha da BSBF ${brigada}?`)) return;
+  const { error } = await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+function fsbfBsbfMatricula(id){
+  // Live-update matricula hint when vehicle picker changes
+  // (We don't have the viaturas list here, so just clear — renderFsbfCarta will set it)
+  document.getElementById(`fsbf-b-mat-${id}`).textContent = '';
+}
+
+async function addFsbfEmr(data){
+  const { data: row, error } = await apiFetch('/api/fsbf/emr', {
+    method:'POST', body:JSON.stringify({ data })
+  });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+async function saveFsbfEmr(id){
+  const body = {
+    base:              document.getElementById(`fsbf-e-base-${id}`)?.value.trim()||null,
+    mr_viatura_id:     document.getElementById(`fsbf-e-mr-${id}`)?.value||null,
+    vaop_viatura_id:   document.getElementById(`fsbf-e-vaop-${id}`)?.value||null,
+    vpiloto_viatura_id:document.getElementById(`fsbf-e-vpil-${id}`)?.value||null,
+    vlci_viatura_id:   document.getElementById(`fsbf-e-vlci-${id}`)?.value||null,
+    chefe_nome:        document.getElementById(`fsbf-e-chefe-${id}`)?.value.trim()||null,
+    contacto:          document.getElementById(`fsbf-e-cont-${id}`)?.value.trim()||null,
+    total_op:          parseInt(document.getElementById(`fsbf-e-top-${id}`)?.value)||null,
+    observacoes:       document.getElementById(`fsbf-e-obs-${id}`)?.value.trim()||null,
+  };
+  const { error } = await apiFetch(`/api/fsbf/emr/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  toast('Guardado.','ok');
+}
+
+async function deleteFsbfEmr(id){
+  if(!confirm('Remover esta equipa EMR?')) return;
+  const { error } = await apiFetch(`/api/fsbf/emr/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+let _despEmrId = null;
+
+async function openDespacharEmr(id){
+  _despEmrId = id;
+  // load active ocorrências
+  const { data: allOcc, error } = await apiFetch('/api/ocorrencias');
+  const active = (allOcc||[]).filter(o=>!o.status||o.status==='active');
+  const sel = document.getElementById('desp-emr-occ');
+  sel.innerHTML = '';
+  if(error || !active.length){
+    sel.innerHTML = '<option value="">— sem ocorrências activas —</option>';
+  } else {
+    sel.innerHTML = active.map(o=>`<option value="${o.id}">${o.codigo_ocorrencia||o.id.slice(0,8)} — ${o.local_ignicao||''}</option>`).join('');
+  }
+  const now = new Date();
+  document.getElementById('desp-emr-data').value = now.toISOString().slice(0,10);
+  document.getElementById('desp-emr-hora').value = now.toTimeString().slice(0,5);
+  document.getElementById('desp-emr-setor').value = '';
+  document.getElementById('desp-emr-missao').value = '';
+  openModal('modal-despachar-emr');
+}
+
+async function confirmDespacharEmr(){
+  if(!_despEmrId) return;
+  const ocorrencia_id = document.getElementById('desp-emr-occ').value;
+  if(!ocorrencia_id){ toast('Selecione uma ocorrência.','warn'); return; }
+  const btn = document.getElementById('desp-emr-confirm-btn');
+  btn.disabled = true;
+  const body = {
+    ocorrencia_id,
+    data_despacho: document.getElementById('desp-emr-data').value || undefined,
+    hora_despacho: document.getElementById('desp-emr-hora').value || undefined,
+    setor: document.getElementById('desp-emr-setor').value || undefined,
+    missao: document.getElementById('desp-emr-missao').value || undefined,
+  };
+  const { data, error } = await apiFetch(`/api/fsbf/emr/${_despEmrId}/despachar`, { method:'POST', body: JSON.stringify(body) });
+  btn.disabled = false;
+  if(error){ toast(error.message||'Erro ao despachar.','err'); return; }
+  toast('Equipa EMR despachada.','ok');
+  closeModal('modal-despachar-emr');
+  await renderFsbfCarta();
 }
 
 // ── Gestão ICNF ──────────────────────────────────────────────────
@@ -5800,6 +6151,38 @@ async function editEgfrEntry(id, nome, capSup){
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-etl')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: Despachar EMR ══════ -->
+<div class="modal-overlay" id="modal-despachar-emr" onclick="if(event.target===this)closeModal('modal-despachar-emr')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Despachar Equipa EMR</div>
+      <button class="modal-close" onclick="closeModal('modal-despachar-emr')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label class="form-label">Ocorrência activa</label>
+        <select class="form-select" id="desp-emr-occ"></select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <div class="form-field"><label class="form-label">Data despacho</label>
+          <input class="form-input" type="date" id="desp-emr-data"/></div>
+        <div class="form-field"><label class="form-label">Hora</label>
+          <input class="form-input" type="time" id="desp-emr-hora"/></div>
+        <div class="form-field"><label class="form-label">Sector</label>
+          <input class="form-input" id="desp-emr-setor" placeholder="ex: ALFA"/></div>
+      </div>
+      <div class="form-field" style="margin-top:8px;">
+        <label class="form-label">Missão</label>
+        <input class="form-input" id="desp-emr-missao" placeholder="Missão…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-despachar-emr')">Cancelar</button>
+      <button class="btn btn-primary" id="desp-emr-confirm-btn" onclick="confirmDespacharEmr()">🚒 Despachar</button>
     </div>
   </div>
 </div>
