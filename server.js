@@ -1071,6 +1071,145 @@ app.delete('/api/gestao/oln/:id', requireAuth('visualizador'), OLN_GESTORES, wra
   res.json({ ok: true });
 }));
 
+// ── PATCH OLN slot ─────────────────────────────────────────────────
+app.patch('/api/gestao/oln/:id', requireAuth('visualizador'), OLN_GESTORES, wrap(async (req, res) => {
+  const { recurso_id, inicio, fim, notas } = req.body;
+  const sets = [], vals = [];
+  if (recurso_id !== undefined) { sets.push(`recurso_id=$${vals.length+2}`); vals.push(recurso_id); }
+  if (inicio     !== undefined) { sets.push(`inicio=$${vals.length+2}`);     vals.push(inicio); }
+  if (fim        !== undefined) { sets.push(`fim=$${vals.length+2}`);        vals.push(fim); }
+  if (notas      !== undefined) { sets.push(`notas=$${vals.length+2}`);      vals.push(notas); }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+  try {
+    const { rows: [slot] } = await pool.query(
+      `UPDATE oln_escala SET ${sets.join(',')} WHERE id=$1 RETURNING *`,
+      [req.params.id, ...vals]
+    );
+    if (!slot) return res.status(404).json({ error: 'Slot não encontrado.' });
+    res.json(slot);
+  } catch (e) {
+    if (e.code === '23P01')
+      return res.status(409).json({ error: 'Sobreposição com escala existente.' });
+    throw e;
+  }
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — VIATURAS CREATE/DELETE
+// ══════════════════════════════════════════════════════════════════
+
+app.post('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.viatura_cod) return res.status(400).json({ error: 'viatura_cod obrigatório.' });
+  if (!b.tipo) return res.status(400).json({ error: 'tipo obrigatório (Portatil ou Viatura).' });
+  const { rows: [v] } = await pool.query(`
+    INSERT INTO viaturas (viatura_cod, recurso_id, megfr, tipo_decir, classe, codigo_icnf,
+      tipologia, marca, modelo, chassis, matricula, entidade, base, estado, agfr,
+      lat_base, long_base, ddi_viatura, ativo)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,true) RETURNING *`,
+    [b.viatura_cod, b.recurso_id||null, b.megfr||null, b.tipo_decir||null,
+     b.classe||null, b.codigo_icnf||null, b.tipologia||null, b.marca||null,
+     b.modelo||null, b.chassis||null, b.matricula||null, b.entidade||null,
+     b.base||null, b.estado||null, b.agfr||null,
+     b.lat_base||null, b.long_base||null, b.ddi_viatura||null]
+  );
+  res.json(v);
+}));
+
+app.delete('/api/gestao/viaturas/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { rows: active } = await pool.query(
+    `SELECT id FROM meios WHERE viatura_id=$1 AND estado NOT IN ('desmobilizado','cancelado') LIMIT 1`,
+    [req.params.id]
+  );
+  if (active.length)
+    return res.status(409).json({ error: 'Viatura em uso numa ocorrência activa. Desmobilize primeiro.' });
+  const { rowCount } = await pool.query(`DELETE FROM viaturas WHERE id=$1`, [req.params.id]);
+  if (!rowCount) return res.status(404).json({ error: 'Viatura não encontrada.' });
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — RÁDIOS CREATE/DELETE
+// ══════════════════════════════════════════════════════════════════
+
+app.post('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.ddi)  return res.status(400).json({ error: 'ddi obrigatório.' });
+  if (!b.tipo || !['Portatil','Viatura'].includes(b.tipo))
+    return res.status(400).json({ error: 'tipo obrigatório: Portatil ou Viatura.' });
+  const { rows: [rd] } = await pool.query(`
+    INSERT INTO radios (ddi, tipo, recurso_id, viatura_id, megfr, entidade,
+      alias, indicativo, estado, subregiao, ativo)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true) RETURNING *`,
+    [b.ddi, b.tipo, b.recurso_id||null, b.viatura_id||null, b.megfr||null,
+     b.entidade||null, b.alias||null, b.indicativo||null, b.estado||null, b.subregiao||null]
+  );
+  res.json(rd);
+}));
+
+app.delete('/api/gestao/radios/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { rowCount } = await pool.query(`DELETE FROM radios WHERE id=$1`, [req.params.id]);
+  if (!rowCount) return res.status(404).json({ error: 'Rádio não encontrado.' });
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — EGFR ESCALA
+// ══════════════════════════════════════════════════════════════════
+
+const EGFR_GESTORES = requireModule('gestor_icnf');
+
+app.get('/api/gestao/egfr-escala', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
+  const { de, ate, equipa, turno } = req.query;
+  const { rows } = await pool.query(`
+    SELECT * FROM egfr_escala
+    WHERE ($1::date IS NULL OR data >= $1)
+      AND ($2::date IS NULL OR data <= $2)
+      AND ($3::text IS NULL OR equipa = $3)
+      AND ($4::text IS NULL OR turno  = $4)
+    ORDER BY data, equipa, posicao
+  `, [de||null, ate||null, equipa||null, turno||null]);
+  res.json(rows);
+}));
+
+app.patch('/api/gestao/egfr-escala/:id', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
+  const { nome, capacidade_supressao, turno } = req.body;
+  const sets = [], vals = [];
+  if (nome                !== undefined) { sets.push(`nome=$${vals.length+2}`);                vals.push(nome); }
+  if (capacidade_supressao !== undefined) { sets.push(`capacidade_supressao=$${vals.length+2}`); vals.push(capacidade_supressao); }
+  if (turno               !== undefined) { sets.push(`turno=$${vals.length+2}`);               vals.push(turno); }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+  const { rows: [e] } = await pool.query(
+    `UPDATE egfr_escala SET ${sets.join(',')} WHERE id=$1 RETURNING *`,
+    [req.params.id, ...vals]
+  );
+  if (!e) return res.status(404).json({ error: 'Registo não encontrado.' });
+  res.json(e);
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  EGFR DE HOJE (público — para dispatch em ocorrências)
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { turno } = req.query; // opcional: 'Prontidão (A)' ou 'Prevenção (B)'
+  const { rows } = await pool.query(`
+    SELECT data, turno, equipa, posicao, nome, capacidade_supressao
+    FROM egfr_escala
+    WHERE data = CURRENT_DATE
+      AND ($1::text IS NULL OR turno = $1)
+    ORDER BY equipa, posicao
+  `, [turno||null]);
+
+  // Agrupar por equipa
+  const equipas = {};
+  for (const r of rows) {
+    if (!equipas[r.equipa]) equipas[r.equipa] = { equipa: r.equipa, turno: r.turno, data: r.data, elementos: [] };
+    equipas[r.equipa].elementos.push({ posicao: r.posicao, nome: r.nome, capacidade_supressao: r.capacidade_supressao });
+  }
+  res.json(Object.values(equipas));
+}));
+
 // ══════════════════════════════════════════════════════════════════
 //  MÓDULOS DE GESTÃO — ETL SYNC
 // ══════════════════════════════════════════════════════════════════
