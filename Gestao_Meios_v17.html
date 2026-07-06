@@ -522,6 +522,11 @@
       <span class="dot"></span>SISTEMA ATIVO<br>
       <span id="clock">--:--:--</span><br>
       <span id="sidebar-user" style="color:var(--accent);"></span>
+      <div id="oln-badge" style="display:none;margin-top:6px;padding:4px 6px;border-radius:2px;background:color-mix(in srgb,var(--accent3) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent3) 30%,transparent);">
+        <div style="font-size:8px;letter-spacing:.08em;color:var(--accent3);font-weight:600">OLN SERVIÇO</div>
+        <div id="oln-badge-nome" style="font-size:10px;color:var(--fg);"></div>
+        <div id="oln-badge-contacto" style="font-size:9px;color:var(--muted);"></div>
+      </div>
     </div>
   </div>
 
@@ -854,6 +859,7 @@
     <div class="modal-title" id="modal-team-title">Adicionar Meio</div>
     <input type="hidden" id="team-edit-id"/>
     <input type="hidden" id="team-equipa-id"/>
+    <input type="hidden" id="team-recurso-id"/>
     <input type="hidden" id="team-transporte-id"/>
 
     <div class="modal-section">Identificação</div>
@@ -1326,6 +1332,7 @@ async function cacheToIDB(){
     await idbSet('idb_cache','ocorrencias', db.ocorrencias);
     await idbSet('idb_cache','teams',       db.teams);
     await idbSet('idb_cache','equipas',     db.equipas);
+    await idbSet('idb_cache','recursos',    db.recursos);
     await idbSet('idb_cache','operacionais',db.operacionais);
     await idbSet('idb_cache','occEventos',  db_occEventos);
     await idbSet('idb_cache','user',        { currentUser, currentRole, currentNome, currentSubregiao });
@@ -1338,11 +1345,13 @@ async function restoreFromIDB(){
     const occ  = await idbGet('idb_cache','ocorrencias');
     const tms  = await idbGet('idb_cache','teams');
     const eq   = await idbGet('idb_cache','equipas');
+    const rec  = await idbGet('idb_cache','recursos');
     const ops  = await idbGet('idb_cache','operacionais');
     const evts = await idbGet('idb_cache','occEventos');
     if(occ)  db.ocorrencias  = occ;
     if(tms)  db.teams        = tms;
     if(eq)   db.equipas      = eq;
+    if(rec)  db.recursos     = rec;
     if(ops)  db.operacionais = ops;
     if(evts) db_occEventos   = evts;
     return !!(occ || tms);
@@ -1654,7 +1663,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], operacionais:[], deleteRequests:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -1746,11 +1755,12 @@ async function loadAllData(){
   }
 
   // Subregião filtering is handled server-side based on JWT role
-  const [occRes, teamsRes, equipasRes, opsRes] = await Promise.all([
+  const [occRes, teamsRes, equipasRes, opsRes, recursosRes] = await Promise.all([
     apiFetch('/api/ocorrencias'),
     apiFetch('/api/meios'),
     apiFetch('/api/equipas'),
     apiFetch('/api/operacionais'),
+    apiFetch('/api/recursos'),
   ]);
   if(occRes.error)    console.warn('loadAllData ocorrencias:', occRes.error.message);
   else                db.ocorrencias = occRes.data.map(mapOcorrencia);
@@ -1760,8 +1770,16 @@ async function loadAllData(){
   else                db.equipas     = equipasRes.data.map(mapEquipa);
   if(opsRes.error)    console.warn('loadAllData operacionais:', opsRes.error.message);
   else                db.operacionais= opsRes.data || [];
+  if(recursosRes.error) console.warn('loadAllData recursos:', recursosRes.error.message);
+  else                  db.recursos = recursosRes.data || [];
   if(occRes.error||teamsRes.error||equipasRes.error)
     toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
+
+  // OLN de serviço (non-critical, failures silently ignored)
+  try {
+    const { data: olnData } = await apiFetch('/api/oln/servico');
+    if(olnData) renderOlnBadge(olnData);
+  } catch(e){ /* ignore */ }
 
   try {
     const { data: drData, error: drErr } = await apiFetch('/api/delete-requests');
@@ -1789,10 +1807,20 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
+
+function renderOlnBadge(slots){
+  const badge = document.getElementById('oln-badge');
+  if(!badge) return;
+  if(!slots || !slots.length){ badge.style.display='none'; return; }
+  const s = slots[0];
+  badge.style.display = 'block';
+  document.getElementById('oln-badge-nome').textContent = s.nome || '—';
+  document.getElementById('oln-badge-contacto').textContent = s.contacto || '';
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  SAVE HELPERS — offline-aware (queue when offline, Supabase when online)
@@ -1814,7 +1842,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, transporte_id:payload.transporteId||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -2542,15 +2570,32 @@ function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
   if(!teams.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios.</div></div></td></tr>';return;}
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
-  tbody.innerHTML=teams.map(t=>{
+  const childIds = new Set(teams.filter(t=>t.meioPaiId).map(t=>t.id));
+  // Sort: parents before their children (parents have composicaoId, children have meioPaiId)
+  const sorted = [...teams].sort((a,b)=>{
+    const aIsChild = !!a.meioPaiId, bIsChild = !!b.meioPaiId;
+    if(!aIsChild && bIsChild && b.meioPaiId===a.id) return -1;
+    if(aIsChild && !bIsChild && a.meioPaiId===b.id) return 1;
+    return 0;
+  });
+  tbody.innerHTML=sorted.map(t=>{
+    const isChild  = !!t.meioPaiId;
+    const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
+    const childCount = isParent ? teams.filter(c=>c.meioPaiId===t.id).length : 0;
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
     const timeCell=ti?`<div style="display:flex;flex-direction:column;gap:2px;">
       <div class="time-bar-track" style="width:80px"><div class="time-bar-fill ${ti.cls}" style="width:${ti.pct}%"></div></div>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}</span>
     </div>`:'—';
-    return `<tr>
-      <td><strong>${esc(t.eq)}</strong></td>
+    const nameCell = isChild
+      ? `<span style="padding-left:14px;color:var(--muted)">└ ${esc(t.eq)}</span>`
+      : isParent
+        ? `<strong>${esc(t.eq)}</strong> <span class="badge badge-info" style="font-size:9px" title="${childCount} meios componentes">⬡ ${childCount}</span>`
+        : `<strong>${esc(t.eq)}</strong>`;
+    const rowStyle = isChild ? 'background:color-mix(in srgb,var(--surface) 60%,transparent);' : '';
+    return `<tr style="${rowStyle}">
+      <td>${nameCell}</td>
       <td><span class="badge badge-y">${esc(t.tipo||'—')}</span></td>
       <td class="mono" style="font-size:10px;letter-spacing:.05em">${esc(t.matricula||'—')}</td>
       <td><span class="badge badge-sector">${esc(t.setor||'—')}</span></td>
@@ -2573,7 +2618,11 @@ function renderTableView(teams, isClosed){
 }
 
 // ─── TEAM CARD HTML ────────────────────────────────────────────
-function teamCardHtml(t, isClosed){
+function teamCardHtml(t, isClosed, _teams){
+  const teams = _teams || (window.db?.teams||[]).filter(x=>x.ocorrencia_id===t.ocorrencia_id);
+  const isChild  = !!t.meioPaiId;
+  const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
+  const childCount = isParent ? teams.filter(c=>c.meioPaiId===t.id).length : 0;
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
@@ -2636,9 +2685,15 @@ function teamCardHtml(t, isClosed){
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
     </div>`;
 
-  return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}">
+  const cardStyle = isChild ? 'margin-left:16px;border-left:3px solid var(--border);opacity:.92;' : '';
+  const nameHtml = isChild
+    ? `<span style="color:var(--muted);font-size:10px">└</span> ${esc(t.eq)}`
+    : isParent
+      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} componentes">⬡ ${childCount}</span>`
+      : esc(t.eq);
+  return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}" style="${cardStyle}">
     <div class="team-card-head">
-      <div class="team-card-name">${esc(t.eq)}</div>
+      <div class="team-card-name">${nameHtml}</div>
       <span class="badge badge-y" style="font-size:9px">${esc(t.tipo||'?')}</span>
       <span class="badge ${est.cls}">${est.l}</span>
       ${pendingDelete?`<span class="badge badge-warn" style="font-size:9px" title="Pedido de remoção pendente">🔒</span>`:''}
@@ -2962,6 +3017,7 @@ function openAddTeam(){
   document.getElementById('team-setor').value='';
   document.getElementById('team-tipo').value='';
   document.getElementById('team-equipa-id').value='';
+  document.getElementById('team-recurso-id').value='';
   document.getElementById('team-transporte-id').value='';
   document.getElementById('team-pm-pick').value='';
   document.getElementById('team-pm-new-eq').value='';
@@ -2986,21 +3042,39 @@ function openAddTeam(){
 
 function applyPreset(id){
   if(!id) return;
-  const e=db.equipas.find(x=>x.id===id);
-  if(!e) return;
-  document.getElementById('team-eq').value=e.nome;
-  const tipoSel=document.getElementById('team-tipo');
-  if(e.tipo && ![...tipoSel.options].some(o=>o.value===e.tipo)){
+  // Try new recursos catalog first, fall back to equipas
+  const r = db.recursos.find(x=>x.id===id);
+  const e = r ? null : db.equipas.find(x=>x.id===id);
+  const nome       = r ? r.codigo        : e?.nome || '';
+  const tipo       = r ? r.tipo          : e?.tipo || '';
+  const capacidade = r ? r.num_elementos : e?.capacidade || 0;
+  const concelho   = r ? r.concelho      : (e?.concelho || e?.origem || '');
+  const contacto   = r ? r.contacto      : '';
+
+  document.getElementById('team-eq').value = nome;
+  const tipoSel = document.getElementById('team-tipo');
+  if(tipo && ![...tipoSel.options].some(o=>o.value===tipo)){
     const opt=document.createElement('option');
-    opt.value=opt.textContent=e.tipo;
+    opt.value=opt.textContent=tipo;
     tipoSel.appendChild(opt);
   }
-  tipoSel.value=e.tipo||'';
-  document.getElementById('team-ops').value=e.capacidade||'';
-  document.getElementById('team-concelho').value=e.concelho||e.origem||'';
-  document.getElementById('team-equipa-id').value=e.id;
-  syncOpsFields(e.capacidade||0);
+  tipoSel.value = tipo;
+  document.getElementById('team-ops').value = capacidade || '';
+  document.getElementById('team-concelho').value = concelho;
+  if(contacto) document.getElementById('team-contacto').value = contacto;
+  document.getElementById('team-equipa-id').value  = e ? id : '';
+  document.getElementById('team-recurso-id').value = r ? id : '';
+  syncOpsFields(capacidade || 0);
   onTeamTipoChange();
+
+  // Fetch full detail to auto-fill matricula from first viatura
+  if(r) apiFetch(`/api/recursos/${id}`).then(({data})=>{
+    if(!data) return;
+    if(data.viaturas?.length){
+      const v = data.viaturas[0];
+      if(v.matricula) document.getElementById('team-matricula').value = v.matricula;
+    }
+  });
 }
 
 // ── MR / PM pairing ──────────────────────────────────────────────
@@ -3065,6 +3139,7 @@ function editTeam(id){
   document.getElementById('team-eq').value=t.eq||'';
   document.getElementById('team-tipo').value=t.tipo||'';
   document.getElementById('team-equipa-id').value=t.equipaId||'';
+  document.getElementById('team-recurso-id').value=t.recursoId||'';
   document.getElementById('team-transporte-id').value=t.transporteId||'';
   document.getElementById('team-pm-new-eq').value='';
   document.getElementById('team-pm-new-matricula').value='';
@@ -3145,6 +3220,7 @@ async function saveTeam(){
     previstoData:document.getElementById('team-previsto-data').value||null,
     previstoHora:document.getElementById('team-previsto-hora').value||null,
     equipaId:document.getElementById('team-equipa-id').value||null,
+    recursoId:document.getElementById('team-recurso-id').value||null,
   };
 
   // Exclusividade entre ocorrências: um meio activo (trânsito/operação/descanso)
@@ -3386,44 +3462,56 @@ function refreshPresetSelect(selectedId){
   const sel = document.getElementById('team-preset');
   if(!sel) return;
 
-  // Populate filter dropdowns on first call
+  // Use db.recursos (new catalog) with fallback to db.equipas
+  const catalog = db.recursos.length ? db.recursos : db.equipas.map(e=>({
+    id:e.id, codigo:e.nome, tipo:e.tipo, categoria:e.tipo_equipa,
+    subregiao:e.subregiao, concelho:e.concelho, num_elementos:e.capacidade,
+    prontidao:'operacional', em_uso:false
+  }));
+
   const teSel = document.getElementById('preset-filter-te');
   const srSel = document.getElementById('preset-filter-sr');
   if(teSel && teSel.options.length <= 1){
-    const tipos = [...new Set(db.equipas.map(e=>e.tipo_equipa).filter(Boolean))].sort();
-    teSel.innerHTML = '<option value="">Tipo equipa…</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+    const cats = [...new Set(catalog.map(r=>r.categoria).filter(Boolean))].sort();
+    teSel.innerHTML = '<option value="">Categoria…</option>' + cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   }
   if(srSel && srSel.options.length <= 1){
-    const subs = [...new Set(db.equipas.map(e=>e.subregiao).filter(Boolean))].sort();
+    const subs = [...new Set(catalog.map(r=>r.subregiao).filter(Boolean))].sort();
     srSel.innerHTML = '<option value="">Sub-região…</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
   }
 
-  // Apply filters
   const fTE = teSel?.value || '';
   const fSR = srSel?.value || '';
   const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
 
-  // Exclusividade: não listar meios já em uso (qualquer estado excepto desmobilizado) noutra ocorrência
+  // Busy set: recursos already allocated elsewhere (any state except desmobilizado)
   const editId = document.getElementById('team-edit-id')?.value || null;
-  const busy = new Set();
+  const busyRecurso = new Set();
+  const busyNome = new Set();
   db.teams.forEach(t=>{
     if(t.id===editId || t.ocorrencia_id===currentOccId || t.estado==='desmobilizado') return;
-    if(t.equipaId) busy.add(t.equipaId);
-    if(t.eq) busy.add('nome:'+t.eq.trim().toLowerCase());
+    if(t.recursoId) busyRecurso.add(t.recursoId);
+    if(t.equipaId)  busyRecurso.add(t.equipaId);
+    if(t.eq)        busyNome.add(t.eq.trim().toLowerCase());
   });
 
-  const filtered = db.equipas.filter(e => {
-    if(fTE && e.tipo_equipa !== fTE) return false;
-    if(fSR && e.subregiao !== fSR) return false;
-    if(fCC && !e.concelho.toLowerCase().includes(fCC)) return false;
-    if(e.id!==selectedId && (busy.has(e.id) || busy.has('nome:'+e.nome.trim().toLowerCase()))) return false;
+  const filtered = catalog.filter(r => {
+    if(fTE && r.categoria !== fTE) return false;
+    if(fSR && r.subregiao !== fSR) return false;
+    if(fCC && !(r.concelho||'').toLowerCase().includes(fCC)) return false;
+    if(r.id !== selectedId && busyRecurso.has(r.id)) return false;
+    if(r.id !== selectedId && busyNome.has((r.codigo||'').trim().toLowerCase())) return false;
     return true;
   });
 
   sel.innerHTML = '<option value="">— Selecionar meio predefinido —</option>' +
-    filtered.map(e=>`<option value="${e.id}"${e.id===selectedId?' selected':''}>` +
-      `${esc(e.nome)}${e.tipo?' ('+esc(e.tipo)+')':''}${e.concelho?' · '+esc(e.concelho):''}` +
-      `</option>`).join('');
+    filtered.map(r => {
+      const inop  = r.prontidao === 'inoperacional';
+      const emUso = r.em_uso && r.id !== selectedId;
+      const badge = inop ? ' ⚠ INOP' : emUso ? ' (em uso)' : '';
+      const label = `${esc(r.codigo)}${r.tipo?' ('+esc(r.tipo)+')':''}${r.concelho?' · '+esc(r.concelho):''}${badge}`;
+      return `<option value="${r.id}"${r.id===selectedId?' selected':''}${inop||emUso?' style="color:var(--warn)"':''}>${label}</option>`;
+    }).join('');
   if(selectedId) applyPreset(selectedId);
 }
 
