@@ -760,6 +760,322 @@ app.get('/api/oln/servico', requireAuth('visualizador'), wrap(async (req, res) =
   res.json(rows);
 }));
 
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — helpers
+// ══════════════════════════════════════════════════════════════════
+
+const ROLE_FONTE = { gestor_sf: 'SF', gestor_fsbf: 'FSBF', gestor_icnf: 'ICNF' };
+
+// Garante que o gestor só altera recursos/viaturas da sua fonte
+async function assertFonteAccess(client, recursoId, userRole) {
+  if (userRole === 'admin') return;
+  const fonteEsperada = ROLE_FONTE[userRole];
+  if (!fonteEsperada) throw Object.assign(new Error('Sem permissão.'), { status: 403 });
+  const { rows } = await client.query(
+    `SELECT f.codigo FROM recursos r
+     JOIN recurso_tipos rt ON rt.codigo = r.tipo
+     JOIN fontes f ON f.id = rt.fonte_id
+     WHERE r.id = $1`, [recursoId]
+  );
+  if (!rows[0]) throw Object.assign(new Error('Recurso não encontrado.'), { status: 404 });
+  if (rows[0].codigo !== fonteEsperada)
+    throw Object.assign(new Error('Recurso pertence a outra fonte.'), { status: 403 });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — RECURSOS
+// ══════════════════════════════════════════════════════════════════
+
+const ALL_GESTORES = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf');
+
+app.get('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { tipo, subregiao, ativo, fonte } = req.query;
+  const atvFilter = ativo === undefined ? null : ativo === 'true';
+
+  // Gestores só vêem a sua própria fonte (a menos que sejam admin)
+  const fonteEfetiva = req.user.role === 'admin'
+    ? (fonte || null)
+    : ROLE_FONTE[req.user.role];
+
+  const { rows } = await pool.query(`
+    SELECT r.*, rt.categoria, f.codigo AS fonte,
+           COALESCE(v.viaturas_count, 0) AS viaturas_count,
+           COALESCE(rd.radios_count, 0)  AS radios_count
+    FROM recursos r
+    JOIN recurso_tipos rt ON rt.codigo = r.tipo
+    JOIN fontes f ON f.id = rt.fonte_id
+    LEFT JOIN (SELECT recurso_id, COUNT(*) AS viaturas_count FROM viaturas WHERE ativo GROUP BY recurso_id) v
+           ON v.recurso_id = r.id
+    LEFT JOIN (SELECT recurso_id, COUNT(*) AS radios_count FROM radios WHERE ativo GROUP BY recurso_id) rd
+           ON rd.recurso_id = r.id
+    WHERE ($1::text   IS NULL OR f.codigo    = $1)
+      AND ($2::text   IS NULL OR r.tipo      = $2)
+      AND ($3::text   IS NULL OR r.subregiao = $3)
+      AND ($4::boolean IS NULL OR r.ativo    = $4)
+    ORDER BY r.tipo, r.codigo
+  `, [fonteEfetiva, tipo || null, subregiao || null, atvFilter]);
+  res.json(rows);
+}));
+
+app.post('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.codigo || !b.tipo) return res.status(400).json({ error: 'codigo e tipo obrigatórios.' });
+
+  // Valida que o tipo pertence à fonte do gestor
+  if (req.user.role !== 'admin') {
+    const { rows } = await pool.query(
+      `SELECT f.codigo FROM recurso_tipos rt JOIN fontes f ON f.id = rt.fonte_id WHERE rt.codigo=$1`,
+      [b.tipo]
+    );
+    if (!rows[0]) return res.status(400).json({ error: 'tipo inválido.' });
+    if (rows[0].codigo !== ROLE_FONTE[req.user.role])
+      return res.status(403).json({ error: 'Tipo pertence a outra fonte.' });
+  }
+
+  const { rows: [r] } = await pool.query(`
+    INSERT INTO recursos (codigo, tipo, regime, num_elementos, entidade, local_base,
+      lat_base, long_base, contacto, email, concelho, subregiao, agfr, notas, ativo)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true) RETURNING *`,
+    [b.codigo, b.tipo, b.regime||null, b.num_elementos||1, b.entidade||null,
+     b.local_base||null, b.lat_base||null, b.long_base||null,
+     b.contacto||null, b.email||null, b.concelho||null, b.subregiao||null,
+     b.agfr||null, b.notas||null]
+  );
+  res.json(r);
+}));
+
+app.patch('/api/gestao/recursos/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  await assertFonteAccess(pool, req.params.id, req.user.role);
+  const b = req.body;
+  const ALLOWED = ['regime','num_elementos','entidade','local_base','lat_base','long_base',
+                   'contacto','email','concelho','subregiao','agfr','notas','ativo'];
+  const sets = [], vals = [];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+  sets.push('updated_at=now()');
+  const { rows: [r] } = await pool.query(
+    `UPDATE recursos SET ${sets.join(',')} WHERE id=$1 RETURNING *`, [req.params.id, ...vals]
+  );
+  res.json(r);
+}));
+
+app.delete('/api/gestao/recursos/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  await assertFonteAccess(pool, req.params.id, req.user.role);
+  await pool.query(`UPDATE recursos SET ativo=false, updated_at=now() WHERE id=$1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Prontidão de recursos ───────────────────────────────────────
+
+app.post('/api/gestao/recursos/:id/prontidao', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  await assertFonteAccess(pool, req.params.id, req.user.role);
+  const { prontidao, motivo, prontidao_ate } = req.body;
+  if (!['operacional','inoperacional'].includes(prontidao))
+    return res.status(400).json({ error: 'prontidao deve ser operacional ou inoperacional.' });
+
+  const { rows: [cur] } = await pool.query(
+    `SELECT prontidao FROM recursos WHERE id=$1`, [req.params.id]
+  );
+  if (!cur) return res.status(404).json({ error: 'Recurso não encontrado.' });
+
+  await pool.query(`
+    UPDATE recursos SET prontidao=$2, prontidao_motivo=$3, prontidao_ate=$4,
+      prontidao_by=$5, prontidao_at=now(), updated_at=now()
+    WHERE id=$1`,
+    [req.params.id, prontidao, motivo||null, prontidao_ate||null, req.user.id]
+  );
+  await pool.query(`
+    INSERT INTO recursos_prontidao_eventos (recurso_id, de, para, motivo, user_id)
+    VALUES ($1,$2,$3,$4,$5)`,
+    [req.params.id, cur.prontidao, prontidao, motivo||null, req.user.id]
+  );
+  res.json({ ok: true });
+}));
+
+// ── Prontidão de viaturas ───────────────────────────────────────
+
+app.post('/api/gestao/viaturas/:id/prontidao', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { prontidao, motivo } = req.body;
+  if (!['operacional','inoperacional'].includes(prontidao))
+    return res.status(400).json({ error: 'prontidao deve ser operacional ou inoperacional.' });
+
+  // Verifica fonte via recurso ligado à viatura
+  if (req.user.role !== 'admin') {
+    const { rows } = await pool.query(
+      `SELECT f.codigo FROM viaturas v
+       JOIN recursos r ON r.id = v.recurso_id
+       JOIN recurso_tipos rt ON rt.codigo = r.tipo
+       JOIN fontes f ON f.id = rt.fonte_id
+       WHERE v.id=$1`, [req.params.id]
+    );
+    if (rows[0] && rows[0].codigo !== ROLE_FONTE[req.user.role])
+      return res.status(403).json({ error: 'Viatura pertence a outra fonte.' });
+  }
+
+  const { rows: [v] } = await pool.query(
+    `UPDATE viaturas SET prontidao=$2, prontidao_motivo=$3,
+       prontidao_by=$4, prontidao_at=now(), updated_at=now()
+     WHERE id=$1 RETURNING id`,
+    [req.params.id, prontidao, motivo||null, req.user.id]
+  );
+  if (!v) return res.status(404).json({ error: 'Viatura não encontrada.' });
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — VIATURAS
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { recurso_id, classe, ativo } = req.query;
+  const atvFilter = ativo === undefined ? null : ativo === 'true';
+  const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
+
+  const { rows } = await pool.query(`
+    SELECT v.*, r.codigo AS recurso_codigo, f.codigo AS fonte
+    FROM viaturas v
+    LEFT JOIN recursos r ON r.id = v.recurso_id
+    LEFT JOIN recurso_tipos rt ON rt.codigo = r.tipo
+    LEFT JOIN fontes f ON f.id = rt.fonte_id
+    WHERE ($1::text    IS NULL OR f.codigo     = $1)
+      AND ($2::uuid    IS NULL OR v.recurso_id = $2)
+      AND ($3::text    IS NULL OR v.classe     = $3)
+      AND ($4::boolean IS NULL OR v.ativo      = $4)
+    ORDER BY v.viatura_cod
+  `, [fonteEfetiva, recurso_id||null, classe||null, atvFilter]);
+  res.json(rows);
+}));
+
+app.patch('/api/gestao/viaturas/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  const ALLOWED = ['recurso_id','matricula','marca','modelo','base','estado','agfr',
+                   'lat_base','long_base','ddi_viatura','ativo'];
+  const sets = [], vals = [];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+  // Mudar recurso_id manualmente activa override
+  if ('recurso_id' in b) { sets.push('manual_override=true'); }
+  sets.push('updated_at=now()');
+  const { rows: [v] } = await pool.query(
+    `UPDATE viaturas SET ${sets.join(',')} WHERE id=$1 RETURNING *`, [req.params.id, ...vals]
+  );
+  if (!v) return res.status(404).json({ error: 'Viatura não encontrada.' });
+  res.json(v);
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — RÁDIOS
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { recurso_id, viatura_id, tipo, ativo } = req.query;
+  const atvFilter = ativo === undefined ? null : ativo === 'true';
+  const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
+
+  const { rows } = await pool.query(`
+    SELECT rd.*,
+           r.codigo  AS recurso_codigo,
+           v.viatura_cod,
+           f.codigo  AS fonte
+    FROM radios rd
+    LEFT JOIN recursos r  ON r.id  = rd.recurso_id
+    LEFT JOIN viaturas v  ON v.id  = rd.viatura_id
+    LEFT JOIN recurso_tipos rt ON rt.codigo = r.tipo
+    LEFT JOIN fontes f ON f.id = rt.fonte_id
+    WHERE ($1::text    IS NULL OR f.codigo     = $1)
+      AND ($2::uuid    IS NULL OR rd.recurso_id = $2)
+      AND ($3::uuid    IS NULL OR rd.viatura_id = $3)
+      AND ($4::text    IS NULL OR rd.tipo        = $4)
+      AND ($5::boolean IS NULL OR rd.ativo       = $5)
+    ORDER BY rd.ddi
+  `, [fonteEfetiva, recurso_id||null, viatura_id||null, tipo||null, atvFilter]);
+  res.json(rows);
+}));
+
+app.patch('/api/gestao/radios/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  const ALLOWED = ['recurso_id','viatura_id','alias','indicativo','estado','subregiao','ativo'];
+  const sets = [], vals = [];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
+  // Qualquer reatribuição de dono activa override
+  if ('recurso_id' in b || 'viatura_id' in b) { sets.push('manual_override=true'); }
+  sets.push('updated_at=now()');
+  const { rows: [rd] } = await pool.query(
+    `UPDATE radios SET ${sets.join(',')} WHERE id=$1 RETURNING *`, [req.params.id, ...vals]
+  );
+  if (!rd) return res.status(404).json({ error: 'Rádio não encontrado.' });
+  res.json(rd);
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — OLN ESCALA (só gestor_icnf / admin)
+// ══════════════════════════════════════════════════════════════════
+
+const OLN_GESTORES = requireModule('gestor_icnf');
+
+app.get('/api/gestao/oln', requireAuth('visualizador'), OLN_GESTORES, wrap(async (req, res) => {
+  const { de, ate } = req.query;
+  const { rows } = await pool.query(`
+    SELECT e.*, r.codigo AS recurso_codigo, r.contacto
+    FROM oln_escala e
+    JOIN recursos r ON r.id = e.recurso_id
+    WHERE ($1::timestamptz IS NULL OR e.fim   >= $1)
+      AND ($2::timestamptz IS NULL OR e.inicio <= $2)
+    ORDER BY e.inicio
+  `, [de||null, ate||null]);
+  res.json(rows);
+}));
+
+app.post('/api/gestao/oln', requireAuth('visualizador'), OLN_GESTORES, wrap(async (req, res) => {
+  const { recurso_id, inicio, fim, notas } = req.body;
+  if (!recurso_id || !inicio || !fim)
+    return res.status(400).json({ error: 'recurso_id, inicio e fim obrigatórios.' });
+  try {
+    const { rows: [slot] } = await pool.query(`
+      INSERT INTO oln_escala (recurso_id, inicio, fim, notas, created_by)
+      VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [recurso_id, inicio, fim, notas||null, req.user.id]
+    );
+    res.json(slot);
+  } catch (e) {
+    if (e.code === '23P01')
+      return res.status(409).json({ error: 'Sobreposição com escala existente.' });
+    throw e;
+  }
+}));
+
+app.delete('/api/gestao/oln/:id', requireAuth('visualizador'), OLN_GESTORES, wrap(async (req, res) => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM oln_escala WHERE id=$1`, [req.params.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Slot não encontrado.' });
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  MÓDULOS DE GESTÃO — ETL SYNC
+// ══════════════════════════════════════════════════════════════════
+
+app.post('/api/gestao/sync', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { execFile } = require('child_process');
+  const path = require('path');
+  const scriptPath = path.join(__dirname, 'scripts', 'sync_catalogo.js');
+  execFile('node', [scriptPath], { env: process.env, timeout: 120_000 }, (err, stdout, stderr) => {
+    if (err) {
+      console.error('ETL sync error:', stderr || err.message);
+      return res.status(500).json({ error: 'ETL falhou.', detail: stderr || err.message });
+    }
+    res.json({ ok: true, output: stdout });
+  });
+}));
+
 // ─── Proxy fogos.pt (browser directo é bloqueado por Cloudflare) ─
 app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) => {
   const r = await fetch('https://api.fogos.pt/v2/incidents/active', {
