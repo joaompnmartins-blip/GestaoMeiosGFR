@@ -4541,6 +4541,12 @@ async function saveProntidao(){
   if(data) db.recursos = data;
 }
 
+// ── Equipamento state ────────────────────────────────────────────
+let _currentRecursoId   = null;
+let _currentRecursoFonte = null;
+let _allViaturas = [];   // full picker list (ICNF) or disponivel (SF/FSBF)
+let _allRadios   = [];
+
 // Edit recurso modal
 function openGestaoRecursoModal(id){
   const r = _gestaoRecursos[id];
@@ -4558,7 +4564,19 @@ function openGestaoRecursoModal(id){
   document.getElementById('grec-regime').value    = r.regime    || '';
   populateSubregiaoSelect('grec-subregiao', r.subregiao || '');
   document.getElementById('grec-concelho').value  = r.concelho  || '';
+  // Clear equipamento sections while loading
+  _currentRecursoId    = r.id;
+  _currentRecursoFonte = r.fonte;
+  document.getElementById('grec-viaturas-linked').innerHTML = '<span style="font-size:11px;color:var(--muted)">A carregar…</span>';
+  document.getElementById('grec-radios-linked').innerHTML   = '<span style="font-size:11px;color:var(--muted)">A carregar…</span>';
+  document.getElementById('grec-viatura-select').innerHTML  = '';
+  document.getElementById('grec-radio-select').innerHTML    = '';
+  // Show ICNF filters only for ICNF fonte
+  const isICNF = r.fonte === 'ICNF';
+  document.getElementById('grec-viatura-icnf-filters').style.display = isICNF ? 'flex' : 'none';
+  document.getElementById('grec-radio-icnf-filters').style.display   = isICNF ? 'flex' : 'none';
   openModal('modal-gestao-recurso');
+  loadRecursoEquipamento(r.id, r.fonte);
 }
 
 async function saveGestaoRecurso(){
@@ -4586,6 +4604,129 @@ async function saveGestaoRecurso(){
   if(activePage==='page-gestao-icnf') renderGestaoICNF();
   const { data } = await apiFetch('/api/recursos');
   if(data) db.recursos = data;
+}
+
+// ── Equipamento load / render ────────────────────────────────────
+
+async function loadRecursoEquipamento(recursoId, fonte){
+  const isICNF = fonte === 'ICNF';
+  const viatUrl = isICNF ? '/api/gestao/viaturas?ativo=true'       : '/api/gestao/viaturas?disponivel=true&ativo=true';
+  const radUrl  = isICNF ? '/api/gestao/radios?ativo=true'         : '/api/gestao/radios?disponivel=true&ativo=true';
+  const [linkedV, linkedR, availV, availR] = await Promise.all([
+    apiFetch(`/api/gestao/viaturas?recurso_id=${recursoId}&ativo=true`),
+    apiFetch(`/api/gestao/radios?recurso_id=${recursoId}&ativo=true`),
+    apiFetch(viatUrl),
+    apiFetch(radUrl),
+  ]);
+  _allViaturas = availV.data || [];
+  _allRadios   = availR.data || [];
+  renderLinkedViaturas(linkedV.data || []);
+  renderLinkedRadios(linkedR.data   || []);
+  renderViaturasPicker();
+  renderRadiosPicker();
+}
+
+function renderLinkedViaturas(list){
+  const el = document.getElementById('grec-viaturas-linked');
+  if(!list.length){ el.innerHTML='<span style="font-size:11px;color:var(--muted)">Nenhuma viatura ligada.</span>'; return; }
+  el.innerHTML = list.map(v=>`
+    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+      ${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}
+      <button onclick="unlinkViatura('${v.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:11px;padding:0 2px;" title="Desligar">⊖</button>
+    </span>`).join('');
+}
+
+function renderLinkedRadios(list){
+  const el = document.getElementById('grec-radios-linked');
+  if(!list.length){ el.innerHTML='<span style="font-size:11px;color:var(--muted)">Nenhum rádio ligado.</span>'; return; }
+  el.innerHTML = list.map(r=>`
+    <span style="display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:3px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+      ${esc(r.ddi)}${r.indicativo?' ('+esc(r.indicativo)+')':''}
+      <button onclick="unlinkRadio('${r.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:11px;padding:0 2px;" title="Desligar">⊖</button>
+    </span>`).join('');
+}
+
+function renderViaturasPicker(){
+  const sel = document.getElementById('grec-viatura-select');
+  const q   = (document.getElementById('grec-viatura-search')?.value||'').toLowerCase();
+  const fF  = document.getElementById('grec-viatura-fonte')?.value||'';
+  const fS  = document.getElementById('grec-viatura-status')?.value||'';
+  let list  = _allViaturas;
+  if(q)  list = list.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
+  if(fF) list = list.filter(v=>v.fonte===fF);
+  if(fS==='disponivel') list = list.filter(v=>!v.recurso_id);
+  if(fS==='ligada')     list = list.filter(v=>!!v.recurso_id);
+  sel.innerHTML = list.length
+    ? list.map(v=>{
+        const linked = v.recurso_id && v.recurso_id !== _currentRecursoId ? ` [${esc(v.recurso_codigo||'?')}]` : '';
+        return `<option value="${v.id}">${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}${linked}</option>`;
+      }).join('')
+    : '<option disabled>Sem viaturas disponíveis</option>';
+}
+
+function renderRadiosPicker(){
+  const sel = document.getElementById('grec-radio-select');
+  const q   = (document.getElementById('grec-radio-search')?.value||'').toLowerCase();
+  const fT  = document.getElementById('grec-radio-tipo')?.value||'';
+  const fS  = document.getElementById('grec-radio-status')?.value||'';
+  let list  = _allRadios;
+  if(q)  list = list.filter(r=>(r.ddi+' '+(r.indicativo||'')).toLowerCase().includes(q));
+  if(fT) list = list.filter(r=>r.tipo===fT);
+  if(fS==='disponivel') list = list.filter(r=>!r.recurso_id && !r.viatura_id);
+  if(fS==='ligado')     list = list.filter(r=>!!r.recurso_id||!!r.viatura_id);
+  sel.innerHTML = list.length
+    ? list.map(r=>{
+        const linked = (r.recurso_id && r.recurso_id !== _currentRecursoId)
+          ? ` [${esc(r.recurso_codigo||'?')}]`
+          : r.viatura_id ? ` [viatura]` : '';
+        return `<option value="${r.id}">${esc(r.ddi)} ${esc(r.tipo)}${r.indicativo?' · '+esc(r.indicativo):''}${linked}</option>`;
+      }).join('')
+    : '<option disabled>Sem rádios disponíveis</option>';
+}
+
+function filterViaturasPicker(){ renderViaturasPicker(); }
+function filterRadiosPicker(){   renderRadiosPicker(); }
+
+async function linkViatura(){
+  const sel = document.getElementById('grec-viatura-select');
+  const vId = sel.value;
+  if(!vId || sel.options[sel.selectedIndex]?.disabled) return;
+  const { error } = await apiFetch(`/api/gestao/viaturas/${vId}`, {
+    method:'PATCH', body:JSON.stringify({ recurso_id: _currentRecursoId })
+  });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Viatura ligada.','ok');
+  await loadRecursoEquipamento(_currentRecursoId, _currentRecursoFonte);
+}
+
+async function unlinkViatura(vId){
+  const { error } = await apiFetch(`/api/gestao/viaturas/${vId}`, {
+    method:'PATCH', body:JSON.stringify({ recurso_id: null })
+  });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Viatura desligada.','info');
+  await loadRecursoEquipamento(_currentRecursoId, _currentRecursoFonte);
+}
+
+async function linkRadio(){
+  const sel = document.getElementById('grec-radio-select');
+  const rId = sel.value;
+  if(!rId || sel.options[sel.selectedIndex]?.disabled) return;
+  const { error } = await apiFetch(`/api/gestao/radios/${rId}`, {
+    method:'PATCH', body:JSON.stringify({ recurso_id: _currentRecursoId, viatura_id: null })
+  });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Rádio ligado.','ok');
+  await loadRecursoEquipamento(_currentRecursoId, _currentRecursoFonte);
+}
+
+async function unlinkRadio(rId){
+  const { error } = await apiFetch(`/api/gestao/radios/${rId}`, {
+    method:'PATCH', body:JSON.stringify({ recurso_id: null, viatura_id: null })
+  });
+  if(error){ toast(error.message,'err'); return; }
+  toast('Rádio desligado.','info');
+  await loadRecursoEquipamento(_currentRecursoId, _currentRecursoFonte);
 }
 
 // ── Gestão SF ────────────────────────────────────────────────────
@@ -4809,6 +4950,51 @@ async function deleteOlnSlot(id){
         <div class="form-field span3" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="grec-ativo" style="width:16px;height:16px;"/>
           <label for="grec-ativo" class="form-label" style="margin:0;">Ativo</label>
+        </div>
+      </div>
+
+      <!-- Viaturas -->
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Viaturas</div>
+        <div id="grec-viaturas-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
+        <div id="grec-viatura-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
+          <input class="form-input" id="grec-viatura-search" placeholder="🔍 Código / matrícula…" oninput="filterViaturasPicker()" style="flex:1;min-width:140px;font-size:11px;padding:4px 6px;"/>
+          <select class="form-select" id="grec-viatura-fonte" onchange="filterViaturasPicker()" style="font-size:11px;padding:4px 6px;">
+            <option value="">Todas as fontes</option>
+            <option value="SF">SF</option><option value="FSBF">FSBF</option><option value="ICNF">ICNF</option>
+          </select>
+          <select class="form-select" id="grec-viatura-status" onchange="filterViaturasPicker()" style="font-size:11px;padding:4px 6px;">
+            <option value="">Todas</option>
+            <option value="disponivel">Disponíveis</option>
+            <option value="ligada">Ligadas</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <select id="grec-viatura-select" size="4" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;border:1px solid var(--border);background:var(--surface2);color:var(--fg);border-radius:2px;padding:4px;"></select>
+          <button class="btn btn-ghost btn-sm" onclick="linkViatura()" style="white-space:nowrap;">+ Ligar</button>
+        </div>
+      </div>
+
+      <!-- Rádios -->
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Rádios</div>
+        <div id="grec-radios-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
+        <div id="grec-radio-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
+          <input class="form-input" id="grec-radio-search" placeholder="🔍 DDI / indicativo…" oninput="filterRadiosPicker()" style="flex:1;min-width:140px;font-size:11px;padding:4px 6px;"/>
+          <select class="form-select" id="grec-radio-tipo" onchange="filterRadiosPicker()" style="font-size:11px;padding:4px 6px;">
+            <option value="">Todos os tipos</option>
+            <option value="Portatil">Portátil</option>
+            <option value="Viatura">Viatura</option>
+          </select>
+          <select class="form-select" id="grec-radio-status" onchange="filterRadiosPicker()" style="font-size:11px;padding:4px 6px;">
+            <option value="">Todos</option>
+            <option value="disponivel">Disponíveis</option>
+            <option value="ligado">Ligados</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end;">
+          <select id="grec-radio-select" size="4" style="flex:1;font-family:'IBM Plex Mono',monospace;font-size:11px;border:1px solid var(--border);background:var(--surface2);color:var(--fg);border-radius:2px;padding:4px;"></select>
+          <button class="btn btn-ghost btn-sm" onclick="linkRadio()" style="white-space:nowrap;">+ Ligar</button>
         </div>
       </div>
     </div>

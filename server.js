@@ -929,8 +929,9 @@ app.post('/api/gestao/viaturas/:id/prontidao', requireAuth('visualizador'), ALL_
 // ══════════════════════════════════════════════════════════════════
 
 app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
-  const { recurso_id, classe, ativo } = req.query;
-  const atvFilter = ativo === undefined ? null : ativo === 'true';
+  const { recurso_id, classe, ativo, disponivel } = req.query;
+  const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
+  const dispFilter = disponivel === undefined ? null : disponivel === 'true';
   const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
@@ -943,8 +944,9 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
       AND ($2::uuid    IS NULL OR v.recurso_id = $2)
       AND ($3::text    IS NULL OR v.classe     = $3)
       AND ($4::boolean IS NULL OR v.ativo      = $4)
+      AND ($5::boolean IS NOT TRUE OR v.recurso_id IS NULL)
     ORDER BY v.viatura_cod
-  `, [fonteEfetiva, recurso_id||null, classe||null, atvFilter]);
+  `, [fonteEfetiva, recurso_id||null, classe||null, atvFilter, dispFilter]);
   res.json(rows);
 }));
 
@@ -972,8 +974,9 @@ app.patch('/api/gestao/viaturas/:id', requireAuth('visualizador'), ALL_GESTORES,
 // ══════════════════════════════════════════════════════════════════
 
 app.get('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
-  const { recurso_id, viatura_id, tipo, ativo } = req.query;
-  const atvFilter = ativo === undefined ? null : ativo === 'true';
+  const { recurso_id, viatura_id, tipo, ativo, disponivel } = req.query;
+  const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
+  const dispFilter = disponivel === undefined ? null : disponivel === 'true';
   const fonteEfetiva = req.user.role === 'admin' ? null : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
@@ -986,13 +989,14 @@ app.get('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(as
     LEFT JOIN viaturas v  ON v.id  = rd.viatura_id
     LEFT JOIN recurso_tipos rt ON rt.codigo = r.tipo
     LEFT JOIN fontes f ON f.id = rt.fonte_id
-    WHERE ($1::text    IS NULL OR f.codigo     = $1)
+    WHERE ($1::text    IS NULL OR f.codigo      = $1)
       AND ($2::uuid    IS NULL OR rd.recurso_id = $2)
       AND ($3::uuid    IS NULL OR rd.viatura_id = $3)
       AND ($4::text    IS NULL OR rd.tipo        = $4)
       AND ($5::boolean IS NULL OR rd.ativo       = $5)
+      AND ($6::boolean IS NOT TRUE OR (rd.recurso_id IS NULL AND rd.viatura_id IS NULL))
     ORDER BY rd.ddi
-  `, [fonteEfetiva, recurso_id||null, viatura_id||null, tipo||null, atvFilter]);
+  `, [fonteEfetiva, recurso_id||null, viatura_id||null, tipo||null, atvFilter, dispFilter]);
   res.json(rows);
 }));
 
