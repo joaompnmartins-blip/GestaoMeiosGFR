@@ -1002,12 +1002,7 @@
               </select>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Equipa</th><th>Turno</th><th>Pos.</th><th>Nome</th><th>Cap. Supressão</th><th></th></tr></thead>
-              <tbody id="gicnf-egfr-tbody"></tbody>
-            </table>
-          </div>
+          <div id="gicnf-egfr-cards" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;"></div>
         </div>
       </div>
 
@@ -5248,21 +5243,109 @@ async function renderICNFEgfr(){
   const dataEl  = document.getElementById('gicnf-egfr-data');
   const turnoEl = document.getElementById('gicnf-egfr-turno');
   if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
-  const params = new URLSearchParams({ de: dataEl.value, ate: dataEl.value });
-  if(turnoEl.value) params.set('turno', turnoEl.value);
-  const { data, error } = await apiFetch('/api/gestao/egfr-escala?'+params);
-  if(error){ toast('Erro ao carregar escala EGFR.','err'); return; }
-  const rows = data || [];
-  const tbody = document.getElementById('gicnf-egfr-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);padding:12px;">Sem registos para este dia.</td></tr>'; return; }
-  tbody.innerHTML = rows.map(e=>`<tr>
-    <td><span class="badge badge-y">${esc(e.equipa)}</span></td>
-    <td style="font-size:11px">${esc(e.turno)}</td>
-    <td class="mono">${esc(e.posicao)}</td>
-    <td>${esc(e.nome)}</td>
-    <td style="text-align:center">${e.capacidade_supressao?'<span class="badge badge-ok">Sim</span>':'<span class="badge badge-warn">Não</span>'}</td>
-    <td><button class="btn btn-ghost btn-xs" onclick="editEgfrEntry('${e.id}','${esc(e.nome)}',${e.capacidade_supressao})">✎</button></td>
-  </tr>`).join('');
+  const selectedData  = dataEl.value;
+  const selectedTurno = turnoEl.value;
+
+  // Load egfr/hoje (grouped by equipa with viatura) and full escala list in parallel
+  const escalaParams = new URLSearchParams({ de: selectedData, ate: selectedData });
+  if(selectedTurno) escalaParams.set('turno', selectedTurno);
+
+  const [hojRes, escRes, viatRes] = await Promise.all([
+    apiFetch(`/api/egfr/hoje?data=${selectedData}`),
+    apiFetch('/api/gestao/egfr-escala?'+escalaParams),
+    apiFetch('/api/gestao/viaturas')
+  ]);
+
+  const container = document.getElementById('gicnf-egfr-cards');
+
+  if(hojRes.error && escRes.error){ toast('Erro ao carregar escala EGFR.','err'); return; }
+
+  const hojeGroups = hojRes.data || [];   // [{equipa, turno, viatura_id, viatura_matricula, elementos:[...]}]
+  const escalaRows = escRes.data || [];   // flat rows from management endpoint
+  const viaturas   = viatRes.data || [];
+
+  if(!hojeGroups.length && !escalaRows.length){
+    container.innerHTML='<p style="color:var(--muted);padding:8px;">Sem registos para este dia.</p>';
+    return;
+  }
+
+  // Build equipa groups from escala rows if hoje returned nothing (different date)
+  let groups = hojeGroups;
+  if(!groups.length){
+    const equipaMap = {};
+    for(const r of escalaRows){
+      if(!equipaMap[r.equipa]) equipaMap[r.equipa] = { equipa: r.equipa, turno: r.turno, viatura_id: null, viatura_matricula: null, elementos: [] };
+      equipaMap[r.equipa].elementos.push(r);
+    }
+    groups = Object.values(equipaMap);
+  }
+
+  // Filter by turno if selected
+  const filtered = selectedTurno ? groups.filter(g=>g.turno===selectedTurno) : groups;
+
+  const isCCON = _currentUser && (_currentUser.role==='admin'||_currentUser.role==='ofligacao_ccon');
+
+  const viatOpts = viaturas.map(v=>`<option value="${v.id}">${esc(v.matricula)}${v.designacao?' – '+esc(v.designacao):''}</option>`).join('');
+
+  container.innerHTML = filtered.map(g=>{
+    const equipaId = g.equipa.replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g,'');
+    const membros = g.elementos || [];
+    const viaturaLabel = (g.viatura_matricula || g.matricula)
+      ? `<span class="badge badge-ok">${esc(g.viatura_matricula || g.matricula)}</span>`
+      : `<span class="badge badge-warn">Sem viatura</span>`;
+
+    const viatSelect = isCCON ? `
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+        <select class="form-select" id="egfr-viat-sel-${equipaId}" style="font-size:11px;padding:4px 6px;flex:1;">
+          <option value="">— Sem viatura —</option>
+          ${viatOpts}
+        </select>
+        <button class="btn btn-xs btn-primary" onclick="saveEgfrViatura('${esc(g.equipa)}','${selectedData}','${equipaId}')">Guardar</button>
+      </div>` : '';
+
+    const membrosHtml = membros.map(el=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-faint,rgba(128,128,128,0.12));">
+        <div>
+          <span class="mono" style="font-size:11px;color:var(--muted);">${esc(el.posicao)}</span>
+          <span style="margin-left:8px;font-size:13px;">${esc(el.nome)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${el.capacidade_supressao?'<span class="badge badge-ok" style="font-size:10px;">Supressão</span>':''}
+          ${isCCON?`<button class="btn btn-ghost btn-xs" onclick="editEgfrEntry('${el.id}','${esc(el.nome)}',${el.capacidade_supressao})">✎</button>`:''}
+        </div>
+      </div>`).join('');
+
+    return `<div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;min-width:280px;flex:1;max-width:400px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <span class="badge badge-y" style="font-size:12px;">${esc(g.equipa)}</span>
+          <span style="font-size:11px;color:var(--muted);margin-left:8px;">${esc(g.turno||'')}</span>
+        </div>
+        <div>${viaturaLabel}</div>
+      </div>
+      ${viatSelect}
+      <div style="margin-top:8px;">${membrosHtml}</div>
+    </div>`;
+  }).join('');
+
+  // Pre-select current viatura in dropdowns
+  for(const g of filtered){
+    if(!g.viatura_id) continue;
+    const equipaId = g.equipa.replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g,'');
+    const sel = document.getElementById(`egfr-viat-sel-${equipaId}`);
+    if(sel) sel.value = g.viatura_id;
+  }
+}
+
+async function saveEgfrViatura(equipa, data, equipaId){
+  const sel = document.getElementById(`egfr-viat-sel-${equipaId}`);
+  const viatura_id = sel ? (sel.value || null) : null;
+  const { error } = await apiFetch('/api/gestao/egfr-viatura', {
+    method:'PUT', body: JSON.stringify({ data, equipa, viatura_id })
+  });
+  if(error){ toast(error.message||'Erro ao guardar viatura.','err'); return; }
+  toast('Viatura atribuída.','ok');
+  renderICNFEgfr();
 }
 
 async function editEgfrEntry(id, nome, capSup){

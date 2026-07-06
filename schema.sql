@@ -244,12 +244,26 @@ CREATE TABLE IF NOT EXISTS egfr_escala (
     equipa               TEXT        NOT NULL,
     posicao              TEXT        NOT NULL,
     nome                 TEXT        NOT NULL,
+    recurso_id           UUID        REFERENCES recursos(id) ON DELETE SET NULL,
     capacidade_supressao BOOLEAN     NOT NULL DEFAULT false,
     created_at           TIMESTAMPTZ DEFAULT now(),
     UNIQUE (data, equipa, posicao)
 );
-CREATE INDEX IF NOT EXISTS idx_egfr_escala_data   ON egfr_escala(data);
-CREATE INDEX IF NOT EXISTS idx_egfr_escala_equipa ON egfr_escala(equipa);
+CREATE INDEX IF NOT EXISTS idx_egfr_escala_data     ON egfr_escala(data);
+CREATE INDEX IF NOT EXISTS idx_egfr_escala_equipa   ON egfr_escala(equipa);
+CREATE INDEX IF NOT EXISTS idx_egfr_escala_recurso  ON egfr_escala(recurso_id);
+
+-- Viatura pré-atribuída a cada equipa EGFR por dia
+CREATE TABLE IF NOT EXISTS egfr_viatura (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    data       DATE NOT NULL,
+    equipa     TEXT NOT NULL,
+    viatura_id UUID REFERENCES viaturas(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (data, equipa)
+);
+CREATE INDEX IF NOT EXISTS idx_egfr_viatura_data ON egfr_viatura(data);
 
 -- ══════════════════════════════════════════════════════════════════
 --  OCORRÊNCIAS

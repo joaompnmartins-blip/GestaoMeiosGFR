@@ -1183,9 +1183,9 @@ app.get('/api/gestao/egfr-escala', requireAuth('visualizador'), EGFR_GESTORES, w
 app.patch('/api/gestao/egfr-escala/:id', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
   const { nome, capacidade_supressao, turno } = req.body;
   const sets = [], vals = [];
-  if (nome                !== undefined) { sets.push(`nome=$${vals.length+2}`);                vals.push(nome); }
+  if (nome                 !== undefined) { sets.push(`nome=$${vals.length+2}`);                 vals.push(nome); }
   if (capacidade_supressao !== undefined) { sets.push(`capacidade_supressao=$${vals.length+2}`); vals.push(capacidade_supressao); }
-  if (turno               !== undefined) { sets.push(`turno=$${vals.length+2}`);               vals.push(turno); }
+  if (turno                !== undefined) { sets.push(`turno=$${vals.length+2}`);                vals.push(turno); }
   if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
   const { rows: [e] } = await pool.query(
     `UPDATE egfr_escala SET ${sets.join(',')} WHERE id=$1 RETURNING *`,
@@ -1195,25 +1195,68 @@ app.patch('/api/gestao/egfr-escala/:id', requireAuth('visualizador'), EGFR_GESTO
   res.json(e);
 }));
 
+// ── EGFR viatura assignment ─────────────────────────────────────
+
+app.get('/api/gestao/egfr-viatura', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
+  const { de, ate } = req.query;
+  const { rows } = await pool.query(`
+    SELECT ev.*, v.viatura_cod, v.matricula, v.classe, v.megfr
+    FROM egfr_viatura ev
+    LEFT JOIN viaturas v ON v.id = ev.viatura_id
+    WHERE ($1::date IS NULL OR ev.data >= $1)
+      AND ($2::date IS NULL OR ev.data <= $2)
+    ORDER BY ev.data, ev.equipa
+  `, [de||null, ate||null]);
+  res.json(rows);
+}));
+
+app.put('/api/gestao/egfr-viatura', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
+  const { data, equipa, viatura_id } = req.body;
+  if (!data || !equipa) return res.status(400).json({ error: 'data e equipa obrigatórios.' });
+  const { rows: [ev] } = await pool.query(`
+    INSERT INTO egfr_viatura (data, equipa, viatura_id, updated_by)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (data, equipa) DO UPDATE SET
+      viatura_id = EXCLUDED.viatura_id,
+      updated_by = EXCLUDED.updated_by,
+      updated_at = now()
+    RETURNING *
+  `, [data, equipa, viatura_id||null, req.user.id]);
+  res.json(ev);
+}));
+
 // ══════════════════════════════════════════════════════════════════
 //  EGFR DE HOJE (público — para dispatch em ocorrências)
 // ══════════════════════════════════════════════════════════════════
 
 app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => {
-  const { turno } = req.query; // opcional: 'Prontidão (A)' ou 'Prevenção (B)'
+  const { turno, data } = req.query;
   const { rows } = await pool.query(`
-    SELECT data, turno, equipa, posicao, nome, capacidade_supressao
-    FROM egfr_escala
-    WHERE data = CURRENT_DATE
-      AND ($1::text IS NULL OR turno = $1)
-    ORDER BY equipa, posicao
-  `, [turno||null]);
+    SELECT e.id, e.data, e.turno, e.equipa, e.posicao, e.nome, e.recurso_id, e.capacidade_supressao,
+           ev.viatura_id, v.viatura_cod, v.matricula, v.classe, v.megfr
+    FROM egfr_escala e
+    LEFT JOIN egfr_viatura ev ON ev.data = e.data AND ev.equipa = e.equipa
+    LEFT JOIN viaturas v ON v.id = ev.viatura_id
+    WHERE e.data = $1::date
+      AND ($2::text IS NULL OR e.turno = $2)
+    ORDER BY e.equipa, e.posicao
+  `, [data || new Date().toISOString().slice(0,10), turno||null]);
 
-  // Agrupar por equipa
+  // Group by equipa
   const equipas = {};
   for (const r of rows) {
-    if (!equipas[r.equipa]) equipas[r.equipa] = { equipa: r.equipa, turno: r.turno, data: r.data, elementos: [] };
-    equipas[r.equipa].elementos.push({ posicao: r.posicao, nome: r.nome, capacidade_supressao: r.capacidade_supressao });
+    if (!equipas[r.equipa]) {
+      equipas[r.equipa] = {
+        equipa: r.equipa, turno: r.turno, data: r.data,
+        viatura_id: r.viatura_id, viatura_cod: r.viatura_cod,
+        matricula: r.matricula, classe: r.classe, megfr: r.megfr,
+        elementos: []
+      };
+    }
+    equipas[r.equipa].elementos.push({
+      id: r.id, posicao: r.posicao, nome: r.nome,
+      recurso_id: r.recurso_id, capacidade_supressao: r.capacidade_supressao
+    });
   }
   res.json(Object.values(equipas));
 }));

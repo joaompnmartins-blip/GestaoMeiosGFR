@@ -482,14 +482,25 @@ async function syncEgfrEscala(report) {
   console.log('\n── Fase 6: EGFR Escala (escala_egfr_2026_elementos.csv) ─────');
   const rows = readEscalaCsv('escala_egfr_2026_elementos.csv');
 
-  let upserted = 0;
+  // codigo (= Meios_v1.Meio) → recurso_id for TGFR resources
+  const { rows: tgfrs } = await pool.query(
+    `SELECT id, codigo FROM recursos WHERE tipo = 'TGFR' AND ativo = true`
+  );
+  const nameMap = {};
+  for (const r of tgfrs) nameMap[r.codigo.toLowerCase()] = r.id;
+
+  let upserted = 0, warnings = [];
   for (const row of rows) {
+    const recursoId = nameMap[row.nome.toLowerCase()] || null;
+    if (!recursoId) warnings.push(`Nome TGFR não encontrado: '${row.nome}'`);
+
     await pool.query(
       `INSERT INTO egfr_escala
-         (data, semana_ano, semana_escala, turno, equipa, posicao, nome, capacidade_supressao)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (data, semana_ano, semana_escala, turno, equipa, posicao, nome, recurso_id, capacidade_supressao)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (data, equipa, posicao) DO UPDATE SET
          nome                 = EXCLUDED.nome,
+         recurso_id           = EXCLUDED.recurso_id,
          turno                = EXCLUDED.turno,
          semana_ano           = EXCLUDED.semana_ano,
          semana_escala        = EXCLUDED.semana_escala,
@@ -502,14 +513,17 @@ async function syncEgfrEscala(report) {
         row.equipa,
         row.posicao,
         row.nome,
+        recursoId,
         row.capacidade_supressao?.toLowerCase() === 'sim',
       ]
     );
     upserted++;
   }
 
-  report.egfr = { total: rows.length, upserted };
-  console.log(`  Registos: ${upserted}`);
+  const unresolved = [...new Set(warnings)];
+  report.egfr = { total: rows.length, upserted, warnings: unresolved };
+  console.log(`  Registos: ${upserted}  Sem recurso_id: ${unresolved.length}`);
+  if (unresolved.length) unresolved.forEach(w => console.warn('  ⚠', w));
 }
 
 // ── Relatório final ───────────────────────────────────────────────────────────
@@ -544,7 +558,8 @@ function printReport(report) {
   if (o.warnings.length) o.warnings.forEach(w => console.warn('  ⚠', w));
 
   const e = report.egfr;
-  console.log(`\nEGFR Escala: ${e.total} registos  Upserted: ${e.upserted}`);
+  console.log(`\nEGFR Escala: ${e.total} registos  Upserted: ${e.upserted}  Sem recurso_id: ${e.warnings?.length||0}`);
+  if (e.warnings?.length) e.warnings.forEach(w => console.warn('  ⚠', w));
 
   console.log('\n════════════════════════════════════════════════════════════\n');
 }
