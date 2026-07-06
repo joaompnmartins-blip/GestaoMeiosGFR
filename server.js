@@ -1292,22 +1292,21 @@ app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) 
 async function runMigrations() {
   const fs = require('fs');
 
+  // Incremental column additions must run BEFORE schema.sql so that
+  // CREATE INDEX statements in schema.sql find the columns on existing tables.
+  // ALTER TABLE IF EXISTS is a no-op on fresh databases where the table doesn't exist yet.
+  const preSchemaAlters = [
+    `ALTER TABLE IF EXISTS egfr_escala ADD COLUMN IF NOT EXISTS recurso_id UUID REFERENCES recursos(id) ON DELETE SET NULL`,
+  ];
+  for (const sql of preSchemaAlters) {
+    await pool.query(sql);
+  }
+
   // Aplicar schema base (idempotente — usa CREATE TABLE/INDEX IF NOT EXISTS)
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   await pool.query(schemaSql);
-  console.log('Schema aplicado.');
-
-  // Migrations incrementais (idempotentes via ADD COLUMN IF NOT EXISTS)
-  const incrementalMigrations = [
-    // beta1: recurso_id on egfr_escala
-    `ALTER TABLE egfr_escala ADD COLUMN IF NOT EXISTS recurso_id UUID REFERENCES recursos(id) ON DELETE SET NULL`,
-    `CREATE INDEX IF NOT EXISTS idx_egfr_escala_recurso ON egfr_escala(recurso_id)`,
-  ];
-  for (const sql of incrementalMigrations) {
-    await pool.query(sql);
-  }
-  console.log('Migrações incrementais aplicadas.');
+  console.log('Schema e migrações aplicados.');
 }
 
 // ─── Start ────────────────────────────────────────────────────────
