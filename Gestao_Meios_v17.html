@@ -879,13 +879,17 @@
       <!-- ══════════ PAGE: GESTÃO ICNF ══════════ -->
       <div class="page" id="page-gestao-icnf">
         <!-- Tab navigation -->
-        <div class="icnf-tabs">
-          <button class="icnf-tab-btn active" onclick="icnfSwitchTab('recursos',this)">Recursos</button>
-          <button class="icnf-tab-btn" onclick="icnfSwitchTab('viaturas',this)">Viaturas</button>
-          <button class="icnf-tab-btn" onclick="icnfSwitchTab('radios',this)">Rádios</button>
-          <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
-          <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0;">
+          <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
+            <button class="icnf-tab-btn active" onclick="icnfSwitchTab('recursos',this)">Recursos</button>
+            <button class="icnf-tab-btn" onclick="icnfSwitchTab('viaturas',this)">Viaturas</button>
+            <button class="icnf-tab-btn" onclick="icnfSwitchTab('radios',this)">Rádios</button>
+            <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
+            <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
+          </div>
+          <button class="btn btn-ghost btn-xs auth-admin" id="btn-etl-sync" onclick="runEtlSync()" style="margin-bottom:4px;">⟳ Importar Escalas</button>
         </div>
+        <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
 
         <!-- Tab 1: Recursos -->
         <div id="icnf-tab-recursos">
@@ -5238,6 +5242,16 @@ async function deleteOlnSlot(id){
 }
 
 // ── Tab 5: EGFR ───────────────────────────────────────────────────
+
+async function runEtlSync(){
+  const btn = document.getElementById('btn-etl-sync');
+  btn.disabled = true; btn.textContent = '⟳ A importar…';
+  const { data, error } = await apiFetch('/api/gestao/sync', { method: 'POST' });
+  btn.disabled = false; btn.textContent = '⟳ Importar Escalas';
+  if(error){ toast('Erro ETL: '+(error.detail||error.message||'falhou'),'err'); return; }
+  toast('Escalas importadas com sucesso.','ok');
+  renderGestaoICNF();
+}
 
 async function renderICNFEgfr(){
   const dataEl  = document.getElementById('gicnf-egfr-data');
