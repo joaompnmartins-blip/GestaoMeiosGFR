@@ -5248,9 +5248,10 @@ async function runEtlSync(){
   btn.disabled = true; btn.textContent = '⟳ A importar…';
   const { data, error } = await apiFetch('/api/gestao/sync', { method: 'POST' });
   btn.disabled = false; btn.textContent = '⟳ Importar Escalas';
-  if(error){ toast('Erro ETL: '+(error.detail||error.message||'falhou'),'err'); return; }
-  toast('Escalas importadas com sucesso.','ok');
-  renderGestaoICNF();
+  const output = (error ? (error.detail || error.message || 'Erro desconhecido') : (data && data.output)) || '';
+  document.getElementById('etl-output').textContent = output;
+  openModal('modal-etl');
+  if(!error) renderGestaoICNF();
 }
 
 async function renderICNFEgfr(){
@@ -5270,7 +5271,7 @@ async function renderICNFEgfr(){
   const [hojRes, escRes, viatRes] = await Promise.all([
     apiFetch('/api/egfr/hoje?'+hojeParams),
     apiFetch('/api/gestao/egfr-escala?'+escalaParams),
-    apiFetch('/api/gestao/viaturas')
+    apiFetch('/api/gestao/viaturas?megfr=EGFR&ativo=true')
   ]);
 
   const container = document.getElementById('gicnf-egfr-cards');
@@ -5656,6 +5657,22 @@ async function editEgfrEntry(id, nome, capSup){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-oln')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveOlnSlot()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: ETL output -->
+<div class="modal-overlay" id="modal-etl" onclick="if(event.target===this)closeModal('modal-etl')">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <div class="modal-title">Resultado — Importar Escalas</div>
+      <button class="modal-close" onclick="closeModal('modal-etl')">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre id="etl-output" style="font-size:11px;font-family:'IBM Plex Mono',monospace;white-space:pre-wrap;max-height:60vh;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:12px;margin:0;"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-etl')">Fechar</button>
     </div>
   </div>
 </div>

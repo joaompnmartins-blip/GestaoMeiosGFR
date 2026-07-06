@@ -945,7 +945,7 @@ app.post('/api/gestao/viaturas/:id/prontidao', requireAuth('visualizador'), ALL_
 // ══════════════════════════════════════════════════════════════════
 
 app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
-  const { recurso_id, classe, ativo, disponivel } = req.query;
+  const { recurso_id, classe, megfr, ativo, disponivel } = req.query;
   const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
   const dispFilter = disponivel === undefined ? null : disponivel === 'true';
   const fonteEfetiva = (req.user.role === 'admin' || req.user.role === 'gestor_icnf') ? null : ROLE_FONTE[req.user.role];
@@ -961,8 +961,9 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
       AND ($3::text    IS NULL OR v.classe     = $3)
       AND ($4::boolean IS NULL OR v.ativo      = $4)
       AND ($5::boolean IS NOT TRUE OR v.recurso_id IS NULL)
+      AND ($6::text    IS NULL OR v.megfr      = $6)
     ORDER BY v.viatura_cod
-  `, [fonteEfetiva, recurso_id||null, classe||null, atvFilter, dispFilter]);
+  `, [fonteEfetiva, recurso_id||null, classe||null, atvFilter, dispFilter, megfr||null]);
   res.json(rows);
 }));
 
