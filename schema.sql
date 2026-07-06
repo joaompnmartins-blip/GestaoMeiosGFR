@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS recursos (
     prontidao_by    UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
     prontidao_at    TIMESTAMPTZ,
     notas           TEXT,
+    -- Capacidades EGFR (TGFR)
+    fogo_controlado BOOLEAN NOT NULL DEFAULT false,
+    fogo_supressao  BOOLEAN NOT NULL DEFAULT false,
     -- Campos auxiliares de ligação do xlsx
     ddi_portatil    TEXT,
     ddi_viatura     TEXT,

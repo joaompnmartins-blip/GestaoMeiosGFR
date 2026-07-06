@@ -1233,33 +1233,43 @@ app.put('/api/gestao/egfr-viatura', requireAuth('visualizador'), EGFR_GESTORES, 
 app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => {
   const { turno, data } = req.query;
   const { rows } = await pool.query(`
-    SELECT e.id, e.data, e.turno, e.equipa, e.posicao, e.nome, e.recurso_id, e.capacidade_supressao,
+    SELECT e.id, e.data, e.turno, e.equipa, e.posicao, e.nome, e.recurso_id,
+           CASE WHEN r.id IS NOT NULL THEN r.fogo_supressao  ELSE e.capacidade_supressao END AS fogo_supressao,
+           CASE WHEN r.id IS NOT NULL THEN r.fogo_controlado ELSE false END                 AS fogo_controlado,
            ev.viatura_id, v.viatura_cod, v.matricula, v.classe, v.megfr
     FROM egfr_escala e
+    LEFT JOIN recursos r ON r.id = e.recurso_id
     LEFT JOIN egfr_viatura ev ON ev.data = e.data AND ev.equipa = e.equipa
     LEFT JOIN viaturas v ON v.id = ev.viatura_id
     WHERE e.data = $1::date
       AND ($2::text IS NULL OR e.turno = $2)
-    ORDER BY e.equipa, e.posicao
+    ORDER BY
+      CASE e.turno WHEN 'Prontidão (A)' THEN 0 ELSE 1 END,
+      e.equipa, e.posicao
   `, [data || new Date().toISOString().slice(0,10), turno||null]);
 
-  // Group by equipa
+  // Group by turno+equipa so both turnos render as separate cards
   const equipas = {};
   for (const r of rows) {
-    if (!equipas[r.equipa]) {
-      equipas[r.equipa] = {
-        equipa: r.equipa, turno: r.turno, data: r.data,
+    const key = `${r.turno}::${r.equipa}`;
+    if (!equipas[key]) {
+      equipas[key] = {
+        key, equipa: r.equipa, turno: r.turno, data: r.data,
         viatura_id: r.viatura_id, viatura_cod: r.viatura_cod,
         matricula: r.matricula, classe: r.classe, megfr: r.megfr,
         elementos: []
       };
     }
-    equipas[r.equipa].elementos.push({
+    equipas[key].elementos.push({
       id: r.id, posicao: r.posicao, nome: r.nome,
-      recurso_id: r.recurso_id, capacidade_supressao: r.capacidade_supressao
+      recurso_id: r.recurso_id,
+      fogo_supressao: r.fogo_supressao,
+      fogo_controlado: r.fogo_controlado,
     });
   }
-  res.json(Object.values(equipas));
+  const result = Object.values(equipas);
+  for (const g of result) g.equipa_supressao = g.elementos.some(el => el.fogo_supressao);
+  res.json(result);
 }));
 
 // ══════════════════════════════════════════════════════════════════
@@ -1299,6 +1309,8 @@ async function runMigrations() {
   const preSchemaAlters = [
     `ALTER TABLE IF EXISTS egfr_escala ADD COLUMN IF NOT EXISTS recurso_id UUID REFERENCES recursos(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS notas TEXT`,
+    `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_controlado BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_supressao  BOOLEAN NOT NULL DEFAULT false`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

@@ -526,6 +526,81 @@ async function syncEgfrEscala(report) {
   if (unresolved.length) unresolved.forEach(w => console.warn('  ⚠', w));
 }
 
+// ── Fase 7 — EGFR Capacidades (elementos_egfr.csv) ───────────────────────────
+
+async function syncEgfrElementos(report) {
+  console.log('\n── Fase 7: EGFR Capacidades (elementos_egfr.csv) ────────────');
+
+  const csvPath = path.join(ESCALAS_DIR, 'elementos_egfr.csv');
+  if (!fs.existsSync(csvPath)) {
+    console.log('  elementos_egfr.csv não encontrado — fase ignorada');
+    report.egfrElementos = { skipped: true };
+    return;
+  }
+
+  const content = fs.readFileSync(csvPath, 'utf8');
+  const rows    = parse(content, { columns: true, skip_empty_lines: true, trim: true });
+
+  const { rows: tgfrs } = await pool.query(
+    `SELECT id, codigo FROM recursos WHERE tipo = 'TGFR' AND ativo = true`
+  );
+
+  function normName(s) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+  }
+
+  const exactMap = {};
+  for (const r of tgfrs) exactMap[normName(r.codigo)] = r.id;
+
+  function findBestMatch(csvName) {
+    const normCsv = normName(csvName);
+    if (exactMap[normCsv]) return exactMap[normCsv];
+    // Fuzzy word-overlap — handles minor name discrepancies (extra/missing particle)
+    const csvWords = new Set(normCsv.split(' '));
+    let bestId = null, bestScore = 0;
+    for (const r of tgfrs) {
+      const dbWords = new Set(normName(r.codigo).split(' '));
+      let common = 0;
+      for (const w of csvWords) if (dbWords.has(w)) common++;
+      const score = common / Math.max(csvWords.size, dbWords.size);
+      if (score > bestScore) { bestScore = score; bestId = r.id; }
+    }
+    return bestScore >= 0.75 ? bestId : null;
+  }
+
+  let updated = 0, notFound = 0, warnings = [];
+
+  for (const row of rows) {
+    const fogoControlado = (row['Fogo Controlado'] || '').toUpperCase().trim() === 'X';
+    const fogoSupressao  = (row['Fogo Supressão']  || '').toUpperCase().trim() === 'X';
+
+    const recursoId = findBestMatch(row.NOME);
+    if (!recursoId) {
+      warnings.push(`Não encontrado: '${row.NOME}'`);
+      notFound++;
+      continue;
+    }
+
+    await pool.query(
+      `UPDATE recursos SET fogo_controlado = $2, fogo_supressao = $3 WHERE id = $1`,
+      [recursoId, fogoControlado, fogoSupressao]
+    );
+    updated++;
+  }
+
+  // Keep egfr_escala.capacidade_supressao in sync with recursos.fogo_supressao
+  await pool.query(`
+    UPDATE egfr_escala e
+    SET capacidade_supressao = r.fogo_supressao
+    FROM recursos r
+    WHERE e.recurso_id = r.id
+  `);
+
+  report.egfrElementos = { total: rows.length, updated, notFound, warnings };
+  console.log(`  Total: ${rows.length}  Actualizados: ${updated}  Não encontrados: ${notFound}`);
+  if (warnings.length) warnings.forEach(w => console.warn('  ⚠', w));
+}
+
 // ── Relatório final ───────────────────────────────────────────────────────────
 
 function printReport(report) {
@@ -561,6 +636,12 @@ function printReport(report) {
   console.log(`\nEGFR Escala: ${e.total} registos  Upserted: ${e.upserted}  Sem recurso_id: ${e.warnings?.length||0}`);
   if (e.warnings?.length) e.warnings.forEach(w => console.warn('  ⚠', w));
 
+  const ec = report.egfrElementos;
+  if (ec && !ec.skipped) {
+    console.log(`\nEGFR Capacidades: ${ec.total} elementos  Actualizados: ${ec.updated}  Não encontrados: ${ec.notFound}`);
+    if (ec.warnings?.length) ec.warnings.forEach(w => console.warn('  ⚠', w));
+  }
+
   console.log('\n════════════════════════════════════════════════════════════\n');
 }
 
@@ -576,6 +657,7 @@ async function main() {
     await seedBSF(report);
     await syncOlnEscala(report);
     await syncEgfrEscala(report);
+    await syncEgfrElementos(report);
     printReport(report);
   } finally {
     await pool.end();

@@ -5386,22 +5386,37 @@ async function renderICNFEgfr(){
   if(!groups.length){
     const equipaMap = {};
     for(const r of escalaRows){
-      if(!equipaMap[r.equipa]) equipaMap[r.equipa] = { equipa: r.equipa, turno: r.turno, viatura_id: null, viatura_matricula: null, elementos: [] };
-      equipaMap[r.equipa].elementos.push(r);
+      const k = (r.turno||'') + '::' + r.equipa;
+      if(!equipaMap[k]) equipaMap[k] = { key: k, equipa: r.equipa, turno: r.turno, viatura_id: null, elementos: [] };
+      equipaMap[k].elementos.push(r);
     }
     groups = Object.values(equipaMap);
   }
 
-  // Filter by turno if selected
-  const filtered = selectedTurno ? groups.filter(g=>g.turno===selectedTurno) : groups;
+  // Filter by turno if selected, then sort: Prontidão (A) first, Prevenção (B) second
+  const filtered = (selectedTurno ? groups.filter(g=>g.turno===selectedTurno) : groups.slice())
+    .sort((a,b)=>{
+      const ta = (a.turno||'').includes('Pront') ? 0 : 1;
+      const tb = (b.turno||'').includes('Pront') ? 0 : 1;
+      if(ta!==tb) return ta-tb;
+      return (a.equipa||'').localeCompare(b.equipa||'');
+    });
 
   const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
 
   const viatOpts = viaturas.map(v=>`<option value="${v.id}">${esc(v.matricula)}${v.designacao?' – '+esc(v.designacao):''}</option>`).join('');
 
+  function egfrEquipaId(g){
+    const prefix = (g.turno||'').includes('Pront') ? 'pront' : 'prev';
+    return prefix + '_' + (g.equipa||'').replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');
+  }
+
   container.innerHTML = filtered.map(g=>{
-    const equipaId = g.equipa.replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g,'');
-    const membros = g.elementos || [];
+    const equipaId = egfrEquipaId(g);
+    const membros  = g.elementos || [];
+    const hasSupr  = g.equipa_supressao !== undefined
+      ? g.equipa_supressao
+      : membros.some(el => el.fogo_supressao || el.capacidade_supressao);
     const viaturaLabel = (g.viatura_matricula || g.matricula)
       ? `<span class="badge badge-ok">${esc(g.viatura_matricula || g.matricula)}</span>`
       : `<span class="badge badge-warn">Sem viatura</span>`;
@@ -5415,23 +5430,29 @@ async function renderICNFEgfr(){
         <button class="btn btn-xs btn-primary" onclick="saveEgfrViatura('${esc(g.equipa)}','${selectedData}','${equipaId}')">Guardar</button>
       </div>` : '';
 
-    const membrosHtml = membros.map(el=>`
+    const membrosHtml = membros.map(el=>{
+      const elSupr = el.fogo_supressao !== undefined ? el.fogo_supressao : el.capacidade_supressao;
+      const elCtrl = el.fogo_controlado;
+      return `
       <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-faint,rgba(128,128,128,0.12));">
         <div>
           <span class="mono" style="font-size:11px;color:var(--muted);">${esc(el.posicao)}</span>
           <span style="margin-left:8px;font-size:13px;">${esc(el.nome)}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          ${el.capacidade_supressao?'<span class="badge badge-ok" style="font-size:10px;">Supressão</span>':''}
-          ${isCCON?`<button class="btn btn-ghost btn-xs" onclick="editEgfrEntry('${el.id}','${esc(el.nome)}',${el.capacidade_supressao})">✎</button>`:''}
+        <div style="display:flex;align-items:center;gap:4px;">
+          ${elCtrl?'<span style="font-size:10px;color:var(--muted);" title="Fogo Controlado">FC</span>':''}
+          ${elSupr?'<span class="badge badge-ok" style="font-size:10px;" title="Fogo Supressão">FS</span>':''}
+          ${isCCON?`<button class="btn btn-ghost btn-xs" onclick="editEgfrEntry('${el.id}','${esc(el.nome)}',${!!elSupr})">✎</button>`:''}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     return `<div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;min-width:280px;flex:1;max-width:400px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           <span class="badge badge-y" style="font-size:12px;">${esc(g.equipa)}</span>
-          <span style="font-size:11px;color:var(--muted);margin-left:8px;">${esc(g.turno||'')}</span>
+          <span style="font-size:11px;color:var(--muted);">${esc(g.turno||'')}</span>
+          ${hasSupr?'<span class="badge badge-ok" style="font-size:10px;">🔥 Supressão</span>':''}
         </div>
         <div>${viaturaLabel}</div>
       </div>
@@ -5443,8 +5464,7 @@ async function renderICNFEgfr(){
   // Pre-select current viatura in dropdowns
   for(const g of filtered){
     if(!g.viatura_id) continue;
-    const equipaId = g.equipa.replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g,'');
-    const sel = document.getElementById(`egfr-viat-sel-${equipaId}`);
+    const sel = document.getElementById(`egfr-viat-sel-${egfrEquipaId(g)}`);
     if(sel) sel.value = g.viatura_id;
   }
 }
