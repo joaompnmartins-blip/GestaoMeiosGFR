@@ -1670,11 +1670,10 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
   const { data, equipa, setor, missao } = req.body;
   if (!data || !equipa) return res.status(400).json({ error: 'data e equipa obrigatórios.' });
 
-  // Fetch escala elements + assigned vehicle
   const [escalaRes, viatRes] = await Promise.all([
     pool.query(`
-      SELECT e.*, r.codigo AS recurso_codigo
-      FROM egfr_escala e LEFT JOIN recursos r ON r.id = e.recurso_id
+      SELECT e.nome, e.posicao
+      FROM egfr_escala e
       WHERE e.data=$1 AND e.equipa=$2 ORDER BY e.posicao
     `, [data, equipa]),
     pool.query(`
@@ -1685,31 +1684,59 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
   ]);
   if (!escalaRes.rows.length) return res.status(404).json({ error: 'Equipa EGFR não encontrada na escala.' });
 
+  // Exclusivity check
+  const { rows: ex } = await pool.query(
+    `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
+     WHERE m.egfr_data=$1 AND m.egfr_equipa=$2 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`,
+    [data, equipa]
+  );
+  if (ex.length) return res.status(409).json({ error: `Já despachado para "${ex[0].local_ignicao}".` });
+
   const viat = viatRes.rows[0];
-  const childVehicles = viat?.viatura_id
-    ? [{ id: viat.viatura_id, eq: viat.viatura_cod, tipo: viat.classe||'VLCI', mat: viat.matricula, papel: 'Viatura' }]
-    : [];
+  const today = new Date().toISOString().slice(0,10);
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await deployNationalTeam(client, {
-      occId: req.params.occId, userId: req.user.id,
-      compCodigo: `EGFR-${equipa.replace(/\s+/g,'-')}-${data}`,
-      compTipo: 'EGFR_NACIONAL', compNotas: `${equipa} | ${data}`,
-      parentEq: equipa, parentTipo: 'EGFR', parentOps: escalaRes.rows.length,
-      parentResp: null, parentContact: null,
-      parentSetor: setor, parentMissao: missao,
-      sourceCol: null, egfrData: data, egfrEquipa: equipa,
-      childVehicles,
-      childPersonnelEq: `${equipa} — Equipa (${escalaRes.rows.length} el.)`,
-    });
-    if (result.conflict) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: `Já despachado para "${result.conflict.local_ignicao}".` });
+
+    // Create or reuse composição for traceability
+    const compCodigo = `EGFR-${equipa.replace(/\s+/g,'-')}-${data}`;
+    let { rows: [comp] } = await client.query(`SELECT id FROM composicoes WHERE codigo=$1`, [compCodigo]);
+    if (!comp) {
+      ({ rows: [comp] } = await client.query(
+        `INSERT INTO composicoes (codigo, tipo, notas, created_by) VALUES ($1,'EGFR_NACIONAL',$2,$3) RETURNING id`,
+        [compCodigo, `${equipa} | ${data}`, req.user.id]
+      ));
     }
+
+    // Single meio — use the assigned vehicle if available, otherwise a generic EGFR entry
+    const { rows: [meio] } = await client.query(
+      `INSERT INTO meios
+         (ocorrencia_id, composicao_id, viatura_id, eq, tipo, matricula,
+          operacionais, setor, missao, estado, data_chegada, egfr_data, egfr_equipa, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'previsto',$10,$11,$12,$13) RETURNING *`,
+      [
+        req.params.occId, comp.id,
+        viat?.viatura_id || null,
+        viat?.viatura_cod || equipa,
+        viat?.classe     || 'EGFR',
+        viat?.matricula  || null,
+        escalaRes.rows.length,
+        setor || null, missao || null,
+        today, data, equipa, req.user.id,
+      ]
+    );
+
+    // Individual TGFR members as meios_operativos
+    for (let i = 0; i < escalaRes.rows.length; i++) {
+      await client.query(
+        `INSERT INTO meios_operativos (meio_id, nome, ordem) VALUES ($1,$2,$3)`,
+        [meio.id, escalaRes.rows[i].nome, i]
+      );
+    }
+
     await client.query('COMMIT');
-    res.json(result);
+    res.json({ meio, operativos: escalaRes.rows.map(r => r.nome) });
   } catch(e) { await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
 }));
