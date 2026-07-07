@@ -1363,7 +1363,7 @@
 
 <!-- ══════════ MODAL: AÇÃO RÁPIDA ══════════ -->
 <div class="modal-overlay" id="modal-action">
-  <div class="modal" style="width:420px;">
+  <div class="modal" id="modal-action-box" style="width:420px;">
     <button class="modal-close" onclick="closeModal('modal-action')">✕</button>
     <div class="modal-title" id="modal-action-title">Ação Rápida</div>
     <input type="hidden" id="action-team-id"/>
@@ -2720,6 +2720,7 @@ async function toggleCloseOcorrencia(){
 async function openChangeOfLigacao(){
   const o=db.ocorrencias.find(x=>x.id===currentOccId);
   if(!o) return;
+  document.getElementById('modal-action-box').style.width='420px';
   const { data, error } = await apiFetch('/api/utilizadores/ofligacao');
   if(error){ toast('Não foi possível obter a lista de oficiais de ligação.','err'); return; }
   document.getElementById('action-team-id').value=o.id;
@@ -2792,6 +2793,7 @@ function renderPostosSection(isClosed){
 }
 
 async function openPostoModal(postoId){
+  document.getElementById('modal-action-box').style.width='560px';
   const posto = postoId ? db.postos.find(p=>p.id===postoId) : null;
   const title = document.getElementById('modal-action-title');
   const body  = document.getElementById('action-body');
@@ -3276,6 +3278,7 @@ function quickAction(type, teamId){
   if(!t) return;
   if(hasPendingDelete(teamId)){ toast('Este meio tem um pedido de remoção pendente e não pode ser editado.','err'); return; }
   document.getElementById('action-team-id').value=teamId;
+  document.getElementById('modal-action-box').style.width='420px';
   const title=document.getElementById('modal-action-title');
   const body=document.getElementById('action-body');
   const footer=document.getElementById('action-footer');
