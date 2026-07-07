@@ -1162,12 +1162,11 @@
         <label class="form-label">Filtrar meio predefinido</label>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
           <select class="form-select" id="preset-filter-te" onchange="refreshPresetSelect()" style="flex:1;min-width:110px;font-size:11px;padding:4px 6px;">
-            <option value="">Tipo equipa…</option>
+            <option value="">Tipo…</option>
           </select>
           <select class="form-select" id="preset-filter-sr" onchange="refreshPresetSelect()" style="flex:1;min-width:130px;font-size:11px;padding:4px 6px;">
             <option value="">Sub-região…</option>
           </select>
-          <input class="form-input" id="preset-filter-cc" placeholder="Concelho…" oninput="refreshPresetSelect()" style="flex:1;min-width:100px;font-size:11px;padding:4px 6px;"/>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <select class="form-select" id="team-preset" onchange="applyPreset(this.value)" style="flex:1;">
@@ -1186,7 +1185,7 @@
           <option value="">— Tipo —</option>
           <option>VLCI</option><option>VFCI</option><option>VAFR</option>
           <option>VGFR</option><option>MR</option><option>PM</option>
-          <option>CNAF</option><option>SF</option><option>VN</option><option>Outro</option>
+          <option>CNAF</option><option>SF</option><option>BSF</option><option>VN</option><option>Outro</option>
         </select>
       </div>
       <div class="form-field">
@@ -1961,7 +1960,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -2063,12 +2062,13 @@ async function loadAllData(){
   }
 
   // Subregião filtering is handled server-side based on JWT role
-  const [occRes, teamsRes, equipasRes, opsRes, recursosRes] = await Promise.all([
+  const [occRes, teamsRes, equipasRes, opsRes, recursosRes, compRes] = await Promise.all([
     apiFetch('/api/ocorrencias'),
     apiFetch('/api/meios'),
     apiFetch('/api/equipas'),
     apiFetch('/api/operacionais'),
     apiFetch('/api/recursos'),
+    apiFetch('/api/composicoes'),
   ]);
   if(occRes.error)    console.warn('loadAllData ocorrencias:', occRes.error.message);
   else                db.ocorrencias = occRes.data.map(mapOcorrencia);
@@ -2080,6 +2080,7 @@ async function loadAllData(){
   else                db.operacionais= opsRes.data || [];
   if(recursosRes.error) console.warn('loadAllData recursos:', recursosRes.error.message);
   else                  db.recursos = recursosRes.data || [];
+  if(!compRes.error)  db.composicoes = (compRes.data || []).filter(c => ['BSF','BSBF'].includes(c.tipo) && c.ativo !== false);
   if(occRes.error||teamsRes.error||equipasRes.error)
     toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
 
@@ -3421,19 +3422,25 @@ function openAddTeam(){
   document.getElementById('team-data-demob').value='';
   const opsDl=document.getElementById('ops-datalist'); if(opsDl) opsDl.remove();
   document.getElementById('ops-list').innerHTML='';
+  // Reset filter dropdowns so they repopulate with fresh data (including new BSF entries)
+  const pfTe = document.getElementById('preset-filter-te');
+  const pfSr = document.getElementById('preset-filter-sr');
+  if(pfTe){ pfTe.innerHTML='<option value="">Tipo…</option>'; }
+  if(pfSr){ pfSr.innerHTML='<option value="">Sub-região…</option>'; }
   refreshPresetSelect(null);
   openModal('modal-team');
 }
 
 function applyPreset(id){
   if(!id) return;
-  // Try new recursos catalog first, fall back to equipas
+  // Try recursos catalog, then BSF composicoes, then legacy equipas
   const r = db.recursos.find(x=>x.id===id);
-  const e = r ? null : db.equipas.find(x=>x.id===id);
-  const nome       = r ? r.codigo        : e?.nome || '';
-  const tipo       = r ? r.tipo          : e?.tipo || '';
-  const capacidade = r ? r.num_elementos : e?.capacidade || 0;
-  const concelho   = r ? r.concelho      : (e?.concelho || e?.origem || '');
+  const c = r ? null : (db.composicoes||[]).find(x=>x.id===id);
+  const e = (r||c) ? null : db.equipas.find(x=>x.id===id);
+  const nome       = r ? r.codigo        : c ? c.codigo        : e?.nome || '';
+  const tipo       = r ? r.tipo          : c ? (c.tipo||'BSF') : e?.tipo || '';
+  const capacidade = r ? r.num_elementos : c ? null            : e?.capacidade || 0;
+  const concelho   = r ? r.concelho      : c ? c.concelho      : (e?.concelho || e?.origem || '');
   const contacto   = r ? r.contacto      : '';
 
   document.getElementById('team-eq').value = nome;
@@ -3853,18 +3860,24 @@ function refreshPresetSelect(selectedId){
   const sel = document.getElementById('team-preset');
   if(!sel) return;
 
-  // Use db.recursos (new catalog) with fallback to db.equipas
-  const catalog = db.recursos.length ? db.recursos : db.equipas.map(e=>({
-    id:e.id, codigo:e.nome, tipo:e.tipo, categoria:e.tipo_equipa,
-    subregiao:e.subregiao, concelho:e.concelho, num_elementos:e.capacidade,
-    prontidao:'operacional', em_uso:false
+  // Base catalog: db.recursos + BSF/BSBF brigadas from composicoes
+  const base = db.recursos.length ? db.recursos : db.equipas.map(e=>({
+    id:e.id, codigo:e.nome, tipo:e.tipo, subregiao:e.subregiao,
+    concelho:e.concelho, num_elementos:e.capacidade, prontidao:'operacional', em_uso:false
   }));
+  const bsfEntries = (db.composicoes||[]).map(c=>({
+    id: c.id, codigo: c.codigo, tipo: c.tipo || 'BSF',
+    subregiao: c.subregiao||null, concelho: c.concelho||null,
+    num_elementos: null, prontidao: c.prontidao_derivada||'operacional',
+    em_uso: false, _isBSF: true
+  }));
+  const catalog = [...base, ...bsfEntries];
 
   const teSel = document.getElementById('preset-filter-te');
   const srSel = document.getElementById('preset-filter-sr');
   if(teSel && teSel.options.length <= 1){
-    const cats = [...new Set(catalog.map(r=>r.categoria).filter(Boolean))].sort();
-    teSel.innerHTML = '<option value="">Categoria…</option>' + cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    const tipos = [...new Set(catalog.map(r=>r.tipo).filter(Boolean))].sort();
+    teSel.innerHTML = '<option value="">Tipo…</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
   }
   if(srSel && srSel.options.length <= 1){
     const subs = [...new Set(catalog.map(r=>r.subregiao).filter(Boolean))].sort();
@@ -3873,7 +3886,6 @@ function refreshPresetSelect(selectedId){
 
   const fTE = teSel?.value || '';
   const fSR = srSel?.value || '';
-  const fCC = (document.getElementById('preset-filter-cc')?.value||'').toLowerCase();
 
   // Busy set: recursos already allocated elsewhere (any state except desmobilizado)
   const editId = document.getElementById('team-edit-id')?.value || null;
@@ -3887,9 +3899,8 @@ function refreshPresetSelect(selectedId){
   });
 
   const filtered = catalog.filter(r => {
-    if(fTE && r.categoria !== fTE) return false;
+    if(fTE && r.tipo !== fTE) return false;
     if(fSR && r.subregiao !== fSR) return false;
-    if(fCC && !(r.concelho||'').toLowerCase().includes(fCC)) return false;
     if(r.id !== selectedId && busyRecurso.has(r.id)) return false;
     if(r.id !== selectedId && busyNome.has((r.codigo||'').trim().toLowerCase())) return false;
     return true;
