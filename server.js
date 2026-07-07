@@ -58,8 +58,15 @@ function requireModule(...moduleRoles) {
 
 // Middleware para rotas exclusivas do CCON (OL nacional)
 function requireCCON(req, res, next) {
-  const role = req.user?.role;
-  if (!role) return res.status(401).json({ error: 'Não autenticado.' });
+  // Parse JWT if requireAuth hasn't run yet on this route
+  if (!req.user) {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer '))
+      return res.status(401).json({ error: 'Não autenticado.' });
+    try { req.user = jwt.verify(header.slice(7), JWT_SECRET); }
+    catch { return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' }); }
+  }
+  const role = req.user.role;
   if (role === 'admin' || role === 'ofligacao_ccon') return next();
   return res.status(403).json({ error: 'Reservado ao Oficial de Ligação CCON.' });
 }
