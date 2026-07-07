@@ -856,6 +856,7 @@
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
             <input type="date" class="form-input" id="fsbf-data" onchange="renderFsbfCarta()" style="font-size:12px;padding:5px 8px;"/>
             <button class="btn btn-ghost btn-xs" onclick="document.getElementById('fsbf-data').value=new Date().toISOString().slice(0,10);renderFsbfCarta()">Hoje</button>
+            <button class="btn btn-ghost btn-xs" onclick="printFsbfCarta()" title="Exportar PDF">🖨 Exportar PDF</button>
           </div>
           <div id="fsbf-carta-body"></div>
         </div>
@@ -4946,6 +4947,7 @@ async function renderGestaoSF(){
 // ══════════════════════════════════════════════════════════════════
 
 let _fsbfTab = 'carta';
+let _fsbfViatCache = [];
 
 function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
@@ -5120,6 +5122,7 @@ async function renderFsbfCarta(){
   const bsbf    = cartaRes.data?.bsbf    || [];
   const emr     = cartaRes.data?.emr     || [];
   const allViat = viatRes.data            || [];
+  _fsbfViatCache = allViat;
 
   const norte = bsbf.filter(r=>r.brigada==='Norte');
   const sul   = bsbf.filter(r=>r.brigada==='Sul');
@@ -5191,8 +5194,8 @@ async function renderFsbfCarta(){
     </div>`;
 }
 
-async function saveFsbfHeader(data){
-  const body = {
+function _fsbfHeaderBody(data){
+  return {
     data,
     coord_nome:         document.getElementById('fsbf-coord-nome')?.value.trim()||null,
     coord_contacto:     document.getElementById('fsbf-coord-cont')?.value.trim()||null,
@@ -5203,12 +5206,21 @@ async function saveFsbfHeader(data){
     chefe_veiculo_texto:document.getElementById('fsbf-chefe-viat-txt')?.value.trim()||null,
     notas_outros_meios: document.getElementById('fsbf-outros')?.value.trim()||null,
   };
-  const { error } = await apiFetch('/api/fsbf/carta', { method:'PUT', body:JSON.stringify(body) });
+}
+
+async function saveFsbfHeaderSilent(data){
+  const body = _fsbfHeaderBody(data);
+  await apiFetch('/api/fsbf/carta', { method:'PUT', body:JSON.stringify(body) });
+}
+
+async function saveFsbfHeader(data){
+  const { error } = await apiFetch('/api/fsbf/carta', { method:'PUT', body:JSON.stringify(_fsbfHeaderBody(data)) });
   if(error){ toast(error.message||'Erro ao guardar.','err'); return; }
   toast('Guardado.','ok');
 }
 
 async function addFsbfBsbf(brigada, data){
+  await saveFsbfHeaderSilent(data);
   const { data: row, error } = await apiFetch('/api/fsbf/bsbf', {
     method:'POST', body:JSON.stringify({ data, brigada })
   });
@@ -5232,6 +5244,8 @@ async function saveFsbfBsbf(id){
 
 async function deleteFsbfBsbf(id, brigada){
   if(!confirm(`Remover esta linha da BSBF ${brigada}?`)) return;
+  const data = document.getElementById('fsbf-data')?.value;
+  if(data) await saveFsbfHeaderSilent(data);
   const { error } = await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'DELETE' });
   if(error){ toast(error.message||'Erro.','err'); return; }
   await renderFsbfCarta();
@@ -5244,6 +5258,7 @@ function fsbfBsbfMatricula(id){
 }
 
 async function addFsbfEmr(data){
+  await saveFsbfHeaderSilent(data);
   const { data: row, error } = await apiFetch('/api/fsbf/emr', {
     method:'POST', body:JSON.stringify({ data })
   });
@@ -5270,9 +5285,141 @@ async function saveFsbfEmr(id){
 
 async function deleteFsbfEmr(id){
   if(!confirm('Remover esta equipa EMR?')) return;
+  const data = document.getElementById('fsbf-data')?.value;
+  if(data) await saveFsbfHeaderSilent(data);
   const { error } = await apiFetch(`/api/fsbf/emr/${id}`, { method:'DELETE' });
   if(error){ toast(error.message||'Erro.','err'); return; }
   await renderFsbfCarta();
+}
+
+async function printFsbfCarta(){
+  const data = document.getElementById('fsbf-data')?.value;
+  if(!data){ toast('Selecione uma data.','warn'); return; }
+  // save current header first so the fetch reflects current state
+  await saveFsbfHeaderSilent(data);
+  const { data: cd, error } = await apiFetch(`/api/fsbf/carta?data=${data}`);
+  if(error){ toast('Erro ao carregar dados para impressão.','err'); return; }
+  const carta = cd?.carta || {};
+  const bsbf  = cd?.bsbf  || [];
+  const emr   = cd?.emr   || [];
+  const norte = bsbf.filter(r=>r.brigada==='Norte');
+  const sul   = bsbf.filter(r=>r.brigada==='Sul');
+  const gsbf  = bsbf.filter(r=>r.brigada==='GSBF');
+
+  const totalMeios = bsbf.length + emr.length + (carta.chefe_nome?1:0);
+  const totalOp    = bsbf.reduce((s,r)=>s+(r.guarnicao||0),0)
+                   + emr.reduce((s,r)=>s+(r.total_op||0),0)
+                   + (carta.chefe_guarnicao||0);
+
+  const dateFmt = data.split('-').reverse().join('/');
+
+  function escP(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function bsbfTable(rows){
+    if(!rows.length) return '<tr><td colspan="7" style="color:#666;font-style:italic;padding:4px 6px;">Sem equipas registadas.</td></tr>';
+    return rows.map(r=>`<tr>
+      <td>${escP(r.base||'')}</td>
+      <td>${escP(r.viatura_cod||'')}</td>
+      <td>${escP(r.matricula||'')}</td>
+      <td style="text-align:center;">${r.guarnicao??''}</td>
+      <td>${escP(r.chefe_nome||'')}</td>
+      <td>${escP(r.contacto||'')}</td>
+      <td>${escP(r.observacoes||'')}</td>
+    </tr>`).join('');
+  }
+
+  function emrTable(rows){
+    if(!rows.length) return '<tr><td colspan="9" style="color:#666;font-style:italic;padding:4px 6px;">Sem máquinas registadas.</td></tr>';
+    return rows.map(r=>`<tr>
+      <td>${escP(r.base||'')}</td>
+      <td>${escP(r.mr_cod||'')}</td>
+      <td>${escP(r.vaop_cod||'')}</td>
+      <td>${escP(r.vpil_cod||'')}</td>
+      <td>${escP(r.chefe_nome||'')}</td>
+      <td>${escP(r.contacto||'')}</td>
+      <td>${escP(r.vlci_cod||'')}</td>
+      <td style="text-align:center;">${r.total_op??''}</td>
+      <td>${escP(r.observacoes||'')}</td>
+    </tr>`).join('');
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Carta de Meios FSBF — ${dateFmt}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:12mm 14mm;}
+  h1{font-size:16px;font-weight:bold;text-align:center;margin-bottom:10px;letter-spacing:1px;}
+  .header-row{display:flex;gap:12px;margin-bottom:8px;border:1px solid #000;}
+  .hcell{padding:4px 8px;border-right:1px solid #aaa;}
+  .hcell:last-child{border-right:none;}
+  .hlabel{font-size:9px;color:#555;margin-bottom:2px;}
+  .hval{font-size:11px;font-weight:bold;}
+  .section{margin-bottom:10px;}
+  .section-title{background:#f4a024;color:#000;font-weight:bold;padding:3px 8px;font-size:11px;}
+  table{width:100%;border-collapse:collapse;margin-top:0;}
+  th{background:#f4a024;padding:3px 6px;text-align:left;font-size:10px;border:1px solid #ccc;}
+  td{padding:3px 6px;border:1px solid #ddd;font-size:10px;vertical-align:top;}
+  tr:nth-child(even) td{background:#fafafa;}
+  .totals{margin-top:10px;display:flex;gap:16px;}
+  .total-box{background:#f4a024;padding:4px 14px;font-weight:bold;font-size:12px;}
+  @media print{@page{margin:12mm 14mm;size:A4 portrait;}body{padding:0;}}
+</style></head><body>
+<h1>Carta de Meios FSBF</h1>
+
+<div class="header-row">
+  <div class="hcell"><div class="hlabel">Coordenador de Dia</div><div class="hval">${escP(carta.coord_nome||'')}</div></div>
+  <div class="hcell"><div class="hlabel">Contacto</div><div class="hval">${escP(carta.coord_contacto||'')}</div></div>
+</div>
+
+<div class="header-row" style="margin-bottom:12px;">
+  <div class="hcell"><div class="hlabel">Chefe de Grupo</div><div class="hval">${escP(carta.chefe_nome||'')}</div></div>
+  <div class="hcell"><div class="hlabel">Veículo</div><div class="hval">${escP(carta.chefe_veiculo_cod||carta.chefe_veiculo_texto||'')}</div></div>
+  <div class="hcell"><div class="hlabel">Matrícula</div><div class="hval">${escP(carta.chefe_veiculo_matricula||'')}</div></div>
+  <div class="hcell"><div class="hlabel">Guarnição</div><div class="hval">${carta.chefe_guarnicao??''}</div></div>
+  <div class="hcell"><div class="hlabel">Contacto</div><div class="hval">${escP(carta.chefe_contacto||'')}</div></div>
+  <div class="hcell" style="margin-left:auto;"><div class="hlabel">Data</div><div class="hval">${dateFmt}</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">BSBF NORTE</div>
+  <table><thead><tr><th>Base</th><th>Veículo</th><th>Matrícula</th><th>Guar.</th><th>Chefe Equipa</th><th>Contacto</th><th>Observações</th></tr></thead>
+  <tbody>${bsbfTable(norte)}</tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">BSBF SUL</div>
+  <table><thead><tr><th>Base</th><th>Veículo</th><th>Matrícula</th><th>Guar.</th><th>Chefe Equipa</th><th>Contacto</th><th>Observações</th></tr></thead>
+  <tbody>${bsbfTable(sul)}</tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">GSBF</div>
+  <table><thead><tr><th>Local PP</th><th>Veículo</th><th>Matrícula</th><th>Guar.</th><th>Chefe Equipa</th><th>Contacto</th><th>Observações</th></tr></thead>
+  <tbody>${bsbfTable(gsbf)}</tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">Máquinas de Rasto</div>
+  <table><thead><tr><th>Base</th><th>MR</th><th>VAOP</th><th>Vpiloto</th><th>Chefe Equipa</th><th>Contacto</th><th>VLCI</th><th>Total Op.</th><th>Observações</th></tr></thead>
+  <tbody>${emrTable(emr)}</tbody></table>
+</div>
+
+<div class="section">
+  <div class="section-title">Outros Meios</div>
+  <div style="border:1px solid #ddd;padding:6px 8px;min-height:30px;font-size:10px;">${escP(carta.notas_outros_meios||'')}</div>
+</div>
+
+<div class="totals">
+  <div class="total-box">Total de Meios: ${totalMeios}</div>
+  <div class="total-box">Total de Operacionais: ${totalOp}</div>
+</div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{ w.print(); }, 400);
 }
 
 let _despEmrId = null;
