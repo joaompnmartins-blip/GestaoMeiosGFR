@@ -5589,9 +5589,9 @@ async function printFsbfCarta(){
     return;
   }
 
-  // Inject DATA before </body> so window.__CARTA_DATA__ overrides the static sample
+  // Inject DATA into <head> so it is defined before the main script runs
   const inject = `<script>window.__CARTA_DATA__=${JSON.stringify(DATA)};<\/script>`;
-  const html = tmpl.replace('</body>', inject + '</body>');
+  const html = tmpl.replace('</head>', inject + '</head>');
 
   const w = window.open('','_blank','width=900,height=750');
   w.document.open();
