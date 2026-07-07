@@ -1278,6 +1278,29 @@ app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => 
 
 const FSBF_GESTORES = requireModule('gestor_fsbf');
 
+// ── GET /api/fsbf/disponivel?data= — ofligacao_ccon only ───────
+app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, res) => {
+  const data = req.query.data || new Date().toISOString().slice(0, 10);
+  const [bsbfRes, emrRes] = await Promise.all([
+    pool.query(`
+      SELECT e.*, v.viatura_cod, v.matricula, v.classe
+      FROM fsbf_bsbf_equipa e
+      LEFT JOIN viaturas v ON v.id = e.veiculo_id
+      WHERE e.data = $1
+      ORDER BY e.brigada, e.ordem, e.created_at
+    `, [data]),
+    pool.query(`
+      SELECT e.*,
+        mr.viatura_cod  AS mr_cod,  mr.matricula  AS mr_matricula
+      FROM fsbf_emr_equipa e
+      LEFT JOIN viaturas mr ON mr.id = e.mr_viatura_id
+      WHERE e.data = $1
+      ORDER BY e.ordem, e.created_at
+    `, [data]),
+  ]);
+  res.json({ data, bsbf: bsbfRes.rows, emr: emrRes.rows });
+}));
+
 // ── GET /api/fsbf/carta?data= ──────────────────────────────────
 app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const data = req.query.data || new Date().toISOString().slice(0, 10);
