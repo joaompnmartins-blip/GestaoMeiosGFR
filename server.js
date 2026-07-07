@@ -1781,6 +1781,7 @@ async function runMigrations() {
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_controlado BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_supressao  BOOLEAN NOT NULL DEFAULT false`,
     // National team source columns on meios
+    `ALTER TABLE IF EXISTS fsbf_bsbf_equipa ADD COLUMN IF NOT EXISTS base TEXT`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_bsbf_id UUID REFERENCES fsbf_bsbf_equipa(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_emr_id  UUID REFERENCES fsbf_emr_equipa(id)  ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS egfr_data    DATE`,
