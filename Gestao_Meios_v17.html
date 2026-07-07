@@ -649,6 +649,7 @@
             <div class="info-row"><span class="info-label">Concelho</span><span class="info-val" id="d-concelho">—</span></div>
             <div class="info-row"><span class="info-label">Estado</span><span id="d-estado">—</span></div>
             <div class="info-row"><span class="info-label">Início</span><span class="info-val" id="d-inicio">—</span></div>
+            <div class="info-row"><span class="info-label">Of. Lig. CCON</span><span class="info-val" id="d-oln-ccon" style="color:var(--muted)">—</span></div>
             <div class="info-row"><span class="info-label">Oficial de Ligação</span><span class="info-val">
               <span id="d-oflig">—</span>
               <button class="btn btn-ghost btn-xs auth-ofligacao" id="btn-change-oflig" onclick="openChangeOfLigacao()" style="margin-left:6px;">✎ Alterar</button>
@@ -1960,7 +1961,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -2085,7 +2086,7 @@ async function loadAllData(){
   // OLN de serviço (non-critical, failures silently ignored)
   try {
     const { data: olnData } = await apiFetch('/api/oln/servico');
-    if(olnData) renderOlnBadge(olnData);
+    if(olnData){ db.olnServico = olnData; renderOlnBadge(olnData); }
   } catch(e){ /* ignore */ }
 
   try {
@@ -2643,6 +2644,16 @@ function openDetalhe(id){
     :'<span class="badge badge-active">● ATIVA</span>';
   document.getElementById('d-inicio').textContent=fmtDateTime(o.inicio);
   document.getElementById('d-oflig').textContent=o.oficialLigacaoNome||'—';
+  // OLN CCON on duty — refresh from server each time detail is opened
+  apiFetch('/api/oln/servico').then(({ data }) => {
+    if(data){ db.olnServico = data; renderOlnBadge(data); }
+    const slots = data || db.olnServico || [];
+    const el = document.getElementById('d-oln-ccon');
+    if(!el) return;
+    if(!slots.length){ el.textContent = '—'; el.style.color = 'var(--muted)'; return; }
+    el.textContent = slots.map(s => s.nome + (s.contacto ? ` (${s.contacto})` : '')).join(' / ');
+    el.style.color = '';
+  }).catch(() => {});
   document.getElementById('btn-change-oflig').style.display=isClosed?'none':'';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
   document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
