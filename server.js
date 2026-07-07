@@ -1427,7 +1427,7 @@ app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
 
 app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
-  const ALLOWED = ['veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ordem'];
+  const ALLOWED = ['base','veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ordem'];
   const sets = [], vals = [req.params.id];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
