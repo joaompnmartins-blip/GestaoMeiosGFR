@@ -5412,24 +5412,29 @@ async function renderMeiosNacionaisDisponivel(){
     html += '</tbody></table>';
   }
 
-  // ─── BSBF ───────────────────────────────────────
+  // ─── BSBF — one Despachar button per brigade ────
   const norte = bsbf.filter(r=>r.brigada==='Norte');
   const sul   = bsbf.filter(r=>r.brigada==='Sul');
   const gsbf  = bsbf.filter(r=>r.brigada==='GSBF');
-  [[norte,'BSBF Norte'],[sul,'BSBF Sul'],[gsbf,'GSBF']].forEach(([rows,label])=>{
+  [[norte,'Norte','BSBF Norte'],[sul,'Sul','BSBF Sul'],[gsbf,'GSBF','GSBF']].forEach(([rows,brigKey,label])=>{
     if(!rows.length) return;
-    html += `<div style="font-weight:600;font-size:12px;color:#b45309;margin-bottom:6px;">${label}</div>
+    const brigDeployed = rows.some(r=>r.deployed_meio_id);
+    const brigBadge = brigDeployed ? deployedBadge(rows.find(r=>r.deployed_meio_id)) : deployBtn('fsbf-bsbf', brigKey, {brigada: brigKey, data: today});
+    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span style="font-weight:600;font-size:12px;color:#b45309;">${label}</span>
+      <span style="font-size:11px;color:var(--muted);">${rows.length} viatura(s) · ${rows.reduce((s,r)=>s+(r.guarnicao||0),0)} ef.</span>
+      ${brigBadge}
+    </div>
     <table style="${tS}"><thead><tr>
       <th style="${thS}">Veículo</th><th style="${thS}">Matrícula</th><th style="${thS}">Guar.</th>
-      <th style="${thS}">Base</th><th style="${thS}">Chefe</th><th style="${thS}"></th>
+      <th style="${thS}">Chefe</th><th style="${thS}">Contacto</th>
     </tr></thead><tbody>`;
     html += rows.map(r=>`<tr>
-      <td style="${tdS}"><strong>${esc(r.viatura_cod||r.base||'—')}</strong></td>
+      <td style="${tdS}"><strong>${esc(r.viatura_cod||'—')}</strong></td>
       <td style="${tdS}" class="mono">${esc(r.matricula||'')}</td>
       <td style="${tdS};text-align:center">${r.guarnicao||'—'}</td>
-      <td style="${tdS}">${esc(r.base||'')}</td>
       <td style="${tdS}">${esc(r.chefe_nome||'')}</td>
-      <td style="${tdS}">${r.deployed ? deployedBadge(r) : deployBtn('fsbf-bsbf', r.id, {})}</td>
+      <td style="${tdS}">${esc(r.contacto||'')}</td>
     </tr>`).join('');
     html += '</tbody></table>';
   });
@@ -5467,8 +5472,8 @@ function openDeployModal(type, teamId, extra){
   _deployTeamId = teamId;
   _deployExtra  = extra || {};
   document.getElementById('deploy-modal-title').textContent =
-    type==='egfr' ? `Despachar EGFR — ${extra.equipa||teamId}`
-    : type==='fsbf-bsbf' ? 'Despachar Equipa BSBF'
+    type==='egfr'      ? `Despachar EGFR — ${extra.equipa||teamId}`
+    : type==='fsbf-bsbf' ? `Despachar BSBF ${extra.brigada||teamId}`
     : 'Despachar Equipa EMR';
   document.getElementById('deploy-setor').value  = '';
   document.getElementById('deploy-missao').value = '';
@@ -5489,7 +5494,8 @@ async function confirmDeployNacional(){
     body.equipa = _deployExtra.equipa || _deployTeamId;
     url = `/api/ocorrencias/${currentOccId}/deploy/egfr`;
   } else if(_deployType === 'fsbf-bsbf'){
-    body.team_id = _deployTeamId;
+    body.brigada = _deployExtra.brigada || _deployTeamId;
+    body.data    = _deployExtra.data;
     url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-bsbf`;
   } else {
     body.team_id = _deployTeamId;
