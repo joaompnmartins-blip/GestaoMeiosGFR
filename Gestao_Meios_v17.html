@@ -3208,108 +3208,166 @@ function quickAction(type, teamId){
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
       <button class="btn btn-primary" onclick="doQuickObs('${teamId}')">📝 Registar</button>`;
   }
+  // If this meio belongs to a composite team, offer "apply to all" checkbox
+  if(['transit','op','rest','demob','sector'].includes(type)){
+    const siblings = compositeGroupSiblings(t);
+    if(siblings.length > 0){
+      const label = compositeGroupLabel(t);
+      body.innerHTML += `<div style="margin-top:12px;padding:8px 10px;background:color-mix(in srgb,var(--accent3) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent3) 20%,transparent);border-radius:3px;">
+        <label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:12px;">
+          <input type="checkbox" id="qa-apply-all" checked/>
+          <span>Aplicar também aos outros <strong>${siblings.length}</strong> meio(s) de <strong>${esc(label)}</strong></span>
+        </label>
+      </div>`;
+    }
+  }
   openModal('modal-action');
 }
 
-async function doQuickTransit(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
-  const d=document.getElementById('qa-transit-date').value;
-  const h=document.getElementById('qa-transit-time').value;
-  const obs=document.getElementById('qa-transit-obs').value.trim();
+// ── Composite team helpers ────────────────────────────────────────
+function compositeGroupSiblings(t){
+  const all = db.teams.filter(x => x.ocorrencia_id === currentOccId && x.id !== t.id);
+  if(t.meioPaiId)   return all.filter(x => x.meioPaiId === t.meioPaiId || x.id === t.meioPaiId);
+  if(t.fsbfBsbfId)  return all.filter(x => x.fsbfBsbfId === t.fsbfBsbfId);
+  if(t.fsbfEmrId)   return all.filter(x => x.fsbfEmrId  === t.fsbfEmrId);
+  return [];
+}
+
+function compositeGroupLabel(t){
+  if(t.meioPaiId){
+    const parent = db.teams.find(x => x.id === t.meioPaiId);
+    return parent ? parent.eq : 'brigada';
+  }
+  if(t.fsbfBsbfId) return 'brigada BSBF';
+  if(t.fsbfEmrId)  return 'equipa EMR';
+  return '';
+}
+
+// ── Per-team apply helpers (reused by doQuick* and sibling loops) ─
+async function applyTransitToTeam(t, d, h, obs){
   t.estado='transito'; t.dataDespacho=d||null; t.horaDespacho=h||null;
   t.previstoData=null; t.previstoHora=null;
   const msg=`Activado em trânsito${d?' — despacho: '+d+' '+h:''}${obs?' — '+obs:''}.`;
   addEventLog(t,msg);
-  try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq);
-  } catch(e){ console.warn('doQuickTransit:', e); }
-  closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq);
 }
 
-async function doQuickOp(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
-  const d=document.getElementById('qa-date').value;
-  const h=document.getElementById('qa-time').value;
-  const hmax=parseInt(document.getElementById('qa-hmax').value)||12;
+async function applyOpToTeam(t, d, h, hmax, setor, missao){
   const arr=new Date(`${d}T${h}`);
   const lim=new Date(arr.getTime()+hmax*3600000);
   const limStr=lim.toTimeString().slice(0,5);
   const limDate=lim.toISOString().split('T')[0];
   t.estado='operacao'; t.dataChegada=d; t.horaChegada=h; t.horasMax=hmax;
   t.limiteOp=limStr; t.limiteOpDate=limDate;
-  t.setor=document.getElementById('qa-setor').value.trim()||t.setor;
-  t.missao=document.getElementById('qa-missao').value.trim()||t.missao;
+  if(setor)  t.setor=setor;
+  if(missao) t.missao=missao;
   const msg=`Activado em operação. Setor: ${t.setor||'—'}. Limite op.: ${limStr}.`;
   addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
+}
+
+async function applyRestToTeam(t, obs){
+  t.estado='descanso';
+  if(obs) t.obs=obs;
+  const msg=`Descanso activado${obs?' — '+obs:''}.`;
+  addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}},t.id,`Descanso: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
+}
+
+async function applyDemobToTeam(t, date, time, obs){
+  t.estado='desmobilizado'; t.dataDemob=date; t.horaDemob=time;
+  if(obs) t.obs=obs;
+  const msg='Desmobilizado '+date+' '+time+(obs?' — '+obs:'')+'.';
+  addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:date,hora_demob:time,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${date} ${time}${obs?' — '+obs:''}.`,t.eq);
+  if(t.tipo==='PM'){
+    const mrs=db.teams.filter(x=>x.transporteId===t.id);
+    for(const mr of mrs){ mr.transporteId=null; await supaWriteOrQueue('meios','update',{id:mr.id,row:{transporte_id:null}},mr.id,`Transporte removido: ${mr.eq}`); }
+  }
+}
+
+async function applySectorToTeam(t, setor){
+  const old=t.setor||'—';
+  t.setor=setor;
+  const msg=`Mudança de setor: ${old} → ${t.setor||'—'}.`;
+  addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}},t.id,`Setor: ${t.eq} → ${t.setor}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
+}
+
+async function doQuickTransit(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const d=document.getElementById('qa-transit-date').value;
+  const h=document.getElementById('qa-transit-time').value;
+  const obs=document.getElementById('qa-transit-obs').value.trim();
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
+    await applyTransitToTeam(t,d,h,obs);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyTransitToTeam(s,d,h,'');
+  } catch(e){ console.warn('doQuickTransit:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
+}
+
+async function doQuickOp(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const d=document.getElementById('qa-date').value;
+  const h=document.getElementById('qa-time').value;
+  const hmax=parseInt(document.getElementById('qa-hmax').value)||12;
+  const setor=document.getElementById('qa-setor').value.trim()||t.setor;
+  const missao=document.getElementById('qa-missao').value.trim()||t.missao;
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
+  try {
+    await applyOpToTeam(t,d,h,hmax,setor,missao);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyOpToTeam(s,d,h,hmax,setor,missao);
   } catch(e){ console.warn('doQuickOp:', e); }
+  const limStr=t.limiteOp||'';
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Em Operação. Limite: ${limStr}.`,'ok');
 }
 
 async function doQuickRest(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
   const obs=document.getElementById('qa-obs-rest').value.trim();
-  t.estado='descanso';
-  const msg=`Descanso activado${obs?' — '+obs:''}.`;
-  addEventLog(t,msg);
-  if(obs) t.obs=obs;
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}},t.id,`Descanso: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
+    await applyRestToTeam(t,obs);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyRestToTeam(s,obs);
   } catch(e){ console.warn('doQuickRest:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Em Descanso.`,'info');
 }
 
 async function doQuickDemob(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
-  t.estado='desmobilizado';
-  t.dataDemob=document.getElementById('qa-demob-date').value;
-  t.horaDemob=document.getElementById('qa-demob-time').value;
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const date=document.getElementById('qa-demob-date').value;
+  const time=document.getElementById('qa-demob-time').value;
   const obs=document.getElementById('qa-obs-demob').value.trim();
-  const msg='Desmobilizado '+t.dataDemob+' '+t.horaDemob+(obs?' — '+obs:'')+'.';
-  addEventLog(t,msg);
-  if(obs) t.obs=obs;
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:t.dataDemob,hora_demob:t.horaDemob,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${t.dataDemob} ${t.horaDemob}${obs?' — '+obs:''}.`,t.eq);
-    // PM desmobilizado: liberta o transporte para que o MR possa receber outro PM
-    if(t.tipo==='PM'){
-      const mrs=db.teams.filter(x=>x.transporteId===t.id);
-      for(const mr of mrs){
-        mr.transporteId=null;
-        await supaWriteOrQueue('meios','update',{id:mr.id,row:{transporte_id:null}},mr.id,`Transporte removido: ${mr.eq}`);
-      }
-    }
+    await applyDemobToTeam(t,date,time,obs);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyDemobToTeam(s,date,time,obs);
   } catch(e){ console.warn('doQuickDemob:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Desmobilizado.`,'info');
 }
 
 async function doQuickSector(id){
-  const t=db.teams.find(x=>x.id===id);
-  if(!t) return;
-  const old=t.setor||'—';
-  t.setor=document.getElementById('qa-new-sector').value.trim();
-  const msg=`Mudança de setor: ${old} → ${t.setor||'—'}.`;
-  addEventLog(t,msg);
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const setor=document.getElementById('qa-new-sector').value.trim();
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
-    await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}},t.id,`Setor: ${t.eq} → ${t.setor}`);
-    await persistEvento(t.id,msg);
-    await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
+    await applySectorToTeam(t,setor);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applySectorToTeam(s,setor);
     updateSetorDatalist();
   } catch(e){ console.warn('doQuickSector:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
@@ -3625,60 +3683,31 @@ function editTeam(id){
 async function saveTeam(){
   if(!['admin','ofligacao'].includes(currentRole)){toast('Sem permissão para editar meios.','err');return;}
 
-  // BSF multi-meio path
+  // BSF composição path — uses dedicated server endpoint that creates parent + children
   const bsfId = document.getElementById('team-bsf-id').value;
   if(bsfId){
     const comp = (db.composicoes||[]).find(x=>x.id===bsfId);
-    const membros = (comp?.membros||[]).filter(m=>m.recurso);
-    if(!membros.length){ toast('Brigada sem membros definidos.','err'); return; }
-    const sharedEstado = document.getElementById('team-estado').value || 'previsto';
-    const shared = {
-      ocorrencia_id: currentOccId,
-      setor:          document.getElementById('team-setor').value.trim(),
-      dataDespacho:   document.getElementById('team-data-despacho').value,
-      horaDespacho:   document.getElementById('team-hora-despacho').value,
-      dataSaidaEntidade: document.getElementById('team-data-saida-entidade').value,
-      horaSaidaEntidade: document.getElementById('team-hora-saida-entidade').value,
-      dataChegada:    document.getElementById('team-data-chegada').value,
-      horaChegada:    document.getElementById('team-hora-chegada').value,
-      horasMax:       parseInt(document.getElementById('team-horas-max').value)||null,
-      limiteOp:       document.getElementById('team-limite-op').value,
-      dataDemob:      document.getElementById('team-data-demob').value,
-      horaDemob:      document.getElementById('team-hora-demob').value,
-      dataChegadaEntidade: document.getElementById('team-data-chegada-entidade').value,
-      horaChegadaEntidade: document.getElementById('team-hora-chegada-entidade').value,
-      km:             parseInt(document.getElementById('team-km').value)||null,
-      missao:         document.getElementById('team-missao').value.trim(),
-      obs:            document.getElementById('team-obs').value.trim(),
-      estado:         sharedEstado,
-      previstoData:   document.getElementById('team-previsto-data').value||null,
-      previstoHora:   document.getElementById('team-previsto-hora').value||null,
-    };
-    let ok = 0;
-    for(const m of membros){
-      const payload = {
-        ...shared,
-        eq:          m.recurso.codigo,
-        tipo:        m.recurso.tipo || '',
-        matricula:   '',
-        concelho:    comp.concelho || '',
-        operacionais: 0, operativos: [], responsavel: '', contacto: '',
-        equipaId:    null, recursoId: m.recurso.id,
-        limiteOpDate: null, transporteId: null, viaturaId: null,
-      };
-      const id = await persistTeam(payload, null);
-      if(id){
-        const msg = `Registado no sistema (brigada ${esc(comp.codigo)}). Estado: ${payload.estado}.`;
-        await persistEvento(id, msg);
-        await persistOccEvento(currentOccId, 'created', `Meio adicionado: ${payload.eq}${payload.tipo?' ('+payload.tipo+')':''} · brigada ${comp.codigo}`, payload.eq);
-        db.teams.push({ id, ...payload, created: Date.now(), eventos: [{ ts: new Date().toISOString(), msg }] });
-        ok++;
-      }
-    }
+    if(!comp){ toast('Brigada não encontrada.','err'); return; }
+    const { data, error } = await apiFetch(`/api/ocorrencias/${currentOccId}/meios/composicao`, {
+      method: 'POST',
+      body: JSON.stringify({
+        composicao_id:  bsfId,
+        estado:         document.getElementById('team-estado').value || 'previsto',
+        data_despacho:  document.getElementById('team-data-despacho').value || null,
+        hora_despacho:  document.getElementById('team-hora-despacho').value || null,
+        setor:          document.getElementById('team-setor').value.trim() || null,
+        missao:         document.getElementById('team-missao').value.trim() || null,
+        obs:            document.getElementById('team-obs').value.trim() || null,
+      })
+    });
+    if(error){ toast(error.message||'Erro ao adicionar brigada.','err'); return; }
+    // Reload meios from server so parent+children are all in db.teams with correct meioPaiId
+    const { data: teamsData } = await apiFetch('/api/meios');
+    if(teamsData) db.teams = teamsData.map(mapTeam);
     await cacheToIDB();
     closeModal('modal-team');
     renderTeams();
-    toast(`${ok} meio(s) da brigada ${comp.codigo} adicionados.`, 'ok');
+    toast(`Brigada ${comp.codigo} adicionada (${(data.filhos||[]).length} membros).`, 'ok');
     return;
   }
 
