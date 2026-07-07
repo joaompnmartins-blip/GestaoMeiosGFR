@@ -1348,10 +1348,16 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
     `, [data]),
     pool.query(`
       SELECT e.*,
-        mr.viatura_cod AS mr_cod, mr.matricula AS mr_matricula,
+        mr.viatura_cod   AS mr_cod,   mr.matricula   AS mr_matricula,
+        vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
+        vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula,
+        vlci.viatura_cod AS vlci_cod, vlci.matricula AS vlci_matricula,
         m.id AS deployed_meio_id, o.id AS deployed_occ_id, o.local_ignicao AS deployed_occ_nome
       FROM fsbf_emr_equipa e
-      LEFT JOIN viaturas mr ON mr.id = e.mr_viatura_id
+      LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
+      LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
+      LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
+      LEFT JOIN viaturas vlci ON vlci.id = e.vlci_viatura_id
       LEFT JOIN meios m ON m.fsbf_emr_id = e.id AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
       LEFT JOIN ocorrencias o ON o.id = m.ocorrencia_id
       WHERE e.data = $1
