@@ -841,6 +841,9 @@
             <div class="section-title">Recursos SF <span id="gsf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <input class="form-input" id="gsf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoSF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gsf-filter-subregiao" onchange="renderGestaoSF()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Sub-região…</option>
+              </select>
               <select class="form-select" id="gsf-filter-prontidao" onchange="renderGestaoSF()" style="font-size:12px;padding:5px 8px;">
                 <option value="">Prontidão…</option>
                 <option value="operacional">Operacional</option>
@@ -5078,15 +5081,27 @@ async function deleteComposicao(id, codigo){
 }
 
 async function renderGestaoSF(){
-  const q  = (document.getElementById('gsf-filter-text')?.value||'').toLowerCase();
-  const fp = document.getElementById('gsf-filter-prontidao')?.value||'';
-  const fa = document.getElementById('gsf-filter-ativo')?.value;
+  const q   = (document.getElementById('gsf-filter-text')?.value||'').toLowerCase();
+  const fsr = document.getElementById('gsf-filter-subregiao')?.value||'';
+  const fp  = document.getElementById('gsf-filter-prontidao')?.value||'';
+  const fa  = document.getElementById('gsf-filter-ativo')?.value;
   const atvParam = fa==='' ? '' : `&ativo=${fa}`;
   const { data, error } = await apiFetch(`/api/gestao/recursos?fonte=SF${atvParam}`);
   if(error){ toast('Erro ao carregar recursos SF.','err'); return; }
   let rows = data || [];
-  if(q)  rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
-  if(fp) rows = rows.filter(r=>r.prontidao===fp);
+
+  // Populate sub-região dropdown from actual data (preserves selection across reloads)
+  const srEl = document.getElementById('gsf-filter-subregiao');
+  if(srEl){
+    const current = srEl.value;
+    const subs = [...new Set(rows.map(r=>r.subregiao).filter(Boolean))].sort();
+    srEl.innerHTML = '<option value="">Sub-região…</option>' +
+      subs.map(s=>`<option value="${esc(s)}"${s===current?' selected':''}>${esc(s)}</option>`).join('');
+  }
+
+  if(q)   rows = rows.filter(r=>(r.codigo+' '+(r.entidade||'')).toLowerCase().includes(q));
+  if(fsr) rows = rows.filter(r=>r.subregiao===fsr);
+  if(fp)  rows = rows.filter(r=>r.prontidao===fp);
   rows.forEach(r => _gestaoRecursos[r.id] = r);
   document.getElementById('gsf-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gsf-tbody');
