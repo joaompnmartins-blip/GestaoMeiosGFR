@@ -665,6 +665,31 @@ app.post('/api/composicoes', requireAuth('ofligacao'), wrap(async (req, res) => 
   }
 }));
 
+// §5.3b — Editar composição
+app.patch('/api/composicoes/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const b = req.body;
+  const ALLOWED = ['codigo','subregiao','concelho','notas','ativo'];
+  const sets = [], vals = [req.params.id];
+  for (const k of ALLOWED) {
+    if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
+  const { rows: [c] } = await pool.query(
+    `UPDATE composicoes SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals
+  );
+  if (!c) return res.status(404).json({ error: 'Composição não encontrada.' });
+  res.json(c);
+}));
+
+// §5.3c — Eliminar (desactivar) composição
+app.delete('/api/composicoes/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rowCount } = await pool.query(
+    `UPDATE composicoes SET ativo=false WHERE id=$1`, [req.params.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Composição não encontrada.' });
+  res.json({ ok: true });
+}));
+
 // §5.4 — Instanciar composição numa ocorrência
 app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { composicao_id, estado = 'previsto', ...camposDespacho } = req.body;

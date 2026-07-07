@@ -860,7 +860,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Membros</th><th>Prontidão</th></tr></thead>
+              <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Membros</th><th>Prontidão</th><th></th></tr></thead>
               <tbody id="gsf-brigadas-tbody"></tbody>
             </table>
           </div>
@@ -4980,24 +4980,67 @@ function sfSwitchTab(tab, btn){
   else renderSFBrigadas();
 }
 
+let _sfBrigadasCache = {};
+
 async function renderSFBrigadas(){
   const { data, error } = await apiFetch('/api/composicoes');
   const tbody = document.getElementById('gsf-brigadas-tbody');
   const countEl = document.getElementById('gsf-brigadas-count');
-  if(error){ tbody.innerHTML='<tr><td colspan="5" style="color:var(--muted);padding:12px">Erro ao carregar.</td></tr>'; return; }
+  if(error){ tbody.innerHTML='<tr><td colspan="6" style="color:var(--muted);padding:12px">Erro ao carregar.</td></tr>'; return; }
   const brigadas = (data||[]).filter(c=>['BSF','BSBF'].includes(c.tipo));
+  brigadas.forEach(c=>{ _sfBrigadasCache[c.id]=c; });
   if(countEl) countEl.textContent = `(${brigadas.length})`;
-  if(!brigadas.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem brigadas.</div></div></td></tr>'; return; }
+  if(!brigadas.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem brigadas.</div></div></td></tr>'; return; }
   tbody.innerHTML = brigadas.map(c=>{
     const membros = Array.isArray(c.membros) ? c.membros : [];
+    const canEdit = ['admin','ofligacao'].includes(currentRole);
     return `<tr>
       <td><strong>${esc(c.codigo)}</strong></td>
       <td><span class="badge badge-y">${esc(c.tipo||'—')}</span></td>
       <td>${esc(c.subregiao||'—')}</td>
       <td class="mono" style="text-align:center">${membros.length}</td>
       <td>${prontidaoBadge(c.prontidao_derivada)}</td>
+      <td style="display:flex;gap:4px;white-space:nowrap;">
+        ${canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openComposicaoModal('${c.id}')">✎</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteComposicao('${c.id}','${esc(c.codigo)}')">✕</button>` : ''}
+      </td>
     </tr>`;
   }).join('');
+}
+
+function openComposicaoModal(id){
+  const c = _sfBrigadasCache[id];
+  if(!c){ toast('Registo não encontrado.','err'); return; }
+  document.getElementById('comp-id').value       = c.id;
+  document.getElementById('comp-codigo').value   = c.codigo || '';
+  document.getElementById('comp-notas').value    = c.notas  || '';
+  populateSubregiaoSelect('comp-subregiao', c.subregiao || '');
+  document.getElementById('comp-concelho').value = c.concelho || '';
+  openModal('modal-composicao');
+}
+
+async function saveComposicao(){
+  const id = document.getElementById('comp-id').value;
+  const payload = {
+    codigo:    document.getElementById('comp-codigo').value.trim() || null,
+    subregiao: document.getElementById('comp-subregiao').value     || null,
+    concelho:  document.getElementById('comp-concelho').value.trim()|| null,
+    notas:     document.getElementById('comp-notas').value.trim()  || null,
+  };
+  if(!payload.codigo){ toast('Código é obrigatório.','err'); return; }
+  const { error } = await apiFetch(`/api/composicoes/${id}`, { method:'PATCH', body:JSON.stringify(payload) });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  toast('Brigada actualizada.','ok');
+  closeModal('modal-composicao');
+  renderSFBrigadas();
+}
+
+async function deleteComposicao(id, codigo){
+  if(!confirm(`Desactivar brigada "${codigo}"?`)) return;
+  const { error } = await apiFetch(`/api/composicoes/${id}`, { method:'DELETE' });
+  if(error){ toast(error.message||'Erro.','err'); return; }
+  toast('Brigada desactivada.','info');
+  renderSFBrigadas();
 }
 
 async function renderGestaoSF(){
@@ -5023,9 +5066,10 @@ async function renderGestaoSF(){
     <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
     <td class="mono" style="text-align:center">${r.radios_count||0}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td style="display:flex;gap:4px;">
-      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
-      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡</button>
+      ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}','SF')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -5077,9 +5121,10 @@ async function renderGestaoFSBF(){
     <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
     <td class="mono" style="text-align:center">${r.radios_count||0}</td>
     <td>${prontidaoBadge(r.prontidao, r.prontidao_motivo)}</td>
-    <td style="display:flex;gap:4px;">
-      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎ Editar</button>
-      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡ Pront.</button>
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡</button>
+      ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}','FSBF')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -5679,12 +5724,14 @@ async function renderICNFRecursos(){
   </tr>`).join('');
 }
 
-async function deleteRecurso(id, codigo){
+async function deleteRecurso(id, codigo, module){
   if(!confirm(`Desativar recurso "${codigo}"?`)) return;
   const { error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'DELETE' });
   if(error){ toast(error.message,'err'); return; }
   toast('Recurso desativado.','info');
-  renderICNFRecursos();
+  if(module==='SF') renderGestaoSF();
+  else if(module==='FSBF') renderGestaoFSBF();
+  else renderICNFRecursos();
 }
 
 async function openNewRecursoModal(){
@@ -6387,6 +6434,39 @@ async function editEgfrEntry(id, nome, capSup){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-prontidao')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveProntidao()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: editar brigada (composição) -->
+<div class="modal-overlay" id="modal-composicao" onclick="if(event.target===this)closeModal('modal-composicao')">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">Editar Brigada</div>
+      <button class="modal-close" onclick="closeModal('modal-composicao')">✕</button>
+    </div>
+    <div class="modal-body" style="display:grid;gap:12px;">
+      <input type="hidden" id="comp-id"/>
+      <div class="form-field">
+        <label class="form-label">Código</label>
+        <input class="form-input" id="comp-codigo" placeholder="Ex: BRIG 01-115"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Sub-região</label>
+        <select class="form-select" id="comp-subregiao"></select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Concelho</label>
+        <input class="form-input" id="comp-concelho" placeholder="Concelho"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Notas</label>
+        <textarea class="form-input" id="comp-notas" rows="2" placeholder="Notas…" style="resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-composicao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveComposicao()">Guardar</button>
     </div>
   </div>
 </div>
