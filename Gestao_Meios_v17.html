@@ -2617,7 +2617,7 @@ function openDetalhe(id){
   document.getElementById('topbar-sub').textContent=(isClosed?'🗄 ARQUIVADA · ':'')+(o.ref?`Cód. ${o.ref} · `:'')+(o.concelho||'');
   updateSetorDatalist();
   renderTeams();
-  renderFsbfDisponivel();
+  renderMeiosNacionaisDisponivel();
   navTo('detalhe',null);
   document.querySelector('[data-page="ocorrencias"]').classList.add('active');
 }
