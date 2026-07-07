@@ -5283,16 +5283,7 @@ async function saveFsbfHeader(data){
   toast('Guardado.','ok');
 }
 
-async function addFsbfBsbf(brigada, data){
-  await saveFsbfHeaderSilent(data);
-  const { data: row, error } = await apiFetch('/api/fsbf/bsbf', {
-    method:'POST', body:JSON.stringify({ data, brigada })
-  });
-  if(error){ toast(error.message||'Erro.','err'); return; }
-  await renderFsbfCarta();
-}
-
-async function saveFsbfBsbf(id){
+async function saveFsbfBsbfSilent(id){
   const body = {
     base:       document.getElementById(`fsbf-b-base-${id}`)?.value.trim()||null,
     veiculo_id: document.getElementById(`fsbf-b-viat-${id}`)?.value||null,
@@ -5301,8 +5292,23 @@ async function saveFsbfBsbf(id){
     contacto:   document.getElementById(`fsbf-b-cont-${id}`)?.value.trim()||null,
     observacoes:document.getElementById(`fsbf-b-obs-${id}`)?.value.trim()||null,
   };
-  const { error } = await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+  await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+}
+
+async function addFsbfBsbf(brigada, data){
+  await saveFsbfHeaderSilent(data);
+  // Save all existing rows before re-rendering so unsaved edits are not lost
+  const ids = [...document.querySelectorAll('[id^="fsbf-b-base-"]')].map(el=>el.id.slice('fsbf-b-base-'.length));
+  await Promise.all(ids.map(id=>saveFsbfBsbfSilent(id)));
+  const { error } = await apiFetch('/api/fsbf/bsbf', {
+    method:'POST', body:JSON.stringify({ data, brigada })
+  });
   if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+async function saveFsbfBsbf(id){
+  await saveFsbfBsbfSilent(id);
   toast('Guardado.','ok');
 }
 
@@ -5321,16 +5327,7 @@ function fsbfBsbfMatricula(id){
   document.getElementById(`fsbf-b-mat-${id}`).textContent = '';
 }
 
-async function addFsbfEmr(data){
-  await saveFsbfHeaderSilent(data);
-  const { data: row, error } = await apiFetch('/api/fsbf/emr', {
-    method:'POST', body:JSON.stringify({ data })
-  });
-  if(error){ toast(error.message||'Erro.','err'); return; }
-  await renderFsbfCarta();
-}
-
-async function saveFsbfEmr(id){
+async function saveFsbfEmrSilent(id){
   const body = {
     base:              document.getElementById(`fsbf-e-base-${id}`)?.value.trim()||null,
     mr_viatura_id:     document.getElementById(`fsbf-e-mr-${id}`)?.value||null,
@@ -5342,8 +5339,23 @@ async function saveFsbfEmr(id){
     total_op:          parseInt(document.getElementById(`fsbf-e-top-${id}`)?.value)||null,
     observacoes:       document.getElementById(`fsbf-e-obs-${id}`)?.value.trim()||null,
   };
-  const { error } = await apiFetch(`/api/fsbf/emr/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+  await apiFetch(`/api/fsbf/emr/${id}`, { method:'PATCH', body:JSON.stringify(body) });
+}
+
+async function addFsbfEmr(data){
+  await saveFsbfHeaderSilent(data);
+  // Save all existing EMR rows before re-rendering so unsaved edits are not lost
+  const ids = [...document.querySelectorAll('[id^="fsbf-e-base-"]')].map(el=>el.id.slice('fsbf-e-base-'.length));
+  await Promise.all(ids.map(id=>saveFsbfEmrSilent(id)));
+  const { error } = await apiFetch('/api/fsbf/emr', {
+    method:'POST', body:JSON.stringify({ data })
+  });
   if(error){ toast(error.message||'Erro.','err'); return; }
+  await renderFsbfCarta();
+}
+
+async function saveFsbfEmr(id){
+  await saveFsbfEmrSilent(id);
   toast('Guardado.','ok');
 }
 
