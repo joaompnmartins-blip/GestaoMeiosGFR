@@ -3227,13 +3227,20 @@ function quickAction(type, teamId){
 // ── Composite team helpers ────────────────────────────────────────
 function compositeGroupSiblings(t){
   const all = db.teams.filter(x => x.ocorrencia_id === currentOccId && x.id !== t.id);
-  if(t.meioPaiId)   return all.filter(x => x.meioPaiId === t.meioPaiId || x.id === t.meioPaiId);
+  // Parent meio: return its children
+  const children = all.filter(x => x.meioPaiId === t.id);
+  if(children.length > 0) return children;
+  // Child meio: return parent + siblings
+  if(t.meioPaiId) return all.filter(x => x.meioPaiId === t.meioPaiId || x.id === t.meioPaiId);
   if(t.fsbfBsbfId)  return all.filter(x => x.fsbfBsbfId === t.fsbfBsbfId);
   if(t.fsbfEmrId)   return all.filter(x => x.fsbfEmrId  === t.fsbfEmrId);
   return [];
 }
 
 function compositeGroupLabel(t){
+  // Parent: label is its own name (brigada)
+  const hasChildren = db.teams.some(x => x.ocorrencia_id === currentOccId && x.meioPaiId === t.id);
+  if(hasChildren) return t.eq;
   if(t.meioPaiId){
     const parent = db.teams.find(x => x.id === t.meioPaiId);
     return parent ? parent.eq : 'brigada';
