@@ -2103,7 +2103,7 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -2787,6 +2787,33 @@ function renderTeams(){
   if(document.getElementById('tl-panel').style.display!=='none') loadTimeline();
 }
 
+function nationalBadge(t){
+  if(t.egfrEquipa) return `<span class="badge" style="background:#1d4ed8;color:#fff;font-size:9px;padding:1px 5px;">EGFR</span>`;
+  if(t.fsbfEmrId)  return `<span class="badge" style="background:#b91c1c;color:#fff;font-size:9px;padding:1px 5px;">EMR</span>`;
+  if(t.fsbfBsbfId) return `<span class="badge" style="background:#b45309;color:#fff;font-size:9px;padding:1px 5px;">BSBF</span>`;
+  return '';
+}
+
+// Sort teams so parents immediately precede their children
+function sortWithChildren(teams){
+  const byId = Object.fromEntries(teams.map(t=>[t.id,t]));
+  const result = [];
+  const added = new Set();
+  for(const t of teams){
+    if(added.has(t.id)) continue;
+    if(!t.meioPaiId){
+      result.push(t); added.add(t.id);
+      // append children immediately after
+      for(const c of teams){
+        if(c.meioPaiId===t.id && !added.has(c.id)){ result.push(c); added.add(c.id); }
+      }
+    }
+  }
+  // orphan children (parent may be desmobilizado/absent)
+  for(const t of teams){ if(!added.has(t.id)){ result.push(t); added.add(t.id); } }
+  return result;
+}
+
 function renderAlerts(teams){
   const alerts=[];
   teams.forEach(t=>{
@@ -2824,7 +2851,7 @@ function renderSectorView(teams, isClosed){
         <span class="previsto-section-label">⏳ Previstos</span>
         <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
       </div>
-      <div class="teams-grid">${previstos.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
+      <div class="teams-grid">${sortWithChildren(previstos).map(t=>teamCardHtml(t,isClosed,previstos)).join('')}</div>
     </div>`;
   }
 
@@ -2847,7 +2874,7 @@ function renderSectorView(teams, isClosed){
             <span class="sector-stat">👥 ${totalOps} op.ais</span>
           </div>
         </div>
-        <div class="teams-grid">${st.map(t=>teamCardHtml(t,isClosed)).join('')}</div>
+        <div class="teams-grid">${sortWithChildren(st).map(t=>teamCardHtml(t,isClosed,st)).join('')}</div>
       </div>`;
     }).join('');
   }
@@ -2868,21 +2895,15 @@ function renderCardsView(teams, isClosed){
     const pa=ta?ta.pct:0, pb=tb?tb.pct:0;
     return pb-pa; // higher urgency first
   });
-  container.innerHTML=`<div class="teams-grid">${sorted.map(t=>teamCardHtml(t,isClosed)).join('')}</div>`;
+  const grouped = sortWithChildren(sorted);
+  container.innerHTML=`<div class="teams-grid">${grouped.map(t=>teamCardHtml(t,isClosed,grouped)).join('')}</div>`;
 }
 
 function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
   if(!teams.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios.</div></div></td></tr>';return;}
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
-  const childIds = new Set(teams.filter(t=>t.meioPaiId).map(t=>t.id));
-  // Sort: parents before their children (parents have composicaoId, children have meioPaiId)
-  const sorted = [...teams].sort((a,b)=>{
-    const aIsChild = !!a.meioPaiId, bIsChild = !!b.meioPaiId;
-    if(!aIsChild && bIsChild && b.meioPaiId===a.id) return -1;
-    if(aIsChild && !bIsChild && a.meioPaiId===b.id) return 1;
-    return 0;
-  });
+  const sorted = sortWithChildren([...teams]);
   tbody.innerHTML=sorted.map(t=>{
     const isChild  = !!t.meioPaiId;
     const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
@@ -2893,12 +2914,14 @@ function renderTableView(teams, isClosed){
       <div class="time-bar-track" style="width:80px"><div class="time-bar-fill ${ti.cls}" style="width:${ti.pct}%"></div></div>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}</span>
     </div>`:'—';
+    const gc = t.egfrEquipa?'#1d4ed8':t.fsbfEmrId?'#b91c1c':t.fsbfBsbfId?'#b45309':null;
+    const parentGc = isChild ? (()=>{ const p=teams.find(x=>x.id===t.meioPaiId); return p?.egfrEquipa?'#1d4ed8':p?.fsbfEmrId?'#b91c1c':p?.fsbfBsbfId?'#b45309':null; })() : null;
     const nameCell = isChild
-      ? `<span style="padding-left:14px;color:var(--muted)">└ ${esc(t.eq)}</span>`
+      ? `<span style="padding-left:16px;border-left:3px solid ${parentGc||'var(--border)'};display:inline-block;color:var(--muted)">└ ${esc(t.eq)}</span>`
       : isParent
-        ? `<strong>${esc(t.eq)}</strong> <span class="badge badge-info" style="font-size:9px" title="${childCount} meios componentes">⬡ ${childCount}</span>`
+        ? `<strong>${esc(t.eq)}</strong> <span class="badge badge-info" style="font-size:9px" title="${childCount} meios componentes">⬡ ${childCount}</span> ${nationalBadge(t)}`
         : `<strong>${esc(t.eq)}</strong>`;
-    const rowStyle = isChild ? 'background:color-mix(in srgb,var(--surface) 60%,transparent);' : '';
+    const rowStyle = isChild ? `background:color-mix(in srgb,var(--surface) 60%,transparent);border-left:2px solid ${parentGc||'var(--border)'};` : gc ? `border-left:3px solid ${gc};` : '';
     return `<tr style="${rowStyle}">
       <td>${nameCell}</td>
       <td><span class="badge badge-y">${esc(t.tipo||'—')}</span></td>
@@ -2990,11 +3013,20 @@ function teamCardHtml(t, isClosed, _teams){
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
     </div>`;
 
-  const cardStyle = isChild ? 'margin-left:16px;border-left:3px solid var(--border);opacity:.92;' : '';
+  const natBadge = isParent ? nationalBadge(t) : '';
+  // Derive group colour from parent
+  const groupColor = t.egfrEquipa||t.meioPaiId&&teams.find(x=>x.id===t.meioPaiId)?.egfrEquipa ? '#1d4ed8'
+    : t.fsbfEmrId||t.meioPaiId&&teams.find(x=>x.id===t.meioPaiId)?.fsbfEmrId ? '#b91c1c'
+    : t.fsbfBsbfId||t.meioPaiId&&teams.find(x=>x.id===t.meioPaiId)?.fsbfBsbfId ? '#b45309' : null;
+  const cardStyle = isChild
+    ? `margin-left:20px;border-left:3px solid ${groupColor||'var(--border)'};`
+    : isParent && groupColor
+      ? `border-left:3px solid ${groupColor};`
+      : '';
   const nameHtml = isChild
-    ? `<span style="color:var(--muted);font-size:10px">└</span> ${esc(t.eq)}`
+    ? `<span style="color:${groupColor||'var(--muted)'};font-size:10px">└</span> ${esc(t.eq)}`
     : isParent
-      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} componentes">⬡ ${childCount}</span>`
+      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} componentes">⬡ ${childCount}</span> ${natBadge}`
       : esc(t.eq);
   return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}" style="${cardStyle}">
     <div class="team-card-head">
@@ -3665,6 +3697,12 @@ async function unlinkTransporte(pmId){
 async function deleteTeam(id){
   const t=db.teams.find(x=>x.id===id);
   if(!t) return;
+  // National team parents can only be removed by ccon/admin
+  const isNationalParent = !t.meioPaiId && (t.fsbfBsbfId||t.fsbfEmrId||t.egfrEquipa);
+  if(isNationalParent && currentRole!=='admin' && currentRole!=='ofligacao_ccon'){
+    toast('Apenas o Oficial de Ligação CCON pode remover uma equipa nacional despachada.','err');
+    return;
+  }
   if(currentRole==='admin'){
     if(!confirm('Remover este meio da ocorrência?')) return;
     if(t.tipo==='PM') await unlinkTransporte(id);
@@ -5318,93 +5356,101 @@ async function deleteFsbfEmr(id){
   await renderFsbfCarta();
 }
 
-async function renderFsbfDisponivel(){
+async function renderMeiosNacionaisDisponivel(){
   const sec = document.getElementById('fsbf-disponivel-section');
   if(!sec) return;
-  // Only visible to ofligacao_ccon and admin
   const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
   if(!isCCON){ sec.style.display='none'; return; }
 
   const today = new Date().toISOString().slice(0,10);
-  const { data, error } = await apiFetch(`/api/fsbf/disponivel?data=${today}`);
-  if(error || (!data?.bsbf?.length && !data?.emr?.length)){
-    sec.style.display='none'; return;
+  const [fsbfRes, egfrRes] = await Promise.all([
+    apiFetch(`/api/fsbf/disponivel?data=${today}`),
+    apiFetch(`/api/egfr/hoje?data=${today}`),
+  ]);
+
+  const bsbf  = fsbfRes.data?.bsbf  || [];
+  const emr   = fsbfRes.data?.emr   || [];
+  const egfr  = egfrRes.data         || [];
+  const total = bsbf.length + emr.length + egfr.length;
+
+  if(!total){ sec.style.display='none'; return; }
+
+  const tS  = 'width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;';
+  const thS = 'padding:4px 8px;text-align:left;background:var(--bg-hover);border-bottom:1px solid var(--border);font-size:11px;';
+  const tdS = 'padding:3px 8px;border-bottom:1px solid var(--border);vertical-align:middle;';
+
+  function deployBtn(type, id, extra){
+    return `<button class="btn btn-xs btn-primary" onclick="openDeployModal('${type}','${id}',${JSON.stringify(extra||{})})">🚀 Despachar</button>`;
+  }
+  function deployedBadge(r){
+    return `<span class="badge badge-ok" style="font-size:10px;" title="Despachado para ${esc(r.deployed_occ_nome||'')}">✓ Em uso</span>`;
   }
 
-  const bsbf = data.bsbf || [];
-  const emr  = data.emr  || [];
+  let html = `<details open style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+    <summary style="cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:10px;">
+      <span>🚒 Meios Nacionais disponíveis — ${today.split('-').reverse().join('/')}</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400;">${total} equipa(s)</span>
+    </summary>
+    <div style="margin-top:12px;">`;
 
+  // ─── EGFR ───────────────────────────────────────
+  if(egfr.length){
+    html += `<div style="font-weight:600;font-size:12px;color:#1d4ed8;margin-bottom:6px;">EGFR — Escala do dia</div>
+    <table style="${tS}"><thead><tr>
+      <th style="${thS}">Equipa</th><th style="${thS}">Turno</th><th style="${thS}">Viatura</th>
+      <th style="${thS}">Elem.</th><th style="${thS}">Supressão</th><th style="${thS}"></th>
+    </tr></thead><tbody>`;
+    html += egfr.map(g=>`<tr>
+      <td style="${tdS}"><strong>${esc(g.equipa)}</strong></td>
+      <td style="${tdS}"><span class="badge badge-info" style="font-size:10px;">${esc(g.turno)}</span></td>
+      <td style="${tdS}">${esc(g.viatura_cod||'—')}${g.matricula?` <span class="mono" style="font-size:10px;color:var(--muted);">(${esc(g.matricula)})</span>`:''}</td>
+      <td style="${tdS};text-align:center">${g.elementos.length}</td>
+      <td style="${tdS}">${g.equipa_supressao?'<span style="color:#15803d;font-size:12px;">🔥 Sim</span>':'—'}</td>
+      <td style="${tdS}">${g.deployed ? deployedBadge(g) : deployBtn('egfr', g.equipa, {data: g.data, equipa: g.equipa})}</td>
+    </tr>`).join('');
+    html += '</tbody></table>';
+  }
+
+  // ─── BSBF ───────────────────────────────────────
   const norte = bsbf.filter(r=>r.brigada==='Norte');
   const sul   = bsbf.filter(r=>r.brigada==='Sul');
   const gsbf  = bsbf.filter(r=>r.brigada==='GSBF');
+  [[norte,'BSBF Norte'],[sul,'BSBF Sul'],[gsbf,'GSBF']].forEach(([rows,label])=>{
+    if(!rows.length) return;
+    html += `<div style="font-weight:600;font-size:12px;color:#b45309;margin-bottom:6px;">${label}</div>
+    <table style="${tS}"><thead><tr>
+      <th style="${thS}">Veículo</th><th style="${thS}">Matrícula</th><th style="${thS}">Guar.</th>
+      <th style="${thS}">Base</th><th style="${thS}">Chefe</th><th style="${thS}"></th>
+    </tr></thead><tbody>`;
+    html += rows.map(r=>`<tr>
+      <td style="${tdS}"><strong>${esc(r.viatura_cod||r.base||'—')}</strong></td>
+      <td style="${tdS}" class="mono">${esc(r.matricula||'')}</td>
+      <td style="${tdS};text-align:center">${r.guarnicao||'—'}</td>
+      <td style="${tdS}">${esc(r.base||'')}</td>
+      <td style="${tdS}">${esc(r.chefe_nome||'')}</td>
+      <td style="${tdS}">${r.deployed ? deployedBadge(r) : deployBtn('fsbf-bsbf', r.id, {})}</td>
+    </tr>`).join('');
+    html += '</tbody></table>';
+  });
 
-  function bsbfRows(rows){
-    return rows.map(r=>`
-      <tr>
-        <td>${esc(r.viatura_cod||r.base||'—')}</td>
-        <td>${esc(r.matricula||'')}</td>
-        <td style="text-align:center">${r.guarnicao||'—'}</td>
-        <td>${esc(r.base||'')}</td>
-        <td>${esc(r.chefe_nome||'')}</td>
-        <td>${esc(r.contacto||'')}</td>
-        <td><button class="btn btn-xs btn-primary" onclick='applyFsbfTeam(${JSON.stringify({
-          eq: r.viatura_cod||r.base||'BSBF',
-          tipo: "BSBF",
-          ops: r.guarnicao||0,
-          resp: r.chefe_nome||'',
-          contacto: r.contacto||'',
-          obs: r.observacoes||''
-        })})'>+ Adicionar</button></td>
-      </tr>`).join('');
-  }
-
-  function emrRows(rows){
-    return rows.map(r=>`
-      <tr>
-        <td>${esc(r.mr_cod||r.base||'—')}</td>
-        <td style="text-align:center">${r.total_op||'—'}</td>
-        <td>${esc(r.base||'')}</td>
-        <td>${esc(r.chefe_nome||'')}</td>
-        <td>${esc(r.contacto||'')}</td>
-        <td><button class="btn btn-xs btn-primary" onclick='applyFsbfTeam(${JSON.stringify({
-          eq: r.mr_cod||r.base||'EMR',
-          tipo: "EMR",
-          ops: r.total_op||0,
-          resp: r.chefe_nome||'',
-          contacto: r.contacto||'',
-          obs: r.observacoes||''
-        })})'>+ Adicionar</button></td>
-      </tr>`).join('');
-  }
-
-  let html = `<details style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:4px;">
-    <summary style="cursor:pointer;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:8px;">
-      <span>🚒 Equipas FSBF disponíveis (${today.split('-').reverse().join('/')})</span>
-      <span style="font-size:11px;color:var(--muted);font-weight:400;">${bsbf.length + emr.length} equipa(s)</span>
-    </summary>
-    <div style="margin-top:10px;">`;
-
-  const tStyle = 'width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;';
-  const thStyle = 'padding:4px 8px;text-align:left;background:var(--bg-hover);border-bottom:1px solid var(--border);';
-  const tdStyle = 'padding:3px 8px;border-bottom:1px solid var(--border);';
-
-  if(norte.length||sul.length||gsbf.length){
-    [[norte,'BSBF Norte'],[sul,'BSBF Sul'],[gsbf,'GSBF']].forEach(([rows,label])=>{
-      if(!rows.length) return;
-      html += `<div style="font-weight:600;font-size:12px;color:var(--muted);margin-bottom:4px;">${label}</div>
-      <table style="${tStyle}"><thead><tr>
-        <th style="${thStyle}">Veículo</th><th style="${thStyle}">Matrícula</th><th style="${thStyle}">Guar.</th>
-        <th style="${thStyle}">Base</th><th style="${thStyle}">Chefe</th><th style="${thStyle}">Contacto</th><th style="${thStyle}"></th>
-      </tr></thead><tbody>${bsbfRows(rows)}</tbody></table>`;
-    });
-  }
-
+  // ─── EMR ────────────────────────────────────────
   if(emr.length){
-    html += `<div style="font-weight:600;font-size:12px;color:var(--muted);margin-bottom:4px;">Máquinas de Rasto (EMR)</div>
-    <table style="${tStyle}"><thead><tr>
-      <th style="${thStyle}">MR</th><th style="${thStyle}">Total Op.</th>
-      <th style="${thStyle}">Base</th><th style="${thStyle}">Chefe</th><th style="${thStyle}">Contacto</th><th style="${thStyle}"></th>
-    </tr></thead><tbody>${emrRows(emr)}</tbody></table>`;
+    html += `<div style="font-weight:600;font-size:12px;color:#b91c1c;margin-bottom:6px;">Máquinas de Rasto (EMR)</div>
+    <table style="${tS}"><thead><tr>
+      <th style="${thS}">MR</th><th style="${thS}">VAOP</th><th style="${thS}">Vpiloto</th><th style="${thS}">VLCI</th>
+      <th style="${thS}">Base</th><th style="${thS}">Chefe</th><th style="${thS}">Total Op.</th><th style="${thS}"></th>
+    </tr></thead><tbody>`;
+    html += emr.map(r=>`<tr>
+      <td style="${tdS}"><strong>${esc(r.mr_cod||'—')}</strong></td>
+      <td style="${tdS}">${esc(r.vaop_cod||'—')}</td>
+      <td style="${tdS}">${esc(r.vpil_cod||'—')}</td>
+      <td style="${tdS}">${esc(r.vlci_cod||'—')}</td>
+      <td style="${tdS}">${esc(r.base||'')}</td>
+      <td style="${tdS}">${esc(r.chefe_nome||'')}</td>
+      <td style="${tdS};text-align:center">${r.total_op||'—'}</td>
+      <td style="${tdS}">${r.deployed ? deployedBadge(r) : deployBtn('fsbf-emr', r.id, {})}</td>
+    </tr>`).join('');
+    html += '</tbody></table>';
   }
 
   html += '</div></details>';
@@ -5412,33 +5458,52 @@ async function renderFsbfDisponivel(){
   sec.style.display = '';
 }
 
-function applyFsbfTeam(team){
-  document.getElementById('team-edit-id').value = '';
-  document.getElementById('modal-team-title').textContent = 'Adicionar Meio FSBF';
-  const fields=['team-eq','team-matricula','team-concelho','team-resp','team-contacto','team-data-despacho','team-hora-despacho','team-data-saida-entidade','team-hora-saida-entidade','team-hora-chegada','team-limite-op','team-hora-demob','team-data-chegada-entidade','team-hora-chegada-entidade','team-km','team-missao','team-horas-max'];
-  fields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('team-setor').value = '';
-  document.getElementById('team-equipa-id').value = '';
-  document.getElementById('team-recurso-id').value = '';
-  document.getElementById('team-transporte-id').value = '';
-  document.getElementById('team-pm-pick').value = '';
-  document.getElementById('pm-ops-list').innerHTML = '';
-  document.getElementById('ops-list').innerHTML = '';
+// ── Deploy modal state ────────────────────────────────────────────
+let _deployType = null, _deployTeamId = null, _deployExtra = {};
 
-  document.getElementById('team-eq').value      = team.eq      || '';
-  document.getElementById('team-tipo').value    = team.tipo    || '';
-  document.getElementById('team-ops').value     = team.ops     || '';
-  document.getElementById('team-resp').value    = team.resp    || '';
-  document.getElementById('team-contacto').value= team.contacto|| '';
-  document.getElementById('team-obs').value     = team.obs     || '';
-  document.getElementById('team-estado').value  = 'previsto';
-  document.getElementById('team-data-chegada').value = new Date().toISOString().split('T')[0];
+function openDeployModal(type, teamId, extra){
+  _deployType   = type;
+  _deployTeamId = teamId;
+  _deployExtra  = extra || {};
+  document.getElementById('deploy-modal-title').textContent =
+    type==='egfr' ? `Despachar EGFR — ${extra.equipa||teamId}`
+    : type==='fsbf-bsbf' ? 'Despachar Equipa BSBF'
+    : 'Despachar Equipa EMR';
+  document.getElementById('deploy-setor').value  = '';
+  document.getElementById('deploy-missao').value = '';
+  openModal('modal-deploy-nacional');
+}
 
-  togglePrevistoFields('previsto');
-  syncOpsFields(team.ops || 0);
-  onTeamTipoChange();
-  refreshPresetSelect(null);
-  openModal('modal-team');
+async function confirmDeployNacional(){
+  if(!_deployType || !currentOccId) return;
+  const btn = document.getElementById('deploy-confirm-btn');
+  btn.disabled = true;
+  const body = {
+    setor:  document.getElementById('deploy-setor').value.trim()||undefined,
+    missao: document.getElementById('deploy-missao').value.trim()||undefined,
+  };
+  let url;
+  if(_deployType === 'egfr'){
+    body.data   = _deployExtra.data;
+    body.equipa = _deployExtra.equipa || _deployTeamId;
+    url = `/api/ocorrencias/${currentOccId}/deploy/egfr`;
+  } else if(_deployType === 'fsbf-bsbf'){
+    body.team_id = _deployTeamId;
+    url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-bsbf`;
+  } else {
+    body.team_id = _deployTeamId;
+    url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-emr`;
+  }
+  const { data, error } = await apiFetch(url, { method:'POST', body: JSON.stringify(body) });
+  btn.disabled = false;
+  if(error){ toast(error.message||'Erro ao despachar.','err'); return; }
+  toast('Equipa despachada.','ok');
+  closeModal('modal-deploy-nacional');
+  // Reload meios and refresh disponível panel
+  const meiosRes = await apiFetch('/api/meios');
+  if(meiosRes.data) db.teams = meiosRes.data.map(mapTeam);
+  renderTeams();
+  await renderMeiosNacionaisDisponivel();
 }
 
 async function printFsbfCarta(){
@@ -5571,48 +5636,6 @@ async function printFsbfCarta(){
   setTimeout(()=>{ w.print(); }, 400);
 }
 
-let _despEmrId = null;
-
-async function openDespacharEmr(id){
-  _despEmrId = id;
-  // load active ocorrências
-  const { data: allOcc, error } = await apiFetch('/api/ocorrencias');
-  const active = (allOcc||[]).filter(o=>!o.status||o.status==='active');
-  const sel = document.getElementById('desp-emr-occ');
-  sel.innerHTML = '';
-  if(error || !active.length){
-    sel.innerHTML = '<option value="">— sem ocorrências activas —</option>';
-  } else {
-    sel.innerHTML = active.map(o=>`<option value="${o.id}">${o.codigo_ocorrencia||o.id.slice(0,8)} — ${o.local_ignicao||''}</option>`).join('');
-  }
-  const now = new Date();
-  document.getElementById('desp-emr-data').value = now.toISOString().slice(0,10);
-  document.getElementById('desp-emr-hora').value = now.toTimeString().slice(0,5);
-  document.getElementById('desp-emr-setor').value = '';
-  document.getElementById('desp-emr-missao').value = '';
-  openModal('modal-despachar-emr');
-}
-
-async function confirmDespacharEmr(){
-  if(!_despEmrId) return;
-  const ocorrencia_id = document.getElementById('desp-emr-occ').value;
-  if(!ocorrencia_id){ toast('Selecione uma ocorrência.','warn'); return; }
-  const btn = document.getElementById('desp-emr-confirm-btn');
-  btn.disabled = true;
-  const body = {
-    ocorrencia_id,
-    data_despacho: document.getElementById('desp-emr-data').value || undefined,
-    hora_despacho: document.getElementById('desp-emr-hora').value || undefined,
-    setor: document.getElementById('desp-emr-setor').value || undefined,
-    missao: document.getElementById('desp-emr-missao').value || undefined,
-  };
-  const { data, error } = await apiFetch(`/api/fsbf/emr/${_despEmrId}/despachar`, { method:'POST', body: JSON.stringify(body) });
-  btn.disabled = false;
-  if(error){ toast(error.message||'Erro ao despachar.','err'); return; }
-  toast('Equipa EMR despachada.','ok');
-  closeModal('modal-despachar-emr');
-  await renderFsbfCarta();
-}
 
 // ── Gestão ICNF ──────────────────────────────────────────────────
 
@@ -6451,34 +6474,31 @@ async function editEgfrEntry(id, nome, capSup){
   </div>
 </div>
 
-<!-- ══════ MODAL: Despachar EMR ══════ -->
-<div class="modal-overlay" id="modal-despachar-emr" onclick="if(event.target===this)closeModal('modal-despachar-emr')">
+<!-- ══════ MODAL: Despachar Meio Nacional ══════ -->
+<div class="modal-overlay" id="modal-deploy-nacional" onclick="if(event.target===this)closeModal('modal-deploy-nacional')">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Despachar Equipa EMR</div>
-      <button class="modal-close" onclick="closeModal('modal-despachar-emr')">✕</button>
+      <div class="modal-title" id="deploy-modal-title">Despachar Meio Nacional</div>
+      <button class="modal-close" onclick="closeModal('modal-deploy-nacional')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-field">
-        <label class="form-label">Ocorrência activa</label>
-        <select class="form-select" id="desp-emr-occ"></select>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-        <div class="form-field"><label class="form-label">Data despacho</label>
-          <input class="form-input" type="date" id="desp-emr-data"/></div>
-        <div class="form-field"><label class="form-label">Hora</label>
-          <input class="form-input" type="time" id="desp-emr-hora"/></div>
-        <div class="form-field"><label class="form-label">Sector</label>
-          <input class="form-input" id="desp-emr-setor" placeholder="ex: ALFA"/></div>
-      </div>
-      <div class="form-field" style="margin-top:8px;">
-        <label class="form-label">Missão</label>
-        <input class="form-input" id="desp-emr-missao" placeholder="Missão…"/>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+        A equipa será despachada para esta ocorrência. Cada veículo aparecerá como uma linha separada nos meios.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="form-field" style="flex:1;min-width:120px;">
+          <label class="form-label">Sector</label>
+          <input class="form-input" id="deploy-setor" placeholder="ex: ALFA"/>
+        </div>
+        <div class="form-field" style="flex:2;min-width:160px;">
+          <label class="form-label">Missão</label>
+          <input class="form-input" id="deploy-missao" placeholder="Missão / descrição…"/>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-despachar-emr')">Cancelar</button>
-      <button class="btn btn-primary" id="desp-emr-confirm-btn" onclick="confirmDespacharEmr()">🚒 Despachar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-deploy-nacional')">Cancelar</button>
+      <button class="btn btn-primary" id="deploy-confirm-btn" onclick="confirmDeployNacional()">🚒 Despachar</button>
     </div>
   </div>
 </div>

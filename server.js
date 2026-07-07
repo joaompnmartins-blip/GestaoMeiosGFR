@@ -161,6 +161,7 @@ const MEIO_COLS = [
   'data_demob','hora_demob','data_chegada_entidade','hora_chegada_entidade',
   'km','missao','estado','obs',
   'previsto_data','previsto_hora',
+  'fsbf_bsbf_id','fsbf_emr_id','egfr_data','egfr_equipa',
 ];
 
 const ACTIVE_ESTADOS  = ['transito','operacao','descanso'];
@@ -1232,6 +1233,7 @@ app.put('/api/gestao/egfr-viatura', requireAuth('visualizador'), EGFR_GESTORES, 
 
 app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => {
   const { turno, data } = req.query;
+  const d = data || new Date().toISOString().slice(0,10);
   const { rows } = await pool.query(`
     SELECT e.id, e.data, e.turno, e.equipa, e.posicao, e.nome, e.recurso_id,
            CASE WHEN r.id IS NOT NULL THEN r.fogo_supressao  ELSE e.capacidade_supressao END AS fogo_supressao,
@@ -1246,18 +1248,30 @@ app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => 
     ORDER BY
       CASE e.turno WHEN 'Prontidão (A)' THEN 0 ELSE 1 END,
       e.equipa, e.posicao
-  `, [data || new Date().toISOString().slice(0,10), turno||null]);
+  `, [d, turno||null]);
 
-  // Group by turno+equipa so both turnos render as separate cards
+  // Deployed status per equipa
+  const { rows: deployed } = await pool.query(`
+    SELECT m.egfr_equipa, m.id AS meio_id, o.id AS occ_id, o.local_ignicao AS occ_nome
+    FROM meios m JOIN ocorrencias o ON o.id = m.ocorrencia_id
+    WHERE m.egfr_data = $1 AND m.egfr_equipa IS NOT NULL
+      AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
+  `, [d]);
+  const deployedMap = {};
+  for (const d2 of deployed) deployedMap[d2.egfr_equipa] = d2;
+
   const equipas = {};
   for (const r of rows) {
     const key = `${r.turno}::${r.equipa}`;
     if (!equipas[key]) {
+      const dep = deployedMap[r.equipa];
       equipas[key] = {
         key, equipa: r.equipa, turno: r.turno, data: r.data,
         viatura_id: r.viatura_id, viatura_cod: r.viatura_cod,
         matricula: r.matricula, classe: r.classe, megfr: r.megfr,
-        elementos: []
+        elementos: [],
+        deployed: !!dep, deployed_meio_id: dep?.meio_id||null,
+        deployed_occ_id: dep?.occ_id||null, deployed_occ_nome: dep?.occ_nome||null,
       };
     }
     equipas[key].elementos.push({
@@ -1283,22 +1297,29 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
   const data = req.query.data || new Date().toISOString().slice(0, 10);
   const [bsbfRes, emrRes] = await Promise.all([
     pool.query(`
-      SELECT e.*, v.viatura_cod, v.matricula, v.classe
+      SELECT e.*, v.viatura_cod, v.matricula, v.classe,
+        m.id AS deployed_meio_id, o.id AS deployed_occ_id, o.local_ignicao AS deployed_occ_nome
       FROM fsbf_bsbf_equipa e
       LEFT JOIN viaturas v ON v.id = e.veiculo_id
+      LEFT JOIN meios m ON m.fsbf_bsbf_id = e.id AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
+      LEFT JOIN ocorrencias o ON o.id = m.ocorrencia_id
       WHERE e.data = $1
       ORDER BY e.brigada, e.ordem, e.created_at
     `, [data]),
     pool.query(`
       SELECT e.*,
-        mr.viatura_cod  AS mr_cod,  mr.matricula  AS mr_matricula
+        mr.viatura_cod AS mr_cod, mr.matricula AS mr_matricula,
+        m.id AS deployed_meio_id, o.id AS deployed_occ_id, o.local_ignicao AS deployed_occ_nome
       FROM fsbf_emr_equipa e
       LEFT JOIN viaturas mr ON mr.id = e.mr_viatura_id
+      LEFT JOIN meios m ON m.fsbf_emr_id = e.id AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
+      LEFT JOIN ocorrencias o ON o.id = m.ocorrencia_id
       WHERE e.data = $1
       ORDER BY e.ordem, e.created_at
     `, [data]),
   ]);
-  res.json({ data, bsbf: bsbfRes.rows, emr: emrRes.rows });
+  const addDeployed = r => ({ ...r, deployed: !!r.deployed_meio_id });
+  res.json({ data, bsbf: bsbfRes.rows.map(addDeployed), emr: emrRes.rows.map(addDeployed) });
 }));
 
 // ── GET /api/fsbf/carta?data= ──────────────────────────────────
@@ -1457,77 +1478,233 @@ app.delete('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap
   res.json({ ok: true });
 }));
 
-// ── POST /api/fsbf/emr/:id/despachar ──────────────────────────
-app.post('/api/fsbf/emr/:id/despachar', requireAuth('ofligacao'), requireCCON, wrap(async (req, res) => {
-  const { ocorrencia_id, estado = 'previsto', data_despacho, hora_despacho, setor, missao, obs } = req.body;
-  if (!ocorrencia_id) return res.status(400).json({ error: 'ocorrencia_id obrigatório.' });
+// ── Helper: create/reuse a composição and insert children ──────
+async function deployNationalTeam(client, { occId, compCodigo, compTipo, compNotas, userId,
+  parentEq, parentTipo, parentOps, parentResp, parentContact, parentSetor, parentMissao,
+  sourceCol, sourceId, egfrData, egfrEquipa, childVehicles, childPersonnelEq }) {
+
+  // Check exclusivity
+  const checkCol = sourceCol === 'fsbf_bsbf_id' ? 'fsbf_bsbf_id'
+                 : sourceCol === 'fsbf_emr_id'  ? 'fsbf_emr_id'
+                 : null;
+  if (checkCol) {
+    const { rows: ex } = await client.query(
+      `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
+       WHERE m.${checkCol}=$1 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`,
+      [sourceId]
+    );
+    if (ex.length) return { conflict: ex[0] };
+  } else if (egfrEquipa) {
+    const { rows: ex } = await client.query(
+      `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
+       WHERE m.egfr_data=$1 AND m.egfr_equipa=$2 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`,
+      [egfrData, egfrEquipa]
+    );
+    if (ex.length) return { conflict: ex[0] };
+  }
+
+  // Create or reuse composição
+  let { rows: [comp] } = await client.query(`SELECT * FROM composicoes WHERE codigo=$1`, [compCodigo]);
+  if (!comp) {
+    const { rows: [nc] } = await client.query(
+      `INSERT INTO composicoes (codigo, tipo, notas, created_by) VALUES ($1,$2,$3,$4) RETURNING *`,
+      [compCodigo, compTipo, compNotas, userId]
+    );
+    comp = nc;
+    for (let i = 0; i < childVehicles.length; i++) {
+      await client.query(
+        `INSERT INTO composicao_membros (composicao_id, viatura_id, papel, ordem) VALUES ($1,$2,$3,$4)`,
+        [comp.id, childVehicles[i].id, childVehicles[i].papel, i]
+      );
+    }
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  const extraCols = sourceCol === 'fsbf_bsbf_id' ? `, fsbf_bsbf_id` :
+                   sourceCol === 'fsbf_emr_id'  ? `, fsbf_emr_id`  :
+                   `, egfr_data, egfr_equipa`;
+  const extraVals = sourceCol === 'fsbf_bsbf_id' ? [sourceId] :
+                   sourceCol === 'fsbf_emr_id'  ? [sourceId]  :
+                   [egfrData, egfrEquipa];
+  const extraPh = extraVals.map((_,i)=>`$${11+i}`).join(',');
+
+  const { rows: [parent] } = await client.query(
+    `INSERT INTO meios (ocorrencia_id, composicao_id, eq, tipo, operacionais,
+       responsavel, contacto, setor, missao, estado, data_chegada${extraCols}, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'previsto',$10,${extraPh},$${11+extraVals.length}) RETURNING *`,
+    [occId, comp.id, parentEq, parentTipo, parentOps||0,
+     parentResp||null, parentContact||null, parentSetor||null, parentMissao||null, today,
+     ...extraVals, userId]
+  );
+
+  // Children — one per vehicle slot
+  const children = [];
+  for (const v of childVehicles) {
+    const { rows: [child] } = await client.query(
+      `INSERT INTO meios (ocorrencia_id, viatura_id, meio_pai_id, eq, tipo, matricula,
+         setor, missao, estado, data_chegada, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'previsto',$9,$10) RETURNING *`,
+      [occId, v.id, parent.id, v.eq||v.papel, v.tipo||v.papel, v.mat||null,
+       parentSetor||null, parentMissao||null, today, userId]
+    );
+    children.push(child);
+  }
+
+  // Optional collective personnel child (EGFR)
+  if (childPersonnelEq) {
+    const { rows: [pChild] } = await client.query(
+      `INSERT INTO meios (ocorrencia_id, meio_pai_id, eq, tipo, operacionais,
+         setor, missao, estado, data_chegada, created_by)
+       VALUES ($1,$2,$3,'EGFR-equipa',$4,$5,$6,'previsto',$7,$8) RETURNING *`,
+      [occId, parent.id, childPersonnelEq, parentOps||0,
+       parentSetor||null, parentMissao||null, today, userId]
+    );
+    children.push(pChild);
+  }
+
+  return { parent, children, comp };
+}
+
+// ── POST /api/ocorrencias/:occId/deploy/fsbf-emr ───────────────
+app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req, res) => {
+  const { team_id, setor, missao } = req.body;
+  if (!team_id) return res.status(400).json({ error: 'team_id obrigatório.' });
 
   const { rows: [emr] } = await pool.query(`
     SELECT e.*,
-      mr.viatura_cod AS mr_cod, mr.matricula AS mr_matricula,
-      vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
-      vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula,
-      vlci.viatura_cod AS vlci_cod, vlci.matricula AS vlci_matricula
+      mr.viatura_cod AS mr_cod,   mr.matricula AS mr_mat,   mr.classe AS mr_cls,
+      vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_mat, vaop.classe AS vaop_cls,
+      vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_mat, vpil.classe AS vpil_cls,
+      vlci.viatura_cod AS vlci_cod, vlci.matricula AS vlci_mat, vlci.classe AS vlci_cls
     FROM fsbf_emr_equipa e
     LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
     LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
     LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
     LEFT JOIN viaturas vlci ON vlci.id = e.vlci_viatura_id
     WHERE e.id = $1
-  `, [req.params.id]);
+  `, [team_id]);
   if (!emr) return res.status(404).json({ error: 'Equipa EMR não encontrada.' });
 
-  const label = emr.mr_cod || `EMR ${emr.base || emr.id.slice(0,8)}`;
+  const childVehicles = [
+    { id: emr.mr_viatura_id,     eq: emr.mr_cod,   tipo: emr.mr_cls||'MR',   mat: emr.mr_mat,   papel: 'MR'    },
+    { id: emr.vaop_viatura_id,   eq: emr.vaop_cod, tipo: emr.vaop_cls||'VAOP',mat: emr.vaop_mat, papel: 'VAOP'  },
+    { id: emr.vpiloto_viatura_id,eq: emr.vpil_cod, tipo: emr.vpil_cls||'VTTP',mat: emr.vpil_mat, papel: 'Piloto'},
+    { id: emr.vlci_viatura_id,   eq: emr.vlci_cod, tipo: emr.vlci_cls||'VLCI',mat: emr.vlci_mat, papel: 'VLCI'  },
+  ].filter(v => v.id);
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-
-    // Create or reuse a composicao EMR for this team
-    const compCodigo = `EMR-${emr.id.slice(0,8)}-${emr.data}`;
-    const vehicles = [
-      { id: emr.mr_viatura_id,      papel: 'MR'     },
-      { id: emr.vaop_viatura_id,     papel: 'VAOP'   },
-      { id: emr.vpiloto_viatura_id,  papel: 'Piloto' },
-      { id: emr.vlci_viatura_id,     papel: 'VLCI'   },
-    ].filter(v => v.id);
-
-    let { rows: [comp] } = await client.query(
-      `SELECT * FROM composicoes WHERE codigo = $1`, [compCodigo]
-    );
-    if (!comp) {
-      const { rows: [newComp] } = await client.query(
-        `INSERT INTO composicoes (codigo, tipo, notas, created_by)
-         VALUES ($1,'EMR',$2,$3) RETURNING *`,
-        [compCodigo, `Base: ${emr.base||'—'} | ${emr.data}`, req.user.id]
-      );
-      comp = newComp;
-      for (let i = 0; i < vehicles.length; i++) {
-        await client.query(
-          `INSERT INTO composicao_membros (composicao_id, viatura_id, papel, ordem) VALUES ($1,$2,$3,$4)`,
-          [comp.id, vehicles[i].id, vehicles[i].papel, i]
-        );
-      }
+    const result = await deployNationalTeam(client, {
+      occId: req.params.occId, userId: req.user.id,
+      compCodigo: `EMR-${emr.id.slice(0,8)}-${emr.data}`,
+      compTipo: 'EMR', compNotas: `Base: ${emr.base||'—'} | ${emr.data}`,
+      parentEq: emr.mr_cod || `EMR ${emr.base||emr.id.slice(0,8)}`,
+      parentTipo: 'EMR', parentOps: emr.total_op||childVehicles.length,
+      parentResp: emr.chefe_nome, parentContact: emr.contacto,
+      parentSetor: setor, parentMissao: missao,
+      sourceCol: 'fsbf_emr_id', sourceId: team_id,
+      childVehicles,
+    });
+    if (result.conflict) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Já despachado para "${result.conflict.local_ignicao}".` });
     }
-
-    const totalOp = emr.total_op || vehicles.length || 1;
-    const { rows: [meio] } = await client.query(
-      `INSERT INTO meios
-         (ocorrencia_id, composicao_id, eq, tipo, responsavel, contacto, estado,
-          operacionais, created_by, data_despacho, hora_despacho, setor, missao, obs)
-       VALUES ($1,$2,$3,'EMR',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [ocorrencia_id, comp.id, label, emr.chefe_nome||null, emr.contacto||null,
-       estado, totalOp, req.user.id,
-       data_despacho||null, hora_despacho||null, setor||null, missao||null, obs||null]
-    );
-
     await client.query('COMMIT');
-    res.json({ ok: true, meio_id: meio.id, composicao_id: comp.id });
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
-  }
+    res.json(result);
+  } catch(e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}));
+
+// ── POST /api/ocorrencias/:occId/deploy/fsbf-bsbf ──────────────
+app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (req, res) => {
+  const { team_id, setor, missao } = req.body;
+  if (!team_id) return res.status(400).json({ error: 'team_id obrigatório.' });
+
+  const { rows: [row] } = await pool.query(`
+    SELECT e.*, v.viatura_cod, v.matricula, v.classe
+    FROM fsbf_bsbf_equipa e
+    LEFT JOIN viaturas v ON v.id = e.veiculo_id
+    WHERE e.id = $1
+  `, [team_id]);
+  if (!row) return res.status(404).json({ error: 'Equipa BSBF não encontrada.' });
+
+  const brigLabel = `BSBF ${row.brigada}`;
+  const parentEq  = row.viatura_cod ? `${brigLabel} — ${row.viatura_cod}` : brigLabel;
+  const childVehicles = row.veiculo_id
+    ? [{ id: row.veiculo_id, eq: row.viatura_cod||parentEq, tipo: row.classe||'BSBF', mat: row.matricula, papel: row.brigada }]
+    : [];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await deployNationalTeam(client, {
+      occId: req.params.occId, userId: req.user.id,
+      compCodigo: `BSBF-${row.id.slice(0,8)}-${row.data}`,
+      compTipo: 'BSBF', compNotas: `${brigLabel} | Base: ${row.base||'—'} | ${row.data}`,
+      parentEq, parentTipo: 'BSBF', parentOps: row.guarnicao||0,
+      parentResp: row.chefe_nome, parentContact: row.contacto,
+      parentSetor: setor, parentMissao: missao,
+      sourceCol: 'fsbf_bsbf_id', sourceId: team_id,
+      childVehicles,
+    });
+    if (result.conflict) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Já despachado para "${result.conflict.local_ignicao}".` });
+    }
+    await client.query('COMMIT');
+    res.json(result);
+  } catch(e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}));
+
+// ── POST /api/ocorrencias/:occId/deploy/egfr ───────────────────
+app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, res) => {
+  const { data, equipa, setor, missao } = req.body;
+  if (!data || !equipa) return res.status(400).json({ error: 'data e equipa obrigatórios.' });
+
+  // Fetch escala elements + assigned vehicle
+  const [escalaRes, viatRes] = await Promise.all([
+    pool.query(`
+      SELECT e.*, r.codigo AS recurso_codigo
+      FROM egfr_escala e LEFT JOIN recursos r ON r.id = e.recurso_id
+      WHERE e.data=$1 AND e.equipa=$2 ORDER BY e.posicao
+    `, [data, equipa]),
+    pool.query(`
+      SELECT ev.viatura_id, v.viatura_cod, v.matricula, v.classe
+      FROM egfr_viatura ev LEFT JOIN viaturas v ON v.id = ev.viatura_id
+      WHERE ev.data=$1 AND ev.equipa=$2
+    `, [data, equipa]),
+  ]);
+  if (!escalaRes.rows.length) return res.status(404).json({ error: 'Equipa EGFR não encontrada na escala.' });
+
+  const viat = viatRes.rows[0];
+  const childVehicles = viat?.viatura_id
+    ? [{ id: viat.viatura_id, eq: viat.viatura_cod, tipo: viat.classe||'VLCI', mat: viat.matricula, papel: 'Viatura' }]
+    : [];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await deployNationalTeam(client, {
+      occId: req.params.occId, userId: req.user.id,
+      compCodigo: `EGFR-${equipa.replace(/\s+/g,'-')}-${data}`,
+      compTipo: 'EGFR_NACIONAL', compNotas: `${equipa} | ${data}`,
+      parentEq: equipa, parentTipo: 'EGFR', parentOps: escalaRes.rows.length,
+      parentResp: null, parentContact: null,
+      parentSetor: setor, parentMissao: missao,
+      sourceCol: null, egfrData: data, egfrEquipa: equipa,
+      childVehicles,
+      childPersonnelEq: `${equipa} — Equipa (${escalaRes.rows.length} el.)`,
+    });
+    if (result.conflict) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Já despachado para "${result.conflict.local_ignicao}".` });
+    }
+    await client.query('COMMIT');
+    res.json(result);
+  } catch(e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
 }));
 
 // ══════════════════════════════════════════════════════════════════
@@ -1569,6 +1746,14 @@ async function runMigrations() {
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS notas TEXT`,
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_controlado BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE IF EXISTS recursos    ADD COLUMN IF NOT EXISTS fogo_supressao  BOOLEAN NOT NULL DEFAULT false`,
+    // National team source columns on meios
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_bsbf_id UUID REFERENCES fsbf_bsbf_equipa(id) ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_emr_id  UUID REFERENCES fsbf_emr_equipa(id)  ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS egfr_data    DATE`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS egfr_equipa  TEXT`,
+    // Add BSBF to composicoes tipo CHECK
+    `ALTER TABLE IF EXISTS composicoes DROP CONSTRAINT IF EXISTS composicoes_tipo_check`,
+    `ALTER TABLE IF EXISTS composicoes ADD CONSTRAINT  composicoes_tipo_check CHECK (tipo IN ('BSF','BSBF','EGFR_NACIONAL','EGFR_LOCAL','EMR'))`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

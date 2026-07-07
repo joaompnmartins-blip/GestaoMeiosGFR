@@ -402,6 +402,19 @@ CREATE INDEX IF NOT EXISTS idx_meios_pai        ON meios(meio_pai_id);
 CREATE INDEX IF NOT EXISTS idx_meios_ocorrencia ON meios(ocorrencia_id);
 CREATE INDEX IF NOT EXISTS idx_meios_estado     ON meios(estado);
 
+-- Exclusividade: equipas nacionais FSBF/EGFR só podem estar activas numa ocorrência
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_fsbf_bsbf_active
+    ON meios(fsbf_bsbf_id)
+    WHERE fsbf_bsbf_id IS NOT NULL AND estado <> 'desmobilizado' AND meio_pai_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_fsbf_emr_active
+    ON meios(fsbf_emr_id)
+    WHERE fsbf_emr_id IS NOT NULL AND estado <> 'desmobilizado' AND meio_pai_id IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_meios_egfr_active
+    ON meios(egfr_data, egfr_equipa)
+    WHERE egfr_equipa IS NOT NULL AND estado <> 'desmobilizado' AND meio_pai_id IS NULL;
+
 -- ══════════════════════════════════════════════════════════════════
 --  MEIOS OPERATIVOS, EVENTOS, PEDIDOS DE REMOÇÃO
 -- ══════════════════════════════════════════════════════════════════
