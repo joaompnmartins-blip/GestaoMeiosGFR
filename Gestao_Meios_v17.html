@@ -643,9 +643,9 @@
         <div class="detail-grid">
           <div class="detail-card">
             <div class="detail-card-title">Dados da Ocorrência</div>
-            <div class="info-row"><span class="info-label">ID / Ref.</span><span class="info-val" id="d-id">—</span></div>
-            <div class="info-row"><span class="info-label">Local ignição</span><span class="info-val" id="d-nome">—</span></div>
-            <div class="info-row"><span class="info-label">Código ocorrência</span><span class="info-val" id="d-ref">—</span></div>
+            <div class="info-row"><span class="info-label" id="d-lbl-id">ID / Ref.</span><span class="info-val" id="d-id">—</span></div>
+            <div class="info-row"><span class="info-label" id="d-lbl-nome">Local ignição</span><span class="info-val" id="d-nome">—</span></div>
+            <div class="info-row"><span class="info-label" id="d-lbl-ref">Código ocorrência</span><span class="info-val" id="d-ref">—</span></div>
             <div class="info-row"><span class="info-label">Concelho</span><span class="info-val" id="d-concelho">—</span></div>
             <div class="info-row"><span class="info-label">Estado</span><span id="d-estado">—</span></div>
             <div class="info-row"><span class="info-label">Início</span><span class="info-val" id="d-inicio">—</span></div>
@@ -2079,13 +2079,14 @@ async function loadAllData(){
   }
 
   // Subregião filtering is handled server-side based on JWT role
-  const [occRes, teamsRes, equipasRes, opsRes, recursosRes, compRes] = await Promise.all([
+  const [occRes, teamsRes, equipasRes, opsRes, recursosRes, compRes, postosRes] = await Promise.all([
     apiFetch('/api/ocorrencias'),
     apiFetch('/api/meios'),
     apiFetch('/api/equipas'),
     apiFetch('/api/operacionais'),
     apiFetch('/api/recursos'),
     apiFetch('/api/composicoes'),
+    apiFetch('/api/postos'),
   ]);
   if(occRes.error)    console.warn('loadAllData ocorrencias:', occRes.error.message);
   else                db.ocorrencias = occRes.data.map(mapOcorrencia);
@@ -2098,6 +2099,7 @@ async function loadAllData(){
   if(recursosRes.error) console.warn('loadAllData recursos:', recursosRes.error.message);
   else                  db.recursos = recursosRes.data || [];
   if(!compRes.error)  db.composicoes = (compRes.data || []).filter(c => ['BSF','BSBF'].includes(c.tipo) && c.ativo !== false);
+  if(!postosRes.error) db.postos = postosRes.data || [];
   if(occRes.error||teamsRes.error||equipasRes.error)
     toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
 
@@ -2301,7 +2303,7 @@ function addEventLog(t, msg){
 // ══════════════════════════════════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════════════
-let currentOccId=null, currentView='sector';
+let currentOccId=null, currentPostoId=null, currentView='sector';
 
 function navTo(page,el){
   const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':'gestor_fsbf','gestao-icnf':'gestor_icnf'};
@@ -2360,37 +2362,70 @@ let occSubregiaoFilter='';
 function filterOcorrencias(val){ occFilter=val; renderOcorrencias(); }
 function filterSubregiao(val){ occSubregiaoFilter=val; renderOcorrencias(); }
 
-function occCardHtml(o){
-  const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
-  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
-  const ops=activeT.filter(t=>t.estado==='operacao').length;
-  const rest=activeT.filter(t=>t.estado==='descanso').length;
-  const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  const urgent=activeT.filter(t=>{
-    if(t.estado!=='operacao') return false;
-    const ti=timeInfo(t); return ti&&ti.pct>=85;
-  }).length;
-  return `<div class="occ-card" onclick="openDetalhe('${o.id}')">
-    <div class="occ-card-header">
-      <div class="occ-card-id">Cód. ${esc(o.ref||'—')} · ${fmtDate(o.inicio)}</div>
-      <div class="occ-card-name">${esc(o.nome)}</div>
-      <div class="occ-card-meta">
-        <span class="badge badge-active pulse">● ATIVA</span>
-        ${o.subregiao?`<span class="badge badge-y" style="font-size:9px">${esc(o.subregiao)}</span>`:''}
-        ${o.concelho?`<span class="badge badge-info">${esc(o.concelho)}</span>`:''}
-        ${urgent?`<span class="badge badge-danger pulse">⚠ ${urgent} limite</span>`:''}
+function postoCardHtml(p){
+  const postoTeams = db.teams.filter(t=>t.postoComandoId===p.id && t.estado!=='desmobilizado');
+  const ops   = postoTeams.filter(t=>t.estado==='operacao').length;
+  const rest  = postoTeams.filter(t=>t.estado==='descanso').length;
+  const totalOps = postoTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const tipoCls  = p.tipo==='PCF' ? 'badge-info' : 'badge-warn';
+  return `<div class="occ-card" style="margin-top:6px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};" onclick="event.stopPropagation();openPostoDetalhe('${p.id}')">
+    <div class="occ-card-header" style="padding:10px 14px 8px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge ${tipoCls}" style="font-size:9px">${esc(p.tipo)}</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.03em">${esc(p.nome)}</span>
       </div>
+      ${p.oficial_ligacao_nome?`<div style="font-size:10px;color:var(--muted);margin-top:3px;">OL: ${esc(p.oficial_ligacao_nome)}</div>`:''}
     </div>
-    <div class="occ-card-body">
+    <div class="occ-card-body" style="padding:8px 14px 8px 16px;">
       <div>
-        <div class="occ-teams-count">${activeT.length}</div>
-        <div class="occ-teams-label">meios · ${totalOps} operacionais</div>
+        <div class="occ-teams-count" style="font-size:20px">${postoTeams.length}</div>
+        <div class="occ-teams-label">meios · ${totalOps} op.ais</div>
       </div>
       <div style="text-align:right;font-size:11px;color:var(--muted);line-height:2.2;">
         <div>🟢 ${ops} em op.</div>
         <div>🟡 ${rest} descanso</div>
       </div>
     </div>
+  </div>`;
+}
+
+function occCardHtml(o){
+  const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
+  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
+  // PCO principal: meios without a posto
+  const mainTeams = activeT.filter(t=>!t.postoComandoId);
+  const ops=mainTeams.filter(t=>t.estado==='operacao').length;
+  const rest=mainTeams.filter(t=>t.estado==='descanso').length;
+  const totalOps=mainTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const urgent=mainTeams.filter(t=>{
+    if(t.estado!=='operacao') return false;
+    const ti=timeInfo(t); return ti&&ti.pct>=85;
+  }).length;
+  const postos = db.postos.filter(p=>p.ocorrencia_id===o.id);
+  return `<div>
+    <div class="occ-card" onclick="openDetalhe('${o.id}')">
+      <div class="occ-card-header">
+        <div class="occ-card-id">Cód. ${esc(o.ref||'—')} · ${fmtDate(o.inicio)}</div>
+        <div class="occ-card-name">${esc(o.nome)}</div>
+        <div class="occ-card-meta">
+          <span class="badge badge-active pulse">● PCO Principal</span>
+          ${o.subregiao?`<span class="badge badge-y" style="font-size:9px">${esc(o.subregiao)}</span>`:''}
+          ${o.concelho?`<span class="badge badge-info">${esc(o.concelho)}</span>`:''}
+          ${urgent?`<span class="badge badge-danger pulse">⚠ ${urgent} limite</span>`:''}
+        </div>
+      </div>
+      <div class="occ-card-body">
+        <div>
+          <div class="occ-teams-count">${mainTeams.length}</div>
+          <div class="occ-teams-label">meios · ${totalOps} operacionais</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:var(--muted);line-height:2.2;">
+          <div>🟢 ${ops} em op.</div>
+          <div>🟡 ${rest} descanso</div>
+        </div>
+      </div>
+    </div>
+    ${postos.map(postoCardHtml).join('')}
   </div>`;
 }
 
@@ -2646,12 +2681,24 @@ async function saveOcorrencia(){
   closeModal('modal-occ'); toast('Ocorrência guardada!','ok'); await cacheToIDB(); renderOcorrencias();
 }
 
+function _refreshOccPostos(occId, isClosed){
+  apiFetch(`/api/ocorrencias/${occId}/postos`).then(({ data }) => {
+    // Merge: replace entries for this occurrence, keep others
+    db.postos = [...db.postos.filter(p=>p.ocorrencia_id!==occId), ...(data||[])];
+    renderPostosSection(isClosed);
+  }).catch(() => {});
+}
+
 function openDetalhe(id){
   currentOccId=id;
+  currentPostoId=null;
   const o=db.ocorrencias.find(x=>x.id===id);
   if(!o) return;
   const isClosed = o.status==='closed';
   document.getElementById('bc-nome').textContent=o.nome+(o.ref?' — Cód. '+o.ref:'');
+  document.getElementById('d-lbl-id').textContent='ID / Ref.';
+  document.getElementById('d-lbl-nome').textContent='Local ignição';
+  document.getElementById('d-lbl-ref').textContent='Código ocorrência';
   document.getElementById('d-id').textContent=o.ref||o.id;
   document.getElementById('d-nome').textContent=o.nome;
   document.getElementById('d-ref').textContent=o.ref||'—';
@@ -2671,12 +2718,9 @@ function openDetalhe(id){
     el.textContent = slots.map(s => s.nome + (s.contacto ? ` (${s.contacto})` : '')).join(' / ');
     el.style.color = '';
   }).catch(() => {});
-  // Load postos de comando for this occurrence
-  apiFetch(`/api/ocorrencias/${id}/postos`).then(({ data }) => {
-    db.postos = data || [];
-    renderPostosSection(isClosed);
-  }).catch(() => { db.postos = []; renderPostosSection(isClosed); });
+  _refreshOccPostos(id, isClosed);
   document.getElementById('btn-change-oflig').style.display=isClosed?'none':'';
+  document.getElementById('btnCloseOcc').style.display='';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
   document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
   // Hide "Adicionar Meio" and quick actions for archived ocorrências
@@ -2685,7 +2729,52 @@ function openDetalhe(id){
   // Update topbar
   document.getElementById('topbar-title').textContent=o.nome;
   document.getElementById('topbar-sub').textContent=(isClosed?'🗄 ARQUIVADA · ':'')+(o.ref?`Cód. ${o.ref} · `:'')+(o.concelho||'');
-  db.postos = [];
+  updateSetorDatalist();
+  renderTeams();
+  renderMeiosNacionaisDisponivel();
+  navTo('detalhe',null);
+  document.querySelector('[data-page="ocorrencias"]').classList.add('active');
+}
+
+function openPostoDetalhe(postoId){
+  const p = db.postos.find(x=>x.id===postoId);
+  if(!p) return;
+  const o = db.ocorrencias.find(x=>x.id===p.ocorrencia_id);
+  if(!o) return;
+  currentOccId = o.id;
+  currentPostoId = postoId;
+  const tipoBadge = p.tipo==='PCF'?'PCF — Posto de Comando de Frente':'AIM — Área de Intervenção Municipal';
+  // Dados card — repurpose fields for posto context
+  document.getElementById('bc-nome').textContent=`${o.nome} › ${p.nome}`;
+  document.getElementById('d-lbl-id').textContent='Tipo';
+  document.getElementById('d-lbl-nome').textContent='Designação';
+  document.getElementById('d-lbl-ref').textContent='Ocorrência principal';
+  document.getElementById('d-id').textContent=p.tipo;
+  document.getElementById('d-nome').textContent=p.nome;
+  document.getElementById('d-ref').textContent=o.nome+(o.ref?' — Cód. '+o.ref:'');
+  document.getElementById('d-concelho').textContent=o.concelho||'—';
+  document.getElementById('d-estado').innerHTML=`<span class="badge badge-active">● ATIVO</span>`;
+  document.getElementById('d-inicio').textContent=fmtDateTime(o.inicio);
+  document.getElementById('d-oflig').textContent=p.oficial_ligacao_nome||'—';
+  // OLN CCON
+  apiFetch('/api/oln/servico').then(({ data }) => {
+    if(data){ db.olnServico = data; renderOlnBadge(data); }
+    const slots = data || db.olnServico || [];
+    const el = document.getElementById('d-oln-ccon');
+    if(!el) return;
+    if(!slots.length){ el.textContent = '—'; el.style.color = 'var(--muted)'; return; }
+    el.textContent = slots.map(s => s.nome + (s.contacto ? ` (${s.contacto})` : '')).join(' / ');
+    el.style.color = '';
+  }).catch(() => {});
+  // Hide postos section and OL/close controls not relevant to a posto view
+  const postosSec = document.getElementById('postos-section');
+  if(postosSec) postosSec.style.display='none';
+  document.getElementById('btn-change-oflig').style.display=
+    ['admin','ofligacao'].includes(currentRole) ? '' : 'none';
+  document.getElementById('btnCloseOcc').style.display='none';
+  // Update topbar
+  document.getElementById('topbar-title').textContent=`${p.tipo}: ${p.nome}`;
+  document.getElementById('topbar-sub').textContent=`${tipoBadge} · ${o.nome}`;
   updateSetorDatalist();
   renderTeams();
   renderMeiosNacionaisDisponivel();
@@ -2762,7 +2851,9 @@ async function submitChangeOfLigacao(id){
 function renderPostosSection(isClosed){
   const sec = document.getElementById('postos-section');
   if(!sec) return;
-  const postos = db.postos;
+  // Hide in posto view — user is already inside a posto
+  if(currentPostoId){ sec.style.display='none'; return; }
+  const postos = db.postos.filter(p=>p.ocorrencia_id===currentOccId);
   if(!postos.length && isClosed){ sec.style.display='none'; return; }
   sec.style.display='';
   const canEdit = ['admin','ofligacao'].includes(currentRole) && !isClosed;
@@ -2857,6 +2948,7 @@ async function savePosto(postoId){
   closeModal('modal-action');
   renderPostosSection(false);
   renderTeams();
+  renderOcorrencias();
 }
 
 async function fecharPosto(postoId){
@@ -2872,6 +2964,7 @@ async function fecharPosto(postoId){
   toast(`Posto "${p.nome}" fechado. Meios voltaram ao PCO Principal.`,'info');
   renderPostosSection(false);
   renderTeams();
+  renderOcorrencias();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2956,7 +3049,9 @@ function updateSetorDatalist(){
 function renderTeams(){
   const occ=db.ocorrencias.find(x=>x.id===currentOccId);
   const isClosed = occ && occ.status==='closed';
-  const teams=db.teams.filter(t=>t.ocorrencia_id===currentOccId);
+  let teams=db.teams.filter(t=>t.ocorrencia_id===currentOccId);
+  // When viewing a posto, show only its meios
+  if(currentPostoId) teams=teams.filter(t=>t.postoComandoId===currentPostoId);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado'&&t.estado!=='previsto');
   document.getElementById('team-count-label').textContent=`${activeT.length} meios`;
   document.getElementById('d-total').textContent=activeT.length;

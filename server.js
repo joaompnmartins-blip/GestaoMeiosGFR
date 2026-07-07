@@ -279,6 +279,18 @@ app.put('/api/meios/:id/operativos', requireAuth('operacional'), wrap(async (req
 //  POSTOS DE COMANDO (PCF / AIM)
 // ══════════════════════════════════════════════════════════════════
 
+// All active postos (for global list rendering)
+app.get('/api/postos', requireAuth('visualizador'), wrap(async (_req, res) => {
+  const { rows } = await pool.query(`
+    SELECT p.*, o.subregiao AS occ_subregiao
+    FROM postos_comando p
+    JOIN ocorrencias o ON o.id = p.ocorrencia_id
+    WHERE p.ativo AND o.status = 'active'
+    ORDER BY o.created_at, p.created_at
+  `);
+  res.json(rows);
+}));
+
 app.get('/api/ocorrencias/:id/postos', requireAuth('visualizador'), wrap(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT p.*,
