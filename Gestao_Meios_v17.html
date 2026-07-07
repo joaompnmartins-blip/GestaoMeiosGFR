@@ -1156,6 +1156,7 @@
     <input type="hidden" id="team-recurso-id"/>
     <input type="hidden" id="team-transporte-id"/>
 
+    <input type="hidden" id="team-bsf-id"/>
     <div class="modal-section">Identificação</div>
     <div class="form-grid-3">
       <div class="form-field span3">
@@ -1175,6 +1176,17 @@
           <button class="btn btn-ghost btn-sm" onclick="openNewEquipaFromTeam()" title="Adicionar novo meio à base de dados" style="white-space:nowrap;">+ Novo meio</button>
         </div>
       </div>
+    </div>
+
+    <!-- BSF multi-member preview (shown when a BSF brigada is selected) -->
+    <div id="bsf-members-section" style="display:none;margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Os seguintes recursos serão adicionados individualmente à ocorrência:</div>
+      <div id="bsf-members-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+    </div>
+
+    <!-- Single-meio identification fields (hidden when a BSF brigada is selected) -->
+    <div id="single-meio-fields">
+    <div class="form-grid-3">
       <div class="form-field">
         <label class="form-label">Designação / Eq.nº</label>
         <input class="form-input" id="team-eq" placeholder="Ex: VLCI 22 FSBF"/>
@@ -1204,6 +1216,7 @@
         <label class="form-label">Contacto</label>
         <input class="form-input" id="team-contacto" placeholder="9xx xxx xxx"/>
       </div>
+    </div>
     </div>
 
     <div class="modal-section" id="mr-pm-section" style="display:none;">Transporte (PM associado)</div>
@@ -3427,20 +3440,53 @@ function openAddTeam(){
   const pfSr = document.getElementById('preset-filter-sr');
   if(pfTe){ pfTe.innerHTML='<option value="">Tipo…</option>'; }
   if(pfSr){ pfSr.innerHTML='<option value="">Sub-região…</option>'; }
+  // Reset BSF state
+  document.getElementById('team-bsf-id').value = '';
+  const bsfSec = document.getElementById('bsf-members-section');
+  const singleSec = document.getElementById('single-meio-fields');
+  if(bsfSec)    bsfSec.style.display    = 'none';
+  if(singleSec) singleSec.style.display = '';
   refreshPresetSelect(null);
   openModal('modal-team');
 }
 
 function applyPreset(id){
+  const bsfSec   = document.getElementById('bsf-members-section');
+  const singleSec= document.getElementById('single-meio-fields');
+
+  // Clear BSF state first
+  document.getElementById('team-bsf-id').value = '';
+  if(bsfSec)    bsfSec.style.display    = 'none';
+  if(singleSec) singleSec.style.display = '';
+
   if(!id) return;
+
   // Try recursos catalog, then BSF composicoes, then legacy equipas
   const r = db.recursos.find(x=>x.id===id);
   const c = r ? null : (db.composicoes||[]).find(x=>x.id===id);
   const e = (r||c) ? null : db.equipas.find(x=>x.id===id);
-  const nome       = r ? r.codigo        : c ? c.codigo        : e?.nome || '';
-  const tipo       = r ? r.tipo          : c ? (c.tipo||'BSF') : e?.tipo || '';
-  const capacidade = r ? r.num_elementos : c ? null            : e?.capacidade || 0;
-  const concelho   = r ? r.concelho      : c ? c.concelho      : (e?.concelho || e?.origem || '');
+
+  // BSF composição — multi-member path
+  if(c){
+    document.getElementById('team-bsf-id').value = c.id;
+    if(bsfSec)    bsfSec.style.display    = '';
+    if(singleSec) singleSec.style.display = 'none';
+    const membros = (c.membros||[]).filter(m=>m.recurso);
+    document.getElementById('bsf-members-list').innerHTML = membros.length
+      ? membros.map(m=>`<div style="display:flex;gap:8px;align-items:center;padding:4px 8px;border-radius:2px;background:color-mix(in srgb,var(--accent3) 8%,transparent);font-size:12px;">
+          <span class="badge badge-y" style="font-size:10px;">${esc(m.recurso.tipo||'—')}</span>
+          <span style="flex:1;">${esc(m.recurso.codigo)}</span>
+          <span style="color:var(--muted);font-size:10px;">${esc(m.papel||'')}</span>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:12px;padding:4px;">Sem membros definidos nesta brigada.</div>';
+    return;
+  }
+
+  // Single-meio path (recurso or equipa)
+  const nome       = r ? r.codigo        : e?.nome || '';
+  const tipo       = r ? r.tipo          : e?.tipo || '';
+  const capacidade = r ? r.num_elementos : e?.capacidade || 0;
+  const concelho   = r ? r.concelho      : (e?.concelho || e?.origem || '');
   const contacto   = r ? r.contacto      : '';
 
   document.getElementById('team-eq').value = nome;
@@ -3578,6 +3624,64 @@ function editTeam(id){
 
 async function saveTeam(){
   if(!['admin','ofligacao'].includes(currentRole)){toast('Sem permissão para editar meios.','err');return;}
+
+  // BSF multi-meio path
+  const bsfId = document.getElementById('team-bsf-id').value;
+  if(bsfId){
+    const comp = (db.composicoes||[]).find(x=>x.id===bsfId);
+    const membros = (comp?.membros||[]).filter(m=>m.recurso);
+    if(!membros.length){ toast('Brigada sem membros definidos.','err'); return; }
+    const sharedEstado = document.getElementById('team-estado').value || 'previsto';
+    const shared = {
+      ocorrencia_id: currentOccId,
+      setor:          document.getElementById('team-setor').value.trim(),
+      dataDespacho:   document.getElementById('team-data-despacho').value,
+      horaDespacho:   document.getElementById('team-hora-despacho').value,
+      dataSaidaEntidade: document.getElementById('team-data-saida-entidade').value,
+      horaSaidaEntidade: document.getElementById('team-hora-saida-entidade').value,
+      dataChegada:    document.getElementById('team-data-chegada').value,
+      horaChegada:    document.getElementById('team-hora-chegada').value,
+      horasMax:       parseInt(document.getElementById('team-horas-max').value)||null,
+      limiteOp:       document.getElementById('team-limite-op').value,
+      dataDemob:      document.getElementById('team-data-demob').value,
+      horaDemob:      document.getElementById('team-hora-demob').value,
+      dataChegadaEntidade: document.getElementById('team-data-chegada-entidade').value,
+      horaChegadaEntidade: document.getElementById('team-hora-chegada-entidade').value,
+      km:             parseInt(document.getElementById('team-km').value)||null,
+      missao:         document.getElementById('team-missao').value.trim(),
+      obs:            document.getElementById('team-obs').value.trim(),
+      estado:         sharedEstado,
+      previstoData:   document.getElementById('team-previsto-data').value||null,
+      previstoHora:   document.getElementById('team-previsto-hora').value||null,
+    };
+    let ok = 0;
+    for(const m of membros){
+      const payload = {
+        ...shared,
+        eq:          m.recurso.codigo,
+        tipo:        m.recurso.tipo || '',
+        matricula:   '',
+        concelho:    comp.concelho || '',
+        operacionais: 0, operativos: [], responsavel: '', contacto: '',
+        equipaId:    null, recursoId: m.recurso.id,
+        limiteOpDate: null, transporteId: null, viaturaId: null,
+      };
+      const id = await persistTeam(payload, null);
+      if(id){
+        const msg = `Registado no sistema (brigada ${esc(comp.codigo)}). Estado: ${payload.estado}.`;
+        await persistEvento(id, msg);
+        await persistOccEvento(currentOccId, 'created', `Meio adicionado: ${payload.eq}${payload.tipo?' ('+payload.tipo+')':''} · brigada ${comp.codigo}`, payload.eq);
+        db.teams.push({ id, ...payload, created: Date.now(), eventos: [{ ts: new Date().toISOString(), msg }] });
+        ok++;
+      }
+    }
+    await cacheToIDB();
+    closeModal('modal-team');
+    renderTeams();
+    toast(`${ok} meio(s) da brigada ${comp.codigo} adicionados.`, 'ok');
+    return;
+  }
+
   const eq=document.getElementById('team-eq').value.trim();
   if(!eq){toast('Insira a designação do meio.','err');return;}
   const editId=document.getElementById('team-edit-id').value;
