@@ -4006,16 +4006,14 @@ async function saveOperacional(){
   if(!nome){toast('Insira o nome do operacional.','err');return;}
   const editId=document.getElementById('op-edit-id').value;
   const payload={nome,categoria:document.getElementById('op-categoria').value,contacto:document.getElementById('op-contacto').value.trim(),notas:document.getElementById('op-notas').value.trim()};
+  const savedOpId = await persistOperacional(payload, editId||null);
+  if(!savedOpId) return;
   if(editId){
     const idx=db.operacionais.findIndex(x=>x.id===editId);
     if(idx>-1) db.operacionais[idx]={...db.operacionais[idx],...payload};
   } else {
-    db.operacionais.push({id:uid(),...payload});
+    db.operacionais.push({id:savedOpId,...payload});
   }
-  const savedOpId = await persistOperacional(payload, editId||null);
-  if(!savedOpId) return;
-  if(editId){ const idx=db.operacionais.findIndex(x=>x.id===editId); if(idx>-1) db.operacionais[idx]={...db.operacionais[idx],...payload}; }
-  else { db.operacionais.push({id:savedOpId,...payload}); }
   closeModal('modal-operacional'); toast('Operacional guardado!','ok'); renderOperacionais();
 }
 
