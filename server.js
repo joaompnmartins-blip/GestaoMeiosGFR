@@ -161,7 +161,7 @@ app.delete('/api/ocorrencias/:id', requireAuth('admin'), wrap(async (req, res) =
 // ══════════════════════════════════════════════════════════════════
 const MEIO_COLS = [
   'ocorrencia_id','recurso_id','viatura_id','composicao_id','meio_pai_id',
-  'eq','tipo','matricula','concelho','setor',
+  'eq','tipo','matricula','concelho','setor','posto_comando_id',
   'operacionais','responsavel','contacto',
   'data_despacho','hora_despacho','data_saida_entidade','hora_saida_entidade',
   'data_chegada','hora_chegada','horas_max','limite_op','limite_op_date',
@@ -276,6 +276,63 @@ app.put('/api/meios/:id/operativos', requireAuth('operacional'), wrap(async (req
 }));
 
 // ══════════════════════════════════════════════════════════════════
+//  POSTOS DE COMANDO (PCF / AIM)
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/ocorrencias/:id/postos', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT p.*,
+           COUNT(m.id) FILTER (WHERE m.estado <> 'desmobilizado') AS meios_count
+    FROM postos_comando p
+    LEFT JOIN meios m ON m.posto_comando_id = p.id
+    WHERE p.ocorrencia_id = $1 AND p.ativo
+    GROUP BY p.id
+    ORDER BY p.created_at
+  `, [req.params.id]);
+  res.json(rows);
+}));
+
+app.post('/api/ocorrencias/:id/postos', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.nome || !b.tipo) return res.status(400).json({ error: 'nome e tipo obrigatórios.' });
+  const { rows } = await pool.query(
+    `INSERT INTO postos_comando (ocorrencia_id, nome, tipo, oficial_ligacao_id, oficial_ligacao_nome, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [req.params.id, b.nome, b.tipo, b.oficial_ligacao_id || null, b.oficial_ligacao_nome || null, req.user.id]
+  );
+  await pool.query(
+    `INSERT INTO ocorrencias_eventos (ocorrencia_id, tag, msg, user_id)
+     VALUES ($1,'occ',$2,$3)`,
+    [req.params.id, `Criado posto de comando: ${b.tipo} "${b.nome}"${b.oficial_ligacao_nome ? ' — OL: ' + b.oficial_ligacao_nome : ''}.`, req.user.id]
+  );
+  res.json(rows[0]);
+}));
+
+app.patch('/api/postos/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const ALLOWED = ['nome', 'tipo', 'oficial_ligacao_id', 'oficial_ligacao_nome', 'ativo'];
+  const b = req.body;
+  const cols = ALLOWED.filter(c => c in b);
+  if (!cols.length) return res.json({ ok: true });
+  const sets = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
+  const vals = [...cols.map(c => b[c] ?? null), req.params.id];
+  const { rows } = await pool.query(`UPDATE postos_comando SET ${sets} WHERE id=$${cols.length + 1} RETURNING *`, vals);
+  res.json(rows[0] || { ok: true });
+}));
+
+app.delete('/api/postos/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+  // Soft-delete: return meios to main PCO (posto_comando_id = NULL)
+  await pool.query(`UPDATE meios SET posto_comando_id = NULL WHERE posto_comando_id = $1`, [req.params.id]);
+  const { rows } = await pool.query(`UPDATE postos_comando SET ativo = false WHERE id = $1 RETURNING ocorrencia_id, nome, tipo`, [req.params.id]);
+  if (rows[0]) {
+    await pool.query(
+      `INSERT INTO ocorrencias_eventos (ocorrencia_id, tag, msg, user_id) VALUES ($1,'occ',$2,$3)`,
+      [rows[0].ocorrencia_id, `Posto de comando encerrado: ${rows[0].tipo} "${rows[0].nome}". Meios devolvidos ao PCO principal.`, req.user.id]
+    );
+  }
+  res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
 //  PEDIDOS DE REMOÇÃO DE MEIOS
 // ══════════════════════════════════════════════════════════════════
 
@@ -356,8 +413,8 @@ app.get('/api/ocorrencias_eventos', requireAuth('visualizador'), wrap(async (req
 app.post('/api/ocorrencias_eventos', requireAuth('operacional'), wrap(async (req, res) => {
   const b = req.body;
   await pool.query(
-    'INSERT INTO ocorrencias_eventos (ocorrencia_id, ts, tag, meio_label, msg, user_id) VALUES ($1,$2,$3,$4,$5,$6)',
-    [b.ocorrencia_id, b.ts || new Date().toISOString(), b.tag || 'occ', b.meio_label || null, b.msg, req.user.id]
+    'INSERT INTO ocorrencias_eventos (ocorrencia_id, ts, tag, meio_label, msg, user_id, posto_comando_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [b.ocorrencia_id, b.ts || new Date().toISOString(), b.tag || 'occ', b.meio_label || null, b.msg, req.user.id, b.posto_comando_id || null]
   );
   res.json({ ok: true });
 }));
@@ -367,16 +424,16 @@ app.post('/api/ocorrencias_eventos', requireAuth('operacional'), wrap(async (req
 // ══════════════════════════════════════════════════════════════════
 app.get('/api/ocorrencias/:id/timeline', requireAuth('visualizador'), wrap(async (req, res) => {
   const { rows } = await pool.query(`
-    SELECT ts, categoria, titulo, descricao, dados, autor_nome, meio_eq FROM (
+    SELECT ts, categoria, titulo, descricao, dados, autor_nome, meio_eq, posto_comando_id FROM (
       SELECT ot.ts, ot.categoria, ot.titulo, ot.descricao, ot.dados, ot.autor_nome,
-             m.eq AS meio_eq
+             m.eq AS meio_eq, ot.posto_comando_id
       FROM ocorrencia_timeline ot
       LEFT JOIN meios m ON m.id = ot.meio_id
       WHERE ot.ocorrencia_id = $1
 
       UNION ALL
 
-      SELECT oe.ts, 'ocorrencia', oe.msg, NULL, NULL::JSONB, NULL, NULL
+      SELECT oe.ts, 'ocorrencia', oe.msg, NULL, NULL::JSONB, NULL, NULL, oe.posto_comando_id
       FROM ocorrencias_eventos oe
       WHERE oe.ocorrencia_id = $1
 
@@ -384,7 +441,7 @@ app.get('/api/ocorrencias/:id/timeline', requireAuth('visualizador'), wrap(async
 
       SELECT me.ts, 'meios_icnf', me.msg, NULL,
              jsonb_build_object('missao', m.missao, 'estado', m.estado),
-             NULL, m.eq
+             NULL, m.eq, m.posto_comando_id
       FROM meios_eventos me
       JOIN meios m ON m.id = me.meio_id
       WHERE m.ocorrencia_id = $1
@@ -1820,6 +1877,10 @@ async function runMigrations() {
     // Add BSBF to composicoes tipo CHECK
     `ALTER TABLE IF EXISTS composicoes DROP CONSTRAINT IF EXISTS composicoes_tipo_check`,
     `ALTER TABLE IF EXISTS composicoes ADD CONSTRAINT  composicoes_tipo_check CHECK (tipo IN ('BSF','BSBF','EGFR_NACIONAL','EGFR_LOCAL','EMR'))`,
+    // Postos de Comando
+    `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

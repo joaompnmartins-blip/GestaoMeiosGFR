@@ -497,6 +497,22 @@ CREATE TABLE IF NOT EXISTS ocorrencia_timeline (
 CREATE INDEX IF NOT EXISTS idx_timeline_occ ON ocorrencia_timeline(ocorrencia_id, ts DESC);
 
 -- ══════════════════════════════════════════════════════════════════
+--  POSTOS DE COMANDO (PCF / AIM)
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS postos_comando (
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ocorrencia_id        UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    nome                 TEXT NOT NULL,
+    tipo                 TEXT NOT NULL CHECK (tipo IN ('PCF','AIM')),
+    oficial_ligacao_id   UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    oficial_ligacao_nome TEXT,
+    ativo                BOOLEAN DEFAULT true,
+    created_at           TIMESTAMPTZ DEFAULT now(),
+    created_by           UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_postos_ocorrencia ON postos_comando(ocorrencia_id);
+
+-- ══════════════════════════════════════════════════════════════════
 --  SECTORES PREDEFINIDOS
 -- ══════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS sectores (

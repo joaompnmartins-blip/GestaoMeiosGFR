@@ -667,6 +667,9 @@
           </div>
         </div>
 
+        <!-- Postos de Comando -->
+        <div id="postos-section" style="display:none;margin-bottom:16px;"></div>
+
         <!-- FSBF disponível — visible only to ofligacao_ccon/admin -->
         <div id="fsbf-disponivel-section" style="display:none;margin-bottom:16px;"></div>
 
@@ -696,6 +699,7 @@
                 <button class="btn btn-ghost btn-xs" onclick="toggleTimeline()">✕</button>
               </div>
             </div>
+            <div id="tl-posto-filters" style="display:none;margin-bottom:4px;"></div>
             <div id="tl-cat-filters" class="tl-cat-filters"></div>
             <div class="tl-date-filter">
               <span class="tl-date-lbl">De</span>
@@ -1973,7 +1977,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[], postos:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -2129,7 +2133,7 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -2189,13 +2193,12 @@ async function persistEvento(teamId, msg){
 
 let db_occEventos = {}; // { occ_id: [{ts, tag, meio, msg}] }
 
-async function persistOccEvento(occId, tag, msg, meioLabel){
+async function persistOccEvento(occId, tag, msg, meioLabel, postoId){
   const entry = { ts:new Date().toISOString(), tag:tag||'occ', meio:meioLabel||null, msg };
   if(!db_occEventos[occId]) db_occEventos[occId]=[];
   db_occEventos[occId].unshift(entry);
-  const row = { ocorrencia_id:occId, ts:entry.ts, tag:entry.tag, meio_label:entry.meio||null, msg:entry.msg, user_id:currentUser?.id||null };
+  const row = { ocorrencia_id:occId, ts:entry.ts, tag:entry.tag, meio_label:entry.meio||null, msg:entry.msg, user_id:currentUser?.id||null, posto_comando_id:postoId||null };
   await supaWriteOrQueue('ocorrencias_eventos','insert', row, null, `Log [${tag}]: ${msg.slice(0,40)}`);
-  // Also cache updated occ eventos
   await idbSet('idb_cache','occEventos', db_occEventos);
 }
 
@@ -2668,6 +2671,11 @@ function openDetalhe(id){
     el.textContent = slots.map(s => s.nome + (s.contacto ? ` (${s.contacto})` : '')).join(' / ');
     el.style.color = '';
   }).catch(() => {});
+  // Load postos de comando for this occurrence
+  apiFetch(`/api/ocorrencias/${id}/postos`).then(({ data }) => {
+    db.postos = data || [];
+    renderPostosSection(isClosed);
+  }).catch(() => { db.postos = []; renderPostosSection(isClosed); });
   document.getElementById('btn-change-oflig').style.display=isClosed?'none':'';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
   document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
@@ -2677,6 +2685,7 @@ function openDetalhe(id){
   // Update topbar
   document.getElementById('topbar-title').textContent=o.nome;
   document.getElementById('topbar-sub').textContent=(isClosed?'🗄 ARQUIVADA · ':'')+(o.ref?`Cód. ${o.ref} · `:'')+(o.concelho||'');
+  db.postos = [];
   updateSetorDatalist();
   renderTeams();
   renderMeiosNacionaisDisponivel();
@@ -2744,6 +2753,123 @@ async function submitChangeOfLigacao(id){
   closeModal('modal-action');
   document.getElementById('d-oflig').textContent=newNome;
   toast('Oficial de Ligação atualizado.','ok');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  POSTOS DE COMANDO
+// ══════════════════════════════════════════════════════════════════
+function renderPostosSection(isClosed){
+  const sec = document.getElementById('postos-section');
+  if(!sec) return;
+  const postos = db.postos;
+  if(!postos.length && isClosed){ sec.style.display='none'; return; }
+  sec.style.display='';
+  const canEdit = ['admin','ofligacao'].includes(currentRole) && !isClosed;
+  const addBtn = canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openPostoModal(null)">+ Novo PCF/AIM</button>` : '';
+  const list = postos.map(p => {
+    const tipoBadge = p.tipo==='PCF'
+      ? `<span class="badge badge-info" style="font-size:9px">PCF</span>`
+      : `<span class="badge badge-warn" style="font-size:9px">AIM</span>`;
+    const meioCount = db.teams.filter(t=>t.ocorrencia_id===currentOccId && t.postoComandoId===p.id).length;
+    const olNome = p.oficial_ligacao_nome || '—';
+    const editBtn = canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openPostoModal('${p.id}')" style="margin-left:6px;">✎</button>` : '';
+    const closeBtn = canEdit ? `<button class="btn btn-danger btn-xs" onclick="fecharPosto('${p.id}')" style="margin-left:4px;" title="Fechar posto (meios voltam ao PCO principal)">✕</button>` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      ${tipoBadge}
+      <strong style="font-size:12px">${esc(p.nome)}</strong>
+      <span style="font-size:11px;color:var(--muted)">OL: ${esc(olNome)}</span>
+      <span style="font-size:10px;color:var(--muted)">${meioCount} meio${meioCount!==1?'s':''}</span>
+      ${editBtn}${closeBtn}
+    </div>`;
+  }).join('');
+  sec.innerHTML = `<div class="detail-card" style="margin-bottom:0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div class="detail-card-title" style="margin-bottom:0;">Postos de Comando</div>
+      ${addBtn}
+    </div>
+    ${list || '<div style="font-size:11px;color:var(--muted)">Sem postos de comando avançados.</div>'}
+  </div>`;
+}
+
+async function openPostoModal(postoId){
+  const posto = postoId ? db.postos.find(p=>p.id===postoId) : null;
+  const title = document.getElementById('modal-action-title');
+  const body  = document.getElementById('action-body');
+  const footer= document.getElementById('action-footer');
+  document.getElementById('action-team-id').value = postoId||'';
+
+  const { data: ofLigs } = await apiFetch('/api/utilizadores/ofligacao');
+  const olOptions = (ofLigs||[]).map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}"${posto?.oficial_ligacao_id===u.id?' selected':''}>${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('');
+
+  title.textContent = posto ? `Editar Posto — ${posto.nome}` : 'Novo Posto de Comando';
+  body.innerHTML = `
+    <div class="form-grid" style="margin-top:14px;">
+      <div class="form-field">
+        <label class="form-label">Tipo</label>
+        <select class="form-select" id="posto-tipo">
+          <option value="PCF"${!posto||posto.tipo==='PCF'?' selected':''}>PCF — Posto de Comando de Frente</option>
+          <option value="AIM"${posto?.tipo==='AIM'?' selected':''}>AIM — Área de Intervenção Municipal</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Nome / Designação</label>
+        <input class="form-input" id="posto-nome" value="${esc(posto?.nome||'')}" placeholder="Ex: PCF Norte"/>
+      </div>
+      <div class="form-field span2">
+        <label class="form-label">Oficial de Ligação PCO</label>
+        <select class="form-select" id="posto-oflig">
+          <option value="">— Sem OL —</option>
+          ${olOptions}
+        </select>
+      </div>
+    </div>`;
+  footer.innerHTML = `<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+    <button class="btn btn-primary" onclick="savePosto('${postoId||''}')">${posto ? '✓ Guardar' : '+ Criar Posto'}</button>`;
+  openModal('modal-action');
+}
+
+async function savePosto(postoId){
+  const tipo  = document.getElementById('posto-tipo').value;
+  const nome  = document.getElementById('posto-nome').value.trim();
+  const ofSel = document.getElementById('posto-oflig');
+  const olId  = ofSel.value||null;
+  const olNome= olId ? ofSel.options[ofSel.selectedIndex].dataset.nome : null;
+  if(!nome){ toast('Introduza um nome para o posto.','err'); return; }
+
+  if(postoId){
+    const { error } = await apiFetch(`/api/postos/${postoId}`, {
+      method:'PATCH', body:JSON.stringify({ nome, tipo, oficial_ligacao_id:olId, oficial_ligacao_nome:olNome })
+    });
+    if(error){ toast('Erro ao guardar: '+error,'err'); return; }
+    const p = db.postos.find(x=>x.id===postoId);
+    if(p){ p.nome=nome; p.tipo=tipo; p.oficial_ligacao_id=olId; p.oficial_ligacao_nome=olNome; }
+    toast('Posto atualizado.','ok');
+  } else {
+    const { data, error } = await apiFetch(`/api/ocorrencias/${currentOccId}/postos`, {
+      method:'POST', body:JSON.stringify({ nome, tipo, oficial_ligacao_id:olId, oficial_ligacao_nome:olNome })
+    });
+    if(error){ toast('Erro ao criar posto: '+error,'err'); return; }
+    if(data) db.postos.push(data);
+    toast('Posto criado.','ok');
+  }
+  closeModal('modal-action');
+  renderPostosSection(false);
+  renderTeams();
+}
+
+async function fecharPosto(postoId){
+  const p = db.postos.find(x=>x.id===postoId);
+  if(!p) return;
+  if(!confirm(`Fechar o posto "${p.nome}"?\nOs meios atribuídos voltam ao PCO Principal.`)) return;
+  const { error } = await apiFetch(`/api/postos/${postoId}`, { method:'DELETE' });
+  if(error){ toast('Erro ao fechar posto: '+error,'err'); return; }
+  // Server already nulled posto_comando_id on meios — update local state
+  db.teams.filter(t=>t.ocorrencia_id===currentOccId && t.postoComandoId===postoId)
+    .forEach(t=>{ t.postoComandoId=null; });
+  db.postos = db.postos.filter(x=>x.id!==postoId);
+  toast(`Posto "${p.nome}" fechado. Meios voltaram ao PCO Principal.`,'info');
+  renderPostosSection(false);
+  renderTeams();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2889,20 +3015,42 @@ function renderAlerts(teams){
 }
 
 // ─── SECTOR VIEW ───────────────────────────────────────────────
-function renderSectorView(teams, isClosed){
-  const container=document.getElementById('view-sector');
-  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
-
-  const previstos=teams.filter(t=>t.estado==='previsto');
-  const ativos=teams.filter(t=>t.estado!=='previsto');
-
-  // Group active teams by sector
+function renderSectorGroups(ativos, isClosed){
+  if(!ativos.length) return '';
   const sectors={};
   ativos.forEach(t=>{
     const s=t.setor||'(Sem Setor)';
     if(!sectors[s]) sectors[s]=[];
     sectors[s].push(t);
   });
+  const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
+  return sorted.map(s=>{
+    const st=sectors[s];
+    const ops=st.filter(t=>t.estado==='operacao').length;
+    const rest=st.filter(t=>t.estado==='descanso').length;
+    const transit=st.filter(t=>t.estado==='transito').length;
+    const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
+    return `<div class="sector-group">
+      <div class="sector-header">
+        <span class="sector-label">${esc(s)}</span>
+        <div class="sector-stats">
+          <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
+          <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
+          <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
+          <span class="sector-stat">👥 ${totalOps} op.ais</span>
+        </div>
+      </div>
+      <div class="teams-grid">${sortWithChildren(st).map(t=>teamCardHtml(t,isClosed,st)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSectorView(teams, isClosed){
+  const container=document.getElementById('view-sector');
+  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
+
+  const previstos=teams.filter(t=>t.estado==='previsto');
+  const ativos=teams.filter(t=>t.estado!=='previsto');
 
   let html='';
 
@@ -2917,28 +3065,33 @@ function renderSectorView(teams, isClosed){
     </div>`;
   }
 
-  // Regular sector groups
-  if(Object.keys(sectors).length){
-    const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
-    html+=sorted.map(s=>{
-      const st=sectors[s];
-      const ops=st.filter(t=>t.estado==='operacao').length;
-      const rest=st.filter(t=>t.estado==='descanso').length;
-      const transit=st.filter(t=>t.estado==='transito').length;
-      const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
-      return `<div class="sector-group">
-        <div class="sector-header">
-          <span class="sector-label">${esc(s)}</span>
-          <div class="sector-stats">
-            <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
-            <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
-            <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
-            <span class="sector-stat">👥 ${totalOps} op.ais</span>
-          </div>
-        </div>
-        <div class="teams-grid">${sortWithChildren(st).map(t=>teamCardHtml(t,isClosed,st)).join('')}</div>
+  // When postos exist, group by posto then by sector within each posto
+  if(db.postos.length){
+    // PCO Principal (no posto_comando_id)
+    const mainAtivos = ativos.filter(t=>!t.postoComandoId);
+    if(mainAtivos.length){
+      html+=`<div style="margin-bottom:4px;padding:6px 0 2px;border-top:2px solid var(--border);">
+        <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">PCO Principal</span>
       </div>`;
-    }).join('');
+      html+=renderSectorGroups(mainAtivos,isClosed);
+    }
+    // Each posto
+    db.postos.forEach(p=>{
+      const postoAtivos = ativos.filter(t=>t.postoComandoId===p.id);
+      const tipoBadgeColor = p.tipo==='PCF' ? 'var(--accent3)' : 'var(--warn)';
+      html+=`<div style="margin-top:8px;margin-bottom:4px;padding:6px 0 2px;border-top:2px solid ${tipoBadgeColor};">
+        <span style="font-size:10px;font-weight:600;color:${tipoBadgeColor};letter-spacing:.1em;text-transform:uppercase;">${esc(p.tipo)} — ${esc(p.nome)}</span>
+        ${p.oficial_ligacao_nome?`<span style="font-size:10px;color:var(--muted);margin-left:8px;">OL: ${esc(p.oficial_ligacao_nome)}</span>`:''}
+      </div>`;
+      if(postoAtivos.length){
+        html+=renderSectorGroups(postoAtivos,isClosed);
+      } else {
+        html+=`<div style="font-size:11px;color:var(--muted);padding:6px 0;">Sem meios atribuídos.</div>`;
+      }
+    });
+  } else {
+    // No postos — flat sector grouping
+    html+=renderSectorGroups(ativos,isClosed);
   }
 
   container.innerHTML=html;
@@ -3070,6 +3223,7 @@ function teamCardHtml(t, isClosed, _teams){
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='desmobilizado'?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">✕ Desmob.</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${['admin','ofligacao','operacional'].includes(currentRole)&&db.postos.length>0?`<button class="btn btn-ghost btn-xs" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
       ${['admin','ofligacao','operacional'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
@@ -3208,8 +3362,23 @@ function quickAction(type, teamId){
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
       <button class="btn btn-primary" onclick="doQuickObs('${teamId}')">📝 Registar</button>`;
   }
+  else if(type==='posto'){
+    title.textContent=`Mover PCO — ${t.eq}`;
+    const currentNome = db.postos.find(p=>p.id===t.postoComandoId)?.nome || 'PCO Principal';
+    body.innerHTML=`
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;">Posto atual: <strong>${esc(currentNome)}</strong></p>
+      <div class="form-field" style="margin-top:14px;">
+        <label class="form-label">Mover para</label>
+        <select class="form-select" id="qa-posto-dest">
+          <option value="">PCO Principal</option>
+          ${db.postos.map(p=>`<option value="${p.id}"${t.postoComandoId===p.id?' selected':''}>${esc(p.nome)} (${p.tipo})</option>`).join('')}
+        </select>
+      </div>`;
+    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+      <button class="btn btn-primary" onclick="doQuickMovePCO('${teamId}')">⇄ Confirmar Transferência</button>`;
+  }
   // If this meio belongs to a composite team, offer "apply to all" checkbox
-  if(['transit','op','rest','demob','sector'].includes(type)){
+  if(['transit','op','rest','demob','sector','posto'].includes(type)){
     const siblings = compositeGroupSiblings(t);
     if(siblings.length > 0){
       const label = compositeGroupLabel(t);
@@ -3258,7 +3427,7 @@ async function applyTransitToTeam(t, d, h, obs){
   addEventLog(t,msg);
   await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq,t.postoComandoId);
 }
 
 async function applyOpToTeam(t, d, h, hmax, setor, missao){
@@ -3274,7 +3443,7 @@ async function applyOpToTeam(t, d, h, hmax, setor, missao){
   addEventLog(t,msg);
   await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq,t.postoComandoId);
 }
 
 async function applyRestToTeam(t, obs){
@@ -3284,7 +3453,7 @@ async function applyRestToTeam(t, obs){
   addEventLog(t,msg);
   await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'descanso',obs:t.obs}},t.id,`Descanso: ${t.eq}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — descanso activado${obs?' — '+obs:''}.`,t.eq,t.postoComandoId);
 }
 
 async function applyDemobToTeam(t, date, time, obs){
@@ -3294,7 +3463,7 @@ async function applyDemobToTeam(t, date, time, obs){
   addEventLog(t,msg);
   await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'desmobilizado',data_demob:date,hora_demob:time,obs:t.obs}},t.id,`Desmob: ${t.eq}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${date} ${time}${obs?' — '+obs:''}.`,t.eq);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — desmobilizado ${date} ${time}${obs?' — '+obs:''}.`,t.eq,t.postoComandoId);
   if(t.tipo==='PM'){
     const mrs=db.teams.filter(x=>x.transporteId===t.id);
     for(const mr of mrs){ mr.transporteId=null; await supaWriteOrQueue('meios','update',{id:mr.id,row:{transporte_id:null}},mr.id,`Transporte removido: ${mr.eq}`); }
@@ -3308,7 +3477,18 @@ async function applySectorToTeam(t, setor){
   addEventLog(t,msg);
   await supaWriteOrQueue('meios','update',{id:t.id,row:{setor:t.setor}},t.id,`Setor: ${t.eq} → ${t.setor}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq);
+  await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq,t.postoComandoId);
+}
+
+async function applyPostoToTeam(t, postoId, postoNome){
+  const oldNome = db.postos.find(p=>p.id===t.postoComandoId)?.nome || 'PCO Principal';
+  t.postoComandoId = postoId||null;
+  const newNome = postoNome || 'PCO Principal';
+  const msg=`Transferido: ${oldNome} → ${newNome}.`;
+  addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{posto_comando_id:postoId||null}},t.id,`Posto: ${t.eq} → ${newNome}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'posto',`${t.eq} — transferido para ${newNome}.`,t.eq,postoId||null);
 }
 
 async function doQuickTransit(id){
@@ -3395,6 +3575,20 @@ async function doQuickObs(id){
   } catch(e){ console.warn('doQuickObs:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Observação registada.`,'ok');
+}
+
+async function doQuickMovePCO(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const sel=document.getElementById('qa-posto-dest');
+  const postoId=sel.value||null;
+  const postoNome=postoId ? (db.postos.find(p=>p.id===postoId)?.nome||'?') : 'PCO Principal';
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
+  try {
+    await applyPostoToTeam(t,postoId,postoNome);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyPostoToTeam(s,postoId,postoNome);
+  } catch(e){ console.warn('doQuickMovePCO:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Transferido para ${postoNome}.`,'ok');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -4206,6 +4400,7 @@ const TL_CATS = {
 
 let _tlData = [];
 let _tlFilter = 'all';
+let _tlPostoFilter = null;
 
 const TL_FORMS = {
   meios_outros:    `<div class="form-field"><label class="form-label">Registo</label><textarea class="form-textarea" id="tlf-texto" rows="5" placeholder="Ex: 2 VFCI dos Bombeiros de Aveiro chegaram ao TO — Setor B."></textarea></div>`,
@@ -4235,7 +4430,28 @@ async function loadTimeline(){
   }
   _tlData = data || [];
   _tlFilter = 'all';
+  _tlPostoFilter = null;
+  renderTLPostoFilters();
   renderTimelineFilters();
+  renderTimeline();
+}
+
+function renderTLPostoFilters(){
+  const row = document.getElementById('tl-posto-filters');
+  if(!row) return;
+  if(!db.postos.length){ row.style.display='none'; return; }
+  row.style.display='';
+  const btns = [
+    `<button class="tl-cat-btn${_tlPostoFilter===null?' active':''}" onclick="setTLPostoFilter(null)" style="font-size:10px;">Todos os PCO</button>`,
+    `<button class="tl-cat-btn${_tlPostoFilter==='main'?' active':''}" onclick="setTLPostoFilter('main')" style="font-size:10px;">PCO Principal</button>`,
+    ...db.postos.map(p=>`<button class="tl-cat-btn${_tlPostoFilter===p.id?' active':''}" onclick="setTLPostoFilter('${p.id}')" style="font-size:10px;">${esc(p.tipo)}: ${esc(p.nome)}</button>`)
+  ];
+  row.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--border);">${btns.join('')}</div>`;
+}
+
+function setTLPostoFilter(postoId){
+  _tlPostoFilter = postoId;
+  renderTLPostoFilters();
   renderTimeline();
 }
 
@@ -4257,6 +4473,14 @@ function setTLFilter(cat){
 
 function getFilteredTLEntries(){
   let entries = _tlFilter === 'all' ? _tlData : _tlData.filter(e => e.categoria === _tlFilter);
+  // PCO filter: only applied when postos exist
+  if(_tlPostoFilter !== null && db.postos.length){
+    if(_tlPostoFilter === 'main'){
+      entries = entries.filter(e => !e.posto_comando_id);
+    } else {
+      entries = entries.filter(e => e.posto_comando_id === _tlPostoFilter);
+    }
+  }
   const dateFrom = document.getElementById('tl-date-from')?.value;
   const timeFrom = document.getElementById('tl-time-from')?.value || '00:00';
   const dateTo   = document.getElementById('tl-date-to')?.value;
