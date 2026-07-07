@@ -1877,7 +1877,19 @@ async function runMigrations() {
     // Add BSBF to composicoes tipo CHECK
     `ALTER TABLE IF EXISTS composicoes DROP CONSTRAINT IF EXISTS composicoes_tipo_check`,
     `ALTER TABLE IF EXISTS composicoes ADD CONSTRAINT  composicoes_tipo_check CHECK (tipo IN ('BSF','BSBF','EGFR_NACIONAL','EGFR_LOCAL','EMR'))`,
-    // Postos de Comando
+    // Postos de Comando — create table first so FK references below succeed
+    `CREATE TABLE IF NOT EXISTS postos_comando (
+        id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        ocorrencia_id        UUID NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+        nome                 TEXT NOT NULL,
+        tipo                 TEXT NOT NULL CHECK (tipo IN ('PCF','AIM')),
+        oficial_ligacao_id   UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+        oficial_ligacao_nome TEXT,
+        ativo                BOOLEAN DEFAULT true,
+        created_at           TIMESTAMPTZ DEFAULT now(),
+        created_by           UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_postos_ocorrencia ON postos_comando(ocorrencia_id)`,
     `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
