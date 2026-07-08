@@ -6359,7 +6359,8 @@ function openEditViaturaModal(v){
   document.getElementById('nv-id').value = v.id;
   document.getElementById('nv-title').textContent = 'Editar Viatura';
   document.getElementById('nv-save-btn').textContent = 'Guardar';
-  document.getElementById('nv-cod-field').style.display = 'none';
+  document.getElementById('nv-cod-field').style.display = '';
+  document.getElementById('nv-cod').value = v.viatura_cod||'';
   document.getElementById('nv-matricula').value = v.matricula||'';
   document.getElementById('nv-classe').value    = v.classe||'';
   document.getElementById('nv-megfr').value     = v.megfr||'';
@@ -6386,11 +6387,13 @@ async function saveViatura(){
     base:        document.getElementById('nv-base').value.trim()||null,
     ddi_viatura: document.getElementById('nv-ddi').value.trim()||null,
   };
+  const cod = document.getElementById('nv-cod').value.trim();
+  if(!cod){ toast('Código obrigatório.','err'); return; }
+  body.viatura_cod = cod;
   let error;
   if(isEdit){
     ({ error } = await apiFetch(`/api/gestao/viaturas/${id}`, { method:'PATCH', body:JSON.stringify(body) }));
   } else {
-    body.viatura_cod = document.getElementById('nv-cod').value.trim();
     if(!body.viatura_cod){ toast('Código obrigatório.','err'); return; }
     ({ error } = await apiFetch('/api/gestao/viaturas', { method:'POST', body:JSON.stringify(body) }));
   }
