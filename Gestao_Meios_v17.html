@@ -6285,7 +6285,7 @@ async function printFsbfCarta(){
   const dateFmt = data.split('-').reverse().join('/');
 
   const mapBsbf = r => ({
-    base: '', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
+    base: r.base||'', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
     guarnicao: r.guarnicao??'', chefe_equipa: r.chefe_nome||'',
     contacto: r.contacto||'', observacoes: r.observacoes||''
   });
