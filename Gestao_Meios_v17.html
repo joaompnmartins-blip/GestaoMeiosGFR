@@ -2170,7 +2170,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null, posto_comando_id:payload.postoComandoId||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -3997,6 +3997,7 @@ async function saveTeam(){
         setor:          document.getElementById('team-setor').value.trim() || null,
         missao:         document.getElementById('team-missao').value.trim() || null,
         obs:            document.getElementById('team-obs').value.trim() || null,
+        posto_comando_id: currentPostoId || null,
       })
     });
     if(error){ toast(error.message||'Erro ao adicionar brigada.','err'); return; }
@@ -4045,6 +4046,7 @@ async function saveTeam(){
     previstoHora:document.getElementById('team-previsto-hora').value||null,
     equipaId:document.getElementById('team-equipa-id').value||null,
     recursoId:document.getElementById('team-recurso-id').value||null,
+    postoComandoId: editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null),
   };
 
   // Exclusividade entre ocorrências: um meio activo (trânsito/operação/descanso)
@@ -4073,7 +4075,7 @@ async function saveTeam(){
     const pmOperativos=[...document.getElementById('pm-ops-list').querySelectorAll('.ops-item input')].map(i=>i.value.trim()).filter(Boolean);
     const pmOperacionais=parseInt(document.getElementById('team-pm-ops').value)||pmOperativos.length||0;
     const pmBase={
-      ocorrencia_id:currentOccId, setor:payload.setor,
+      ocorrencia_id:currentOccId, setor:payload.setor, postoComandoId:payload.postoComandoId||null,
       operacionais:pmOperacionais, operativos:pmOperativos,
       responsavel:payload.responsavel, contacto:payload.contacto,
       dataDespacho:payload.dataDespacho, horaDespacho:payload.horaDespacho,

@@ -786,13 +786,15 @@ app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap
     await client.query('BEGIN');
 
     const totalOps = comp.membros.reduce((s, m) => s + (m.num_elementos || 1), 0);
+    const postoId = camposDespacho.posto_comando_id || null;
     const { rows: [pai] } = await client.query(
       `INSERT INTO meios (ocorrencia_id, composicao_id, eq, tipo, estado, operacionais, created_by,
-         data_despacho, hora_despacho, setor, missao, obs)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+         data_despacho, hora_despacho, setor, missao, obs, posto_comando_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [req.params.id, comp.id, comp.codigo, comp.tipo, estado, totalOps, req.user.id,
        camposDespacho.data_despacho || null, camposDespacho.hora_despacho || null,
-       camposDespacho.setor || null, camposDespacho.missao || null, camposDespacho.obs || null]
+       camposDespacho.setor || null, camposDespacho.missao || null, camposDespacho.obs || null,
+       postoId]
     );
 
     const filhos = [];
@@ -800,13 +802,13 @@ app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap
       const { rows: [filho] } = await client.query(
         `INSERT INTO meios (ocorrencia_id, meio_pai_id, recurso_id, viatura_id,
            eq, tipo, matricula, contacto, estado, operacionais, created_by,
-           data_despacho, hora_despacho, setor, missao)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+           data_despacho, hora_despacho, setor, missao, posto_comando_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
         [req.params.id, pai.id, m.recurso_id || null, m.viatura_id || null,
          m.codigo, m.tipo, m.matricula || null, m.contacto || null,
          estado, m.num_elementos || 1, req.user.id,
          camposDespacho.data_despacho || null, camposDespacho.hora_despacho || null,
-         camposDespacho.setor || null, camposDespacho.missao || null]
+         camposDespacho.setor || null, camposDespacho.missao || null, postoId]
       );
       filhos.push(filho);
     }
