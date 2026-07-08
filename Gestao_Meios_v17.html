@@ -5817,13 +5817,15 @@ function fsbfViatOpts(viaturas, classes, selectedId){
     ? list.filter(v => classes.includes(v.classe))
     : list.filter(v => v.classe !== 'MR');
   return '<option value="">— sem —</option>' +
-    list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)} ${v.matricula?'('+esc(v.matricula)+')':''}</option>`).join('');
+    list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}</option>`).join('');
 }
 
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
   const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.veiculo_id);
-  const mat = row.matricula ? `<span class="mono" style="font-size:11px;color:var(--muted);">${esc(row.matricula)}</span>` : '';
+  const savedViat = allViat.find(v => v.id === row.veiculo_id);
+  const matTxt = savedViat ? `${savedViat.viatura_cod}${savedViat.matricula?' · '+savedViat.matricula:''}` : (row.matricula||'');
+  const mat = matTxt ? `<span class="mono" style="font-size:11px;color:var(--muted);">${esc(matTxt)}</span>` : '';
   return `<tr id="fsbf-bsbf-row-${id}">
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
     <td>
@@ -6054,9 +6056,10 @@ async function deleteFsbfBsbf(id, brigada){
 }
 
 function fsbfBsbfMatricula(id){
-  // Live-update matricula hint when vehicle picker changes
-  // (We don't have the viaturas list here, so just clear — renderFsbfCarta will set it)
-  document.getElementById(`fsbf-b-mat-${id}`).textContent = '';
+  const vId = document.getElementById(`fsbf-b-viat-${id}`)?.value;
+  const v = _fsbfViatCache.find(x => x.id === vId);
+  const el = document.getElementById(`fsbf-b-mat-${id}`);
+  if(el) el.textContent = v ? `${v.viatura_cod}${v.matricula?' · '+v.matricula:''}` : '';
 }
 
 async function saveFsbfEmrSilent(id){
