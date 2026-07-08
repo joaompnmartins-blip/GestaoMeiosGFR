@@ -6387,8 +6387,10 @@ async function saveViatura(){
     entidade:    document.getElementById('nv-entidade').value.trim()||null,
     base:        document.getElementById('nv-base').value.trim()||null,
   };
-  // DDI only settable on create; managed via Rádios tab on edit
-  if(!isEdit) body.ddi_viatura = document.getElementById('nv-ddi').value.trim()||null;
+  if(!isEdit){
+    body.tipo = 'Viatura';
+    body.ddi_viatura = document.getElementById('nv-ddi').value.trim()||null;
+  }
   const cod = document.getElementById('nv-cod').value.trim();
   if(!cod){ toast('Código obrigatório.','err'); return; }
   body.viatura_cod = cod;
