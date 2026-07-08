@@ -890,6 +890,7 @@
           <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
             <button class="icnf-tab-btn active" onclick="fsbfSwitchTab('carta',this)">Carta de Meios</button>
             <button class="icnf-tab-btn" onclick="fsbfSwitchTab('viaturas',this)">Veículos</button>
+            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('operacionais',this)">Operacionais</button>
           </div>
         </div>
         <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
@@ -924,6 +925,22 @@
             <table>
               <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
               <tbody id="gfsbf-v-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="fsbf-tab-operacionais" style="display:none;">
+          <div class="section-hdr">
+            <div class="section-title">Operacionais FSBF <span id="gfsbf-op-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input class="form-input" id="gfsbf-op-q" placeholder="🔍 Nome / cargo…" oninput="renderFSBFOperacionais()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+              <button class="btn btn-primary btn-sm auth-ofligacao" onclick="openNewFsbfOp()">+ Novo</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Nome</th><th>Cargo</th><th>Contacto</th><th></th></tr></thead>
+              <tbody id="gfsbf-op-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -5616,7 +5633,7 @@ function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
   document.querySelectorAll('#page-gestao-fsbf .icnf-tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  ['carta','viaturas'].forEach(t=>{
+  ['carta','viaturas','operacionais'].forEach(t=>{
     const el = document.getElementById('fsbf-tab-'+t);
     if(el) el.style.display = t===tab ? '' : 'none';
   });
@@ -5624,8 +5641,9 @@ function fsbfSwitchTab(tab, btn){
 }
 
 async function renderFsbfPage(){
-  if(_fsbfTab==='carta')    await renderFsbfCarta();
+  if(_fsbfTab==='carta')         await renderFsbfCarta();
   else if(_fsbfTab==='viaturas') await renderFSBFViaturas();
+  else if(_fsbfTab==='operacionais') await renderFSBFOperacionais();
 }
 
 async function renderFSBFViaturas(){
@@ -5665,6 +5683,69 @@ async function renderFSBFViaturas(){
       <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
     </td>
   </tr>`).join('');
+}
+
+// ── Operacionais tab ─────────────────────────────────────────────
+async function renderFSBFOperacionais(){
+  const q = (document.getElementById('gfsbf-op-q')?.value||'').toLowerCase();
+  const { data, error } = await apiFetch('/api/fsbf/operacionais');
+  if(error){ toast('Erro ao carregar operacionais.','err'); return; }
+  let rows = data || [];
+  if(q) rows = rows.filter(r=>(r.nome+' '+(r.cargo||'')).toLowerCase().includes(q));
+  document.getElementById('gfsbf-op-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gfsbf-op-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="4"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(r=>`<tr>
+    <td><strong>${esc(r.nome)}</strong></td>
+    <td style="font-size:12px">${esc(r.cargo||'—')}</td>
+    <td class="mono" style="font-size:12px">${esc(r.contacto||'—')}</td>
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs auth-ofligacao" onclick="openEditFsbfOp(${JSON.stringify(r).replace(/"/g,'&quot;')})">✎</button>
+      <button class="btn btn-danger btn-xs auth-ofligacao" onclick="deleteFsbfOp('${r.id}','${esc(r.nome)}')">✕</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openNewFsbfOp(){
+  document.getElementById('fsbf-op-id').value='';
+  document.getElementById('fsbf-op-title').textContent='Novo Operacional FSBF';
+  ['fsbf-op-nome','fsbf-op-cargo','fsbf-op-contacto'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-fsbf-op');
+}
+
+function openEditFsbfOp(r){
+  document.getElementById('fsbf-op-id').value=r.id;
+  document.getElementById('fsbf-op-title').textContent='Editar Operacional FSBF';
+  document.getElementById('fsbf-op-nome').value=r.nome||'';
+  document.getElementById('fsbf-op-cargo').value=r.cargo||'';
+  document.getElementById('fsbf-op-contacto').value=r.contacto||'';
+  openModal('modal-fsbf-op');
+}
+
+async function saveFsbfOp(){
+  const nome=document.getElementById('fsbf-op-nome').value.trim();
+  if(!nome){toast('Nome obrigatório.','err');return;}
+  const id=document.getElementById('fsbf-op-id').value;
+  const body={
+    nome,
+    cargo:document.getElementById('fsbf-op-cargo').value.trim()||null,
+    contacto:document.getElementById('fsbf-op-contacto').value.trim()||null,
+  };
+  const { error } = id
+    ? await apiFetch(`/api/fsbf/operacionais/${id}`,{method:'PATCH',body:JSON.stringify(body)})
+    : await apiFetch('/api/fsbf/operacionais',{method:'POST',body:JSON.stringify(body)});
+  if(error){toast(error.message,'err');return;}
+  toast(id?'Operacional atualizado.':'Operacional criado.','ok');
+  closeModal('modal-fsbf-op');
+  renderFSBFOperacionais();
+}
+
+async function deleteFsbfOp(id, nome){
+  if(!confirm(`Desativar "${nome}"?`)) return;
+  const { error } = await apiFetch(`/api/fsbf/operacionais/${id}`,{method:'DELETE'});
+  if(error){toast(error.message,'err');return;}
+  toast('Operacional desativado.','info');
+  renderFSBFOperacionais();
 }
 
 // ── Recursos tab (unchanged logic) ───────────────────────────────
@@ -7124,6 +7205,35 @@ async function editEgfrEntry(id, nome, capSup){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-deploy-nacional')">Cancelar</button>
       <button class="btn btn-primary" id="deploy-confirm-btn" onclick="confirmDeployNacional()">🚒 Despachar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: operacional FSBF -->
+<div class="modal-overlay" id="modal-fsbf-op" onclick="if(event.target===this)closeModal('modal-fsbf-op')">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="fsbf-op-title">Novo Operacional FSBF</div>
+      <button class="modal-close" onclick="closeModal('modal-fsbf-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fsbf-op-id"/>
+      <div class="form-field">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" id="fsbf-op-nome" placeholder="Nome completo"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Cargo</label>
+        <input class="form-input" id="fsbf-op-cargo" placeholder="ex: Chefe de Equipa"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Contacto</label>
+        <input class="form-input" id="fsbf-op-contacto" placeholder="9xxxxxxxx" type="tel"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fsbf-op')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFsbfOp()">Guardar</button>
     </div>
   </div>
 </div>

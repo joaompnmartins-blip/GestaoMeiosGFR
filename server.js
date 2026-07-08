@@ -1595,6 +1595,44 @@ app.delete('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap
   res.json({ ok: true });
 }));
 
+// ── FSBF Operacionais ─────────────────────────────────────────────
+app.get('/api/fsbf/operacionais', requireAuth('visualizador'), wrap(async (_req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM operacionais_fsbf WHERE ativo = true ORDER BY nome`
+  );
+  res.json(rows);
+}));
+
+app.post('/api/fsbf/operacionais', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { nome, cargo, contacto } = req.body;
+  if (!nome) return res.status(400).json({ error: 'Nome obrigatório.' });
+  const { rows: [row] } = await pool.query(
+    `INSERT INTO operacionais_fsbf (nome, cargo, contacto, created_by) VALUES ($1,$2,$3,$4) RETURNING *`,
+    [nome, cargo||null, contacto||null, req.user.id]
+  );
+  res.status(201).json(row);
+}));
+
+app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const ALLOWED = ['nome','cargo','contacto','ativo'];
+  const sets = [], vals = [];
+  for (const k of ALLOWED) {
+    if (k in req.body) { sets.push(`${k}=$${vals.length+1}`); vals.push(req.body[k]); }
+  }
+  if (!sets.length) return res.status(400).json({ error: 'Sem campos.' });
+  vals.push(req.params.id);
+  const { rows: [row] } = await pool.query(
+    `UPDATE operacionais_fsbf SET ${sets.join(',')} WHERE id=$${vals.length} RETURNING *`, vals
+  );
+  if (!row) return res.status(404).json({ error: 'Não encontrado.' });
+  res.json(row);
+}));
+
+app.delete('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  await pool.query(`UPDATE operacionais_fsbf SET ativo=false WHERE id=$1`, [req.params.id]);
+  res.json({ ok: true });
+}));
+
 // ── POST /api/ocorrencias/:occId/deploy/fsbf-emr ───────────────
 // Creates MR as primary meio (fsbf_emr_id), secondary vehicles as children (meio_pai_id).
 // No container card — each vehicle appears as its own card, grouped by colour in the UI.
@@ -1907,6 +1945,16 @@ async function runMigrations() {
     `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
+    // FSBF operacionais — independent roster table
+    `CREATE TABLE IF NOT EXISTS operacionais_fsbf (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nome       TEXT NOT NULL,
+        cargo      TEXT,
+        contacto   TEXT,
+        ativo      BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        created_by UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+    )`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);
@@ -1917,6 +1965,31 @@ async function runMigrations() {
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   await pool.query(schemaSql);
   console.log('Schema e migrações aplicados.');
+
+  // Seed operacionais_fsbf — only on first deploy (table empty)
+  const { rowCount: fsbfOpCount } = await pool.query(`SELECT 1 FROM operacionais_fsbf LIMIT 1`);
+  if (!fsbfOpCount) {
+    const names = [
+      'Abel Mota','Afonso Costa','Albino Reboredo','Alex Alves','Alexandre Abreu',
+      'Alexandre Quadrado','Ana Simões','André António','André Basso','André Mendes',
+      'André Pinto','Antero Sousa','António Bairrada','Bernardo Clara','Bruno Branco',
+      'Bruno Costa','Bruno Ferreira','Bruno Martins','Bruno Oliveira','Bruno Pais',
+      'Bruno Pina','Bruno Silva','Bruno Simões','Carlos Gomes','Carlos Nunes',
+      'Cristiano Macieira','Daniel Teixeira','Daniel Vaz','David Bento','David Cardoso',
+      'David Lourenço','Dinis Panarra','Diogo Alves','Diogo Fernandes','Diogo Marques',
+      'Diogo Mesquita','Diogo Policarpo','Duarte Batista','Duarte Pinto','Eduardo Camejo',
+      'Eduardo Pité','Eduardo Serra','Fernando Horto','Filipe Bambulo','Filipe Monteiro',
+      'Francisco Baião','Francisco Nascimento','Francisco Pires','Francisco Ribeiro',
+      'Gonçalo Abreu','Gonçalo Ambrósio','Gonçalo Lameiras','Gonçalo Macedo','Gonçalo Menino',
+      'Guilherme Ruano','Guilherme Tavares','Guilherme Triguinho','Hélder Barroso',
+      'Hélder Magalhães','Hélder Pinelo','Hérmino Borges','Hilário Furtado',
+    ];
+    await pool.query(
+      `INSERT INTO operacionais_fsbf (nome) SELECT unnest($1::text[])`,
+      [names]
+    );
+    console.log(`Semeados ${names.length} operacionais FSBF.`);
+  }
 }
 
 // ─── Start ────────────────────────────────────────────────────────
