@@ -171,17 +171,28 @@ const MEIO_COLS = [
   'fsbf_bsbf_id','fsbf_emr_id','egfr_data','egfr_equipa',
 ];
 
-const ACTIVE_ESTADOS  = ['transito','operacao','descanso'];
 const OCUPADO_ESTADOS = ['previsto','transito','operacao','descanso'];
 
 async function findRecursoConflict(recursoId, estado, excludeId) {
-  if (!recursoId || !ACTIVE_ESTADOS.includes(estado)) return null;
+  if (!recursoId || !OCUPADO_ESTADOS.includes(estado)) return null;
   const { rows } = await pool.query(
     `SELECT o.local_ignicao FROM meios m
      JOIN ocorrencias o ON o.id = m.ocorrencia_id
      WHERE m.recurso_id = $1 AND m.estado = ANY($2) AND m.id <> $3
      LIMIT 1`,
-    [recursoId, ACTIVE_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
+    [recursoId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
+  );
+  return rows[0] || null;
+}
+
+async function findViaturaConflict(viaturaId, estado, excludeId) {
+  if (!viaturaId || !OCUPADO_ESTADOS.includes(estado)) return null;
+  const { rows } = await pool.query(
+    `SELECT o.local_ignicao FROM meios m
+     JOIN ocorrencias o ON o.id = m.ocorrencia_id
+     WHERE m.viatura_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     LIMIT 1`,
+    [viaturaId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
   );
   return rows[0] || null;
 }
@@ -215,6 +226,10 @@ app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
   if (conflict) {
     return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
   }
+  const vConflict = await findViaturaConflict(b.viatura_id, b.estado, null);
+  if (vConflict) {
+    return res.status(409).json({ error: `Esta viatura já está em uso na ocorrência "${vConflict.local_ignicao}".` });
+  }
   const cols = [...MEIO_COLS, 'created_by'];
   const vals = [...MEIO_COLS.map(c => b[c] ?? null), req.user.id];
   const ph   = cols.map((_, i) => `$${i + 1}`).join(',');
@@ -235,15 +250,21 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
     return res.status(409).json({ error: 'Este meio tem um pedido de remoção pendente e não pode ser editado.' });
   }
 
-  if ('estado' in b && ACTIVE_ESTADOS.includes(b.estado)) {
+  if ('estado' in b && OCUPADO_ESTADOS.includes(b.estado)) {
     let recursoId = b.recurso_id;
-    if (recursoId === undefined) {
-      const { rows } = await pool.query('SELECT recurso_id FROM meios WHERE id=$1', [req.params.id]);
-      recursoId = rows[0]?.recurso_id;
+    let viaturaId = b.viatura_id;
+    if (recursoId === undefined || viaturaId === undefined) {
+      const { rows } = await pool.query('SELECT recurso_id, viatura_id FROM meios WHERE id=$1', [req.params.id]);
+      if (recursoId === undefined) recursoId = rows[0]?.recurso_id;
+      if (viaturaId === undefined) viaturaId = rows[0]?.viatura_id;
     }
     const conflict = await findRecursoConflict(recursoId, b.estado, req.params.id);
     if (conflict) {
       return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
+    }
+    const vConflict = await findViaturaConflict(viaturaId, b.estado, req.params.id);
+    if (vConflict) {
+      return res.status(409).json({ error: `Esta viatura já está em uso na ocorrência "${vConflict.local_ignicao}".` });
     }
   }
 
@@ -1055,7 +1076,12 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
   const fonteEfetiva = (req.user.role === 'admin' || req.user.role === 'gestor_icnf') ? null : ROLE_FONTE[req.user.role];
 
   const { rows } = await pool.query(`
-    SELECT v.*, r.codigo AS recurso_codigo, f.codigo AS fonte
+    SELECT v.*, r.codigo AS recurso_codigo, f.codigo AS fonte,
+      EXISTS (
+        SELECT 1 FROM meios m_u
+        WHERE m_u.viatura_id = v.id
+          AND m_u.estado = ANY(ARRAY['previsto','transito','operacao','descanso'])
+      ) AS em_uso
     FROM viaturas v
     LEFT JOIN recursos r ON r.id = v.recurso_id
     LEFT JOIN recurso_tipos rt ON rt.codigo = r.tipo
@@ -1663,6 +1689,21 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
   );
   if (ex.length) return res.status(409).json({ error: `Já despachado para "${ex[0].local_ignicao}".` });
 
+  // Per-vehicle exclusivity across all EMR vehicles
+  const emrViatIds = [emr.mr_viatura_id, emr.vaop_viatura_id, emr.vpiloto_viatura_id, emr.vlci_viatura_id].filter(Boolean);
+  if (emrViatIds.length) {
+    const { rows: vConf } = await pool.query(
+      `SELECT v.viatura_cod, o.local_ignicao FROM meios m
+       JOIN viaturas v ON v.id = m.viatura_id
+       JOIN ocorrencias o ON o.id = m.ocorrencia_id
+       WHERE m.viatura_id = ANY($1) AND m.estado = ANY($2) LIMIT 1`,
+      [emrViatIds, OCUPADO_ESTADOS]
+    );
+    if (vConf.length) return res.status(409).json({
+      error: `Viatura "${vConf[0].viatura_cod}" já está em uso na ocorrência "${vConf[0].local_ignicao}".`
+    });
+  }
+
   const secondary = [
     emr.vaop_viatura_id   ? { id: emr.vaop_viatura_id,   eq: emr.vaop_cod, tipo: emr.vaop_cls||'VAOP', mat: emr.vaop_mat } : null,
     emr.vpiloto_viatura_id? { id: emr.vpiloto_viatura_id, eq: emr.vpil_cod, tipo: emr.vpil_cls||'VTTP', mat: emr.vpil_mat } : null,
@@ -1747,6 +1788,21 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
     [vehicleIds]
   );
   if (ex.length) return res.status(409).json({ error: `Já despachado para "${ex[0].local_ignicao}".` });
+
+  // Per-vehicle exclusivity: prevent same physical vehicle appearing in two active incidents
+  const viaturaIds = vehicles.map(v => v.veiculo_id).filter(Boolean);
+  if (viaturaIds.length) {
+    const { rows: vConf } = await pool.query(
+      `SELECT v.viatura_cod, o.local_ignicao FROM meios m
+       JOIN viaturas v ON v.id = m.viatura_id
+       JOIN ocorrencias o ON o.id = m.ocorrencia_id
+       WHERE m.viatura_id = ANY($1) AND m.estado = ANY($2) LIMIT 1`,
+      [viaturaIds, OCUPADO_ESTADOS]
+    );
+    if (vConf.length) return res.status(409).json({
+      error: `Viatura "${vConf[0].viatura_cod}" já está em uso na ocorrência "${vConf[0].local_ignicao}".`
+    });
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const client = await pool.connect();

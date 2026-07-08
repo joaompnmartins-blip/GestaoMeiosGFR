@@ -5677,7 +5677,7 @@ async function renderFSBFViaturas(){
     <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
     <td style="font-size:11px">${esc(v.agfr||'—')}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
-    <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
+    <td>${v.em_uso ? `<span style="font-size:11px;color:var(--warn);font-weight:600;">Em ocorrência</span>` : prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
     <td>${v.dispositivo
       ? `<button class="btn btn-xs" style="background:color-mix(in srgb,var(--accent3) 15%,transparent);color:var(--accent3);border:1px solid var(--accent3);min-width:62px;font-size:11px;" onclick="toggleFsbfDispositivo('${v.id}',true)">● Disp.</button>`
       : `<button class="btn btn-ghost btn-xs" style="min-width:62px;font-size:11px;color:var(--muted);" onclick="toggleFsbfDispositivo('${v.id}',false)">○ Disp.</button>`
@@ -5812,7 +5812,7 @@ function fsbfAutoContacto(selectEl, contactElId){
 }
 
 function fsbfViatOpts(viaturas, classes, selectedId){
-  let list = viaturas.filter(v => v.dispositivo || v.id === selectedId);
+  let list = viaturas.filter(v => (v.dispositivo && !v.em_uso) || v.id === selectedId);
   list = classes
     ? list.filter(v => classes.includes(v.classe))
     : list.filter(v => v.classe !== 'MR');
