@@ -5817,23 +5817,22 @@ function fsbfViatOpts(viaturas, classes, selectedId){
     ? list.filter(v => classes.includes(v.classe))
     : list.filter(v => v.classe !== 'MR');
   return '<option value="">— sem —</option>' +
-    list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}</option>`).join('');
+    list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)}</option>`).join('');
 }
 
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
   const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.veiculo_id);
   const savedViat = allViat.find(v => v.id === row.veiculo_id);
-  const matTxt = savedViat ? `${savedViat.viatura_cod}${savedViat.matricula?' · '+savedViat.matricula:''}` : (row.matricula||'');
-  const mat = matTxt ? `<span class="mono" style="font-size:11px;color:var(--muted);">${esc(matTxt)}</span>` : '';
+  const savedMat = savedViat?.matricula || row.matricula || '';
   return `<tr id="fsbf-bsbf-row-${id}">
-    <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
+    <td><input class="form-input" style="width:100px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
     <td>
       <select class="form-select" style="font-size:12px;" id="fsbf-b-viat-${id}" onchange="fsbfBsbfMatricula('${id}')">
         ${vOpts}
       </select>
-      <div id="fsbf-b-mat-${id}" style="margin-top:2px;">${mat}</div>
     </td>
+    <td><input class="form-input mono" style="width:100px;font-size:12px;" id="fsbf-b-mat-${id}" value="${esc(savedMat)}" placeholder="—" readonly/></td>
     <td><input class="form-input" style="width:50px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/></td>
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
@@ -5851,18 +5850,23 @@ function fsbfEmrCard(row, allViat){
   const vaopOpts = fsbfViatOpts(allViat, ['PM','MU'],                    row.vaop_viatura_id);
   const vpilOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.vpiloto_viatura_id);
   const vlciOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.vlci_viatura_id);
+  const _mat = (vid) => allViat.find(v=>v.id===vid)?.matricula||'';
   return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:8px;">
       <div><label style="font-size:11px;color:var(--muted);">Base</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></div>
       <div><label style="font-size:11px;color:var(--muted);">MR</label>
-        <select class="form-select" style="font-size:12px;" id="fsbf-e-mr-${id}">${mrOpts}</select></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-mr-${id}" onchange="fsbfEmrMat('${id}','mr')">${mrOpts}</select>
+        <div class="mono" id="fsbf-e-mr-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.mr_viatura_id))}</div></div>
       <div><label style="font-size:11px;color:var(--muted);">VAOP</label>
-        <select class="form-select" style="font-size:12px;" id="fsbf-e-vaop-${id}">${vaopOpts}</select></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vaop-${id}" onchange="fsbfEmrMat('${id}','vaop')">${vaopOpts}</select>
+        <div class="mono" id="fsbf-e-vaop-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.vaop_viatura_id))}</div></div>
       <div><label style="font-size:11px;color:var(--muted);">Vpiloto</label>
-        <select class="form-select" style="font-size:12px;" id="fsbf-e-vpil-${id}">${vpilOpts}</select></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vpil-${id}" onchange="fsbfEmrMat('${id}','vpil')">${vpilOpts}</select>
+        <div class="mono" id="fsbf-e-vpil-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.vpiloto_viatura_id))}</div></div>
       <div><label style="font-size:11px;color:var(--muted);">VLCI</label>
-        <select class="form-select" style="font-size:12px;" id="fsbf-e-vlci-${id}">${vlciOpts}</select></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-vlci-${id}" onchange="fsbfEmrMat('${id}','vlci')">${vlciOpts}</select>
+        <div class="mono" id="fsbf-e-vlci-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.vlci_viatura_id))}</div></div>
       <div><label style="font-size:11px;color:var(--muted);">Chefe</label>
         <select class="form-select" style="font-size:12px;" id="fsbf-e-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-e-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
@@ -5881,7 +5885,7 @@ function fsbfEmrCard(row, allViat){
 
 function fsbfBrigadaSection(title, brigada, rows, allViat, data){
   const rowsHtml = rows.map(r=>fsbfBsbfRow(r, allViat)).join('');
-  const empty = !rows.length ? '<tr><td colspan="7" style="color:var(--muted);padding:8px 0;">Sem equipas.</td></tr>' : '';
+  const empty = !rows.length ? '<tr><td colspan="8" style="color:var(--muted);padding:8px 0;">Sem equipas.</td></tr>' : '';
   return `<div style="margin-bottom:20px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <span style="font-weight:600;font-size:13px;">${title}</span>
@@ -5889,7 +5893,7 @@ function fsbfBrigadaSection(title, brigada, rows, allViat, data){
     </div>
     <div class="table-wrap" style="overflow-x:auto;">
       <table style="font-size:12px;">
-        <thead><tr><th>Base</th><th>Veículo / Matrícula</th><th>Guar.</th><th>Chefe de Equipa</th><th>Contacto</th><th>Obs</th><th></th></tr></thead>
+        <thead><tr><th>Base</th><th>Código</th><th>Matrícula</th><th>Guar.</th><th>Chefe de Equipa</th><th>Contacto</th><th>Obs</th><th></th></tr></thead>
         <tbody id="fsbf-bsbf-${brigada.toLowerCase()}-tbody">${rowsHtml}${empty}</tbody>
       </table>
     </div>
@@ -6059,7 +6063,14 @@ function fsbfBsbfMatricula(id){
   const vId = document.getElementById(`fsbf-b-viat-${id}`)?.value;
   const v = _fsbfViatCache.find(x => x.id === vId);
   const el = document.getElementById(`fsbf-b-mat-${id}`);
-  if(el) el.textContent = v ? `${v.viatura_cod}${v.matricula?' · '+v.matricula:''}` : '';
+  if(el) el.value = v?.matricula || '';
+}
+
+function fsbfEmrMat(id, field){
+  const vId = document.getElementById(`fsbf-e-${field}-${id}`)?.value;
+  const v = _fsbfViatCache.find(x => x.id === vId);
+  const el = document.getElementById(`fsbf-e-${field}-mat-${id}`);
+  if(el) el.textContent = v?.matricula || '';
 }
 
 async function saveFsbfEmrSilent(id){
