@@ -889,7 +889,7 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0;">
           <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
             <button class="icnf-tab-btn active" onclick="fsbfSwitchTab('carta',this)">Carta de Meios</button>
-            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('recursos',this)">Recursos</button>
+            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('viaturas',this)">Veículos</button>
           </div>
         </div>
         <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
@@ -905,27 +905,25 @@
         </div>
 
         <!-- ── Tab: Recursos ── -->
-        <div id="fsbf-tab-recursos" style="display:none;">
+        <div id="fsbf-tab-viaturas" style="display:none;">
           <div class="section-hdr">
-            <div class="section-title">Recursos FSBF <span id="gfsbf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
+            <div class="section-title">Veículos FSBF <span id="gfsbf-v-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <input class="form-input" id="gfsbf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoFSBF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
-              <select class="form-select" id="gfsbf-filter-prontidao" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
-                <option value="">Prontidão…</option>
-                <option value="operacional">Operacional</option>
-                <option value="inoperacional">Inoperacional</option>
+              <input class="form-input" id="gfsbf-v-q" placeholder="🔍 Código / matrícula…" oninput="renderFSBFViaturas()" style="width:160px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gfsbf-v-classe" onchange="renderFSBFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Classe…</option>
               </select>
-              <select class="form-select" id="gfsbf-filter-ativo" onchange="renderGestaoFSBF()" style="font-size:12px;padding:5px 8px;">
-                <option value="true">Ativos</option>
-                <option value="false">Inativos</option>
-                <option value="">Todos</option>
+              <select class="form-select" id="gfsbf-v-dispon" onchange="renderFSBFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Todas</option>
+                <option value="true">Disponíveis</option>
               </select>
+              <button class="btn btn-primary btn-sm" onclick="openNewViaturaModal('FSBF')">+ Nova</button>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Tipo</th><th>Sub-região</th><th>Concelho</th><th>Elementos</th><th>Viaturas</th><th>Rádios</th><th>Prontidão</th><th></th></tr></thead>
-              <tbody id="gfsbf-tbody"></tbody>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <tbody id="gfsbf-v-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -5618,7 +5616,7 @@ function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
   document.querySelectorAll('#page-gestao-fsbf .icnf-tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  ['carta','recursos'].forEach(t=>{
+  ['carta','viaturas'].forEach(t=>{
     const el = document.getElementById('fsbf-tab-'+t);
     if(el) el.style.display = t===tab ? '' : 'none';
   });
@@ -5627,7 +5625,46 @@ function fsbfSwitchTab(tab, btn){
 
 async function renderFsbfPage(){
   if(_fsbfTab==='carta')    await renderFsbfCarta();
-  else if(_fsbfTab==='recursos') await renderGestaoFSBF();
+  else if(_fsbfTab==='viaturas') await renderFSBFViaturas();
+}
+
+async function renderFSBFViaturas(){
+  const q   = (document.getElementById('gfsbf-v-q')?.value||'').toLowerCase();
+  const fd  = document.getElementById('gfsbf-v-dispon')?.value||'';
+  const fcl = document.getElementById('gfsbf-v-classe')?.value||'';
+  const params = new URLSearchParams({ megfr: 'FSBF' });
+  if(fd) params.set('disponivel', fd);
+  const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
+  if(error){ toast('Erro ao carregar veículos.','err'); return; }
+  let rows = data || [];
+
+  const clEl = document.getElementById('gfsbf-v-classe');
+  if(clEl){
+    const cur = clEl.value;
+    const classes = [...new Set(rows.map(v=>v.classe).filter(Boolean))].sort();
+    clEl.innerHTML = '<option value="">Classe…</option>' +
+      classes.map(c=>`<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
+  }
+
+  if(q)   rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
+  if(fcl) rows = rows.filter(v=>v.classe===fcl);
+  document.getElementById('gfsbf-v-count').textContent = `(${rows.length})`;
+  const tbody = document.getElementById('gfsbf-v-tbody');
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
+  tbody.innerHTML = rows.map(v=>`<tr>
+    <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
+    <td class="mono">${esc(v.matricula||'—')}</td>
+    <td style="font-size:11px">${[v.marca,v.modelo].filter(Boolean).map(esc).join(' ') || '—'}</td>
+    <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
+    <td style="font-size:11px">${esc(v.agfr||'—')}</td>
+    <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+    <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
+    <td style="display:flex;gap:4px;white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="openEditViaturaModal(${JSON.stringify(v).replace(/"/g,'&quot;')})">✎</button>
+      <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
+    </td>
+  </tr>`).join('');
 }
 
 // ── Recursos tab (unchanged logic) ───────────────────────────────
@@ -6343,7 +6380,7 @@ async function renderICNFViaturas(){
   </tr>`).join('');
 }
 
-function openNewViaturaModal(){
+function openNewViaturaModal(prefillMegfr){
   document.getElementById('nv-id').value = '';
   document.getElementById('nv-title').textContent = 'Nova Viatura';
   document.getElementById('nv-save-btn').textContent = 'Criar';
@@ -6352,7 +6389,7 @@ function openNewViaturaModal(){
   ['cod','matricula','classe','tipologia','marca','modelo','entidade','base','ddi'].forEach(f=>{
     document.getElementById('nv-'+f).value='';
   });
-  document.getElementById('nv-megfr').value='';
+  document.getElementById('nv-megfr').value = prefillMegfr||'';
   openModal('modal-new-viatura');
 }
 
@@ -6405,6 +6442,7 @@ async function saveViatura(){
   toast(isEdit ? 'Viatura atualizada.' : 'Viatura criada.','ok');
   closeModal('modal-new-viatura');
   renderICNFViaturas();
+  if(_fsbfTab==='viaturas') renderFSBFViaturas();
 }
 
 async function deleteViatura(id, cod){
@@ -6413,6 +6451,7 @@ async function deleteViatura(id, cod){
   if(error){ toast(error.message,'err'); return; }
   toast('Viatura eliminada.','info');
   renderICNFViaturas();
+  if(_fsbfTab==='viaturas') renderFSBFViaturas();
 }
 
 // ── Tab 3: Rádios ─────────────────────────────────────────────────
