@@ -5628,6 +5628,7 @@ async function renderGestaoSF(){
 
 let _fsbfTab = 'carta';
 let _fsbfViatCache = [];
+let _fsbfOperacionaisCache = [];
 
 function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
@@ -5796,6 +5797,20 @@ async function renderGestaoFSBF(){
 
 // ── Carta de Meios ────────────────────────────────────────────────
 
+function fsbfOpOpts(selectedNome){
+  return '<option value="">— operacional —</option>' +
+    _fsbfOperacionaisCache.map(o=>
+      `<option value="${esc(o.nome)}"${o.nome===selectedNome?' selected':''}>${esc(o.nome)}</option>`
+    ).join('');
+}
+
+function fsbfAutoContacto(selectEl, contactElId){
+  const nome = selectEl.value;
+  const op = _fsbfOperacionaisCache.find(o => o.nome === nome);
+  const el = document.getElementById(contactElId);
+  if(el && op?.contacto) el.value = op.contacto;
+}
+
 function fsbfViatOpts(viaturas, classes, selectedId){
   let list = viaturas.filter(v => v.dispositivo || v.id === selectedId);
   list = classes
@@ -5807,7 +5822,7 @@ function fsbfViatOpts(viaturas, classes, selectedId){
 
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
-  const vOpts = fsbfViatOpts(allViat, null, row.veiculo_id);
+  const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.veiculo_id);
   const mat = row.matricula ? `<span class="mono" style="font-size:11px;color:var(--muted);">${esc(row.matricula)}</span>` : '';
   return `<tr id="fsbf-bsbf-row-${id}">
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
@@ -5818,7 +5833,7 @@ function fsbfBsbfRow(row, allViat, isCarta){
       <div id="fsbf-b-mat-${id}" style="margin-top:2px;">${mat}</div>
     </td>
     <td><input class="form-input" style="width:50px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/></td>
-    <td><input class="form-input" style="width:140px;font-size:12px;" id="fsbf-b-chefe-${id}" value="${esc(row.chefe_nome||'')}" placeholder="Chefe de equipa"/></td>
+    <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
     <td><input class="form-input" style="width:120px;font-size:12px;" id="fsbf-b-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Obs"/></td>
     <td style="white-space:nowrap;">
@@ -5830,10 +5845,10 @@ function fsbfBsbfRow(row, allViat, isCarta){
 
 function fsbfEmrCard(row, allViat){
   const id = row.id;
-  const mrOpts   = fsbfViatOpts(allViat, ['MR'],           row.mr_viatura_id);
-  const vaopOpts = fsbfViatOpts(allViat, ['PM'],           row.vaop_viatura_id);
-  const vpilOpts = fsbfViatOpts(allViat, ['VTTP'],         row.vpiloto_viatura_id);
-  const vlciOpts = fsbfViatOpts(allViat, ['VLCI'],         row.vlci_viatura_id);
+  const mrOpts   = fsbfViatOpts(allViat, ['MR'],                          row.mr_viatura_id);
+  const vaopOpts = fsbfViatOpts(allViat, ['PM','MU'],                    row.vaop_viatura_id);
+  const vpilOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.vpiloto_viatura_id);
+  const vlciOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], row.vlci_viatura_id);
   return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:8px;">
       <div><label style="font-size:11px;color:var(--muted);">Base</label>
@@ -5847,7 +5862,7 @@ function fsbfEmrCard(row, allViat){
       <div><label style="font-size:11px;color:var(--muted);">VLCI</label>
         <select class="form-select" style="font-size:12px;" id="fsbf-e-vlci-${id}">${vlciOpts}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Chefe</label>
-        <input class="form-input" style="font-size:12px;" id="fsbf-e-chefe-${id}" value="${esc(row.chefe_nome||'')}" placeholder="Chefe de equipa"/></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-e-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
       <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
@@ -5886,9 +5901,10 @@ async function renderFsbfCarta(){
   const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
   const isFSBF = currentRole==='admin' || currentRole==='gestor_fsbf';
 
-  const [cartaRes, viatRes] = await Promise.all([
+  const [cartaRes, viatRes, opRes] = await Promise.all([
     apiFetch(`/api/fsbf/carta?data=${data}`),
     apiFetch('/api/gestao/viaturas?megfr=FSBF&ativo=true'),
+    apiFetch('/api/fsbf/operacionais'),
   ]);
 
   if(cartaRes.error){ toast('Erro ao carregar Carta de Meios.','err'); return; }
@@ -5898,6 +5914,7 @@ async function renderFsbfCarta(){
   const emr     = cartaRes.data?.emr     || [];
   const allViat = viatRes.data            || [];
   _fsbfViatCache = allViat;
+  _fsbfOperacionaisCache = opRes.data || [];
 
   const norte = bsbf.filter(r=>r.brigada==='Norte');
   const sul   = bsbf.filter(r=>r.brigada==='Sul');
@@ -5910,7 +5927,7 @@ async function renderFsbfCarta(){
                 + emr.reduce((s,r)=>s+(r.total_op||0),0)
                 + (carta.chefe_guarnicao||0);
 
-  const chViatOpts = fsbfViatOpts(allViat, null, carta.chefe_veiculo_id);
+  const chViatOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP'], carta.chefe_veiculo_id);
 
   document.getElementById('fsbf-carta-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
@@ -5919,7 +5936,9 @@ async function renderFsbfCarta(){
         <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Coordenador de Dia</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
-            <input class="form-input" id="fsbf-coord-nome" value="${esc(carta.coord_nome||'')}" placeholder="Nome" style="font-size:12px;width:180px;"/></div>
+            <select class="form-select" id="fsbf-coord-nome" onchange="fsbfAutoContacto(this,'fsbf-coord-cont')" style="font-size:12px;width:200px;">
+              ${fsbfOpOpts(carta.coord_nome)}
+            </select></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-coord-cont" value="${esc(carta.coord_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
           <button class="btn btn-xs btn-primary" onclick="saveFsbfHeader('${data}')">💾</button>
@@ -5930,7 +5949,9 @@ async function renderFsbfCarta(){
         <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Chefe de Grupo</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
-            <input class="form-input" id="fsbf-chefe-nome" value="${esc(carta.chefe_nome||'')}" placeholder="Nome" style="font-size:12px;width:150px;"/></div>
+            <select class="form-select" id="fsbf-chefe-nome" onchange="fsbfAutoContacto(this,'fsbf-chefe-cont')" style="font-size:12px;width:190px;">
+              ${fsbfOpOpts(carta.chefe_nome)}
+            </select></div>
           <div><label class="form-label" style="font-size:11px;">Veículo (texto)</label>
             <input class="form-input" id="fsbf-chefe-viat-txt" value="${esc(carta.chefe_veiculo_texto||'')}" placeholder="ex: VM87" style="font-size:12px;width:80px;"/></div>
           <div><label class="form-label" style="font-size:11px;">ou do catálogo</label>
