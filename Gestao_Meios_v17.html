@@ -923,7 +923,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th>Dispositivo</th><th></th></tr></thead>
               <tbody id="gfsbf-v-tbody"></tbody>
             </table>
           </div>
@@ -5668,7 +5668,7 @@ async function renderFSBFViaturas(){
   if(fcl) rows = rows.filter(v=>v.classe===fcl);
   document.getElementById('gfsbf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-v-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(v=>`<tr>
     <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
     <td class="mono">${esc(v.matricula||'—')}</td>
@@ -5677,12 +5677,22 @@ async function renderFSBFViaturas(){
     <td style="font-size:11px">${esc(v.agfr||'—')}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
+    <td>${v.dispositivo
+      ? `<button class="btn btn-xs" style="background:color-mix(in srgb,var(--accent3) 15%,transparent);color:var(--accent3);border:1px solid var(--accent3);min-width:62px;font-size:11px;" onclick="toggleFsbfDispositivo('${v.id}',true)">● Disp.</button>`
+      : `<button class="btn btn-ghost btn-xs" style="min-width:62px;font-size:11px;color:var(--muted);" onclick="toggleFsbfDispositivo('${v.id}',false)">○ Disp.</button>`
+    }</td>
     <td style="display:flex;gap:4px;white-space:nowrap;">
       <button class="btn btn-ghost btn-xs" onclick="openEditViaturaModal(${JSON.stringify(v).replace(/"/g,'&quot;')})">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
       <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
     </td>
   </tr>`).join('');
+}
+
+async function toggleFsbfDispositivo(id, current){
+  const { error } = await apiFetch(`/api/gestao/viaturas/${id}`,{method:'PATCH',body:JSON.stringify({dispositivo:!current})});
+  if(error){ toast(error.message,'err'); return; }
+  renderFSBFViaturas();
 }
 
 // ── Operacionais tab ─────────────────────────────────────────────
@@ -5787,9 +5797,10 @@ async function renderGestaoFSBF(){
 // ── Carta de Meios ────────────────────────────────────────────────
 
 function fsbfViatOpts(viaturas, classes, selectedId){
-  const list = classes
-    ? viaturas.filter(v => classes.includes(v.classe))
-    : viaturas.filter(v => v.classe !== 'MR');
+  let list = viaturas.filter(v => v.dispositivo || v.id === selectedId);
+  list = classes
+    ? list.filter(v => classes.includes(v.classe))
+    : list.filter(v => v.classe !== 'MR');
   return '<option value="">— sem —</option>' +
     list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)} ${v.matricula?'('+esc(v.matricula)+')':''}</option>`).join('');
 }

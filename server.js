@@ -1074,7 +1074,7 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
 app.patch('/api/gestao/viaturas/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   const ALLOWED = ['viatura_cod','recurso_id','matricula','marca','modelo','classe','megfr','tipologia','entidade',
-                   'base','estado','agfr','lat_base','long_base','ddi_viatura','ativo'];
+                   'base','estado','agfr','lat_base','long_base','ddi_viatura','ativo','dispositivo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }
@@ -1945,6 +1945,7 @@ async function runMigrations() {
     `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
+    `ALTER TABLE IF EXISTS viaturas ADD COLUMN IF NOT EXISTS dispositivo BOOLEAN DEFAULT false`,
     // FSBF operacionais — independent roster table
     `CREATE TABLE IF NOT EXISTS operacionais_fsbf (
         id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
