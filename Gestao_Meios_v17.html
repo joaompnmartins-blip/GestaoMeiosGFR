@@ -5697,8 +5697,8 @@ function fsbfBsbfRow(row, allViat, isCarta){
 
 function fsbfEmrCard(row, allViat){
   const id = row.id;
-  const mrOpts   = fsbfViatOpts(allViat, ['MR'],          row.mr_viatura_id);
-  const vaopOpts = fsbfViatOpts(allViat, ['VCOT'],         row.vaop_viatura_id);
+  const mrOpts   = fsbfViatOpts(allViat, ['MR'],           row.mr_viatura_id);
+  const vaopOpts = fsbfViatOpts(allViat, ['PM'],           row.vaop_viatura_id);
   const vpilOpts = fsbfViatOpts(allViat, ['VTTP'],         row.vpiloto_viatura_id);
   const vlciOpts = fsbfViatOpts(allViat, ['VLCI'],         row.vlci_viatura_id);
   return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
