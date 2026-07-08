@@ -939,7 +939,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Nome</th><th>Cargo</th><th>Contacto</th><th></th></tr></thead>
+              <thead><tr><th>N.º Trab</th><th>Nome</th><th>Cargo</th><th>Contacto</th><th></th></tr></thead>
               <tbody id="gfsbf-op-tbody"></tbody>
             </table>
           </div>
@@ -5694,8 +5694,9 @@ async function renderFSBFOperacionais(){
   if(q) rows = rows.filter(r=>(r.nome+' '+(r.cargo||'')).toLowerCase().includes(q));
   document.getElementById('gfsbf-op-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-op-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="4"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(r=>`<tr>
+    <td class="mono" style="font-size:12px;color:var(--muted)">${r.n_trab||'—'}</td>
     <td><strong>${esc(r.nome)}</strong></td>
     <td style="font-size:12px">${esc(r.cargo||'—')}</td>
     <td class="mono" style="font-size:12px">${esc(r.contacto||'—')}</td>
@@ -5709,7 +5710,7 @@ async function renderFSBFOperacionais(){
 function openNewFsbfOp(){
   document.getElementById('fsbf-op-id').value='';
   document.getElementById('fsbf-op-title').textContent='Novo Operacional FSBF';
-  ['fsbf-op-nome','fsbf-op-cargo','fsbf-op-contacto'].forEach(id=>document.getElementById(id).value='');
+  ['fsbf-op-nome','fsbf-op-ntrab','fsbf-op-cargo','fsbf-op-contacto'].forEach(id=>document.getElementById(id).value='');
   openModal('modal-fsbf-op');
 }
 
@@ -5717,6 +5718,7 @@ function openEditFsbfOp(r){
   document.getElementById('fsbf-op-id').value=r.id;
   document.getElementById('fsbf-op-title').textContent='Editar Operacional FSBF';
   document.getElementById('fsbf-op-nome').value=r.nome||'';
+  document.getElementById('fsbf-op-ntrab').value=r.n_trab||'';
   document.getElementById('fsbf-op-cargo').value=r.cargo||'';
   document.getElementById('fsbf-op-contacto').value=r.contacto||'';
   openModal('modal-fsbf-op');
@@ -5726,8 +5728,10 @@ async function saveFsbfOp(){
   const nome=document.getElementById('fsbf-op-nome').value.trim();
   if(!nome){toast('Nome obrigatório.','err');return;}
   const id=document.getElementById('fsbf-op-id').value;
+  const ntrabVal=document.getElementById('fsbf-op-ntrab').value.trim();
   const body={
     nome,
+    n_trab: ntrabVal ? parseInt(ntrabVal,10) : null,
     cargo:document.getElementById('fsbf-op-cargo').value.trim()||null,
     contacto:document.getElementById('fsbf-op-contacto').value.trim()||null,
   };
@@ -7218,9 +7222,15 @@ async function editEgfrEntry(id, nome, capSup){
     </div>
     <div class="modal-body">
       <input type="hidden" id="fsbf-op-id"/>
-      <div class="form-field">
-        <label class="form-label">Nome *</label>
-        <input class="form-input" id="fsbf-op-nome" placeholder="Nome completo"/>
+      <div style="display:flex;gap:8px;">
+        <div class="form-field" style="flex:1;min-width:0;">
+          <label class="form-label">Nome *</label>
+          <input class="form-input" id="fsbf-op-nome" placeholder="Nome completo"/>
+        </div>
+        <div class="form-field" style="width:90px;">
+          <label class="form-label">N.º Trab</label>
+          <input class="form-input" id="fsbf-op-ntrab" placeholder="6261" type="number"/>
+        </div>
       </div>
       <div class="form-field">
         <label class="form-label">Cargo</label>

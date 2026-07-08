@@ -1604,17 +1604,17 @@ app.get('/api/fsbf/operacionais', requireAuth('visualizador'), wrap(async (_req,
 }));
 
 app.post('/api/fsbf/operacionais', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
-  const { nome, cargo, contacto } = req.body;
+  const { nome, n_trab, cargo, contacto } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome obrigatório.' });
   const { rows: [row] } = await pool.query(
-    `INSERT INTO operacionais_fsbf (nome, cargo, contacto, created_by) VALUES ($1,$2,$3,$4) RETURNING *`,
-    [nome, cargo||null, contacto||null, req.user.id]
+    `INSERT INTO operacionais_fsbf (nome, n_trab, cargo, contacto, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [nome, n_trab||null, cargo||null, contacto||null, req.user.id]
   );
   res.status(201).json(row);
 }));
 
 app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
-  const ALLOWED = ['nome','cargo','contacto','ativo'];
+  const ALLOWED = ['nome','n_trab','cargo','contacto','ativo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
     if (k in req.body) { sets.push(`${k}=$${vals.length+1}`); vals.push(req.body[k]); }
@@ -1949,12 +1949,15 @@ async function runMigrations() {
     `CREATE TABLE IF NOT EXISTS operacionais_fsbf (
         id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         nome       TEXT NOT NULL,
+        n_trab     INTEGER,
         cargo      TEXT,
         contacto   TEXT,
         ativo      BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT now(),
         created_by UUID REFERENCES utilizadores(id) ON DELETE SET NULL
     )`,
+    `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS n_trab INTEGER`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS operacionais_fsbf_nome_idx ON operacionais_fsbf (nome)`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);
@@ -1966,30 +1969,60 @@ async function runMigrations() {
   await pool.query(schemaSql);
   console.log('Schema e migrações aplicados.');
 
-  // Seed operacionais_fsbf — only on first deploy (table empty)
-  const { rowCount: fsbfOpCount } = await pool.query(`SELECT 1 FROM operacionais_fsbf LIMIT 1`);
-  if (!fsbfOpCount) {
-    const names = [
-      'Abel Mota','Afonso Costa','Albino Reboredo','Alex Alves','Alexandre Abreu',
-      'Alexandre Quadrado','Ana Simões','André António','André Basso','André Mendes',
-      'André Pinto','Antero Sousa','António Bairrada','Bernardo Clara','Bruno Branco',
-      'Bruno Costa','Bruno Ferreira','Bruno Martins','Bruno Oliveira','Bruno Pais',
-      'Bruno Pina','Bruno Silva','Bruno Simões','Carlos Gomes','Carlos Nunes',
-      'Cristiano Macieira','Daniel Teixeira','Daniel Vaz','David Bento','David Cardoso',
-      'David Lourenço','Dinis Panarra','Diogo Alves','Diogo Fernandes','Diogo Marques',
-      'Diogo Mesquita','Diogo Policarpo','Duarte Batista','Duarte Pinto','Eduardo Camejo',
-      'Eduardo Pité','Eduardo Serra','Fernando Horto','Filipe Bambulo','Filipe Monteiro',
-      'Francisco Baião','Francisco Nascimento','Francisco Pires','Francisco Ribeiro',
-      'Gonçalo Abreu','Gonçalo Ambrósio','Gonçalo Lameiras','Gonçalo Macedo','Gonçalo Menino',
-      'Guilherme Ruano','Guilherme Tavares','Guilherme Triguinho','Hélder Barroso',
-      'Hélder Magalhães','Hélder Pinelo','Hérmino Borges','Hilário Furtado',
-    ];
-    await pool.query(
-      `INSERT INTO operacionais_fsbf (nome) SELECT unnest($1::text[])`,
-      [names]
-    );
-    console.log(`Semeados ${names.length} operacionais FSBF.`);
-  }
+  // Upsert operacionais_fsbf roster (runs on every deploy — safe, idempotent)
+  const FSBF_OP_SEED = [
+    [6261,'Abel Mota'],[6342,'Afonso Costa'],[5760,'Albino Reboredo'],[6613,'Alex Alves'],
+    [6264,'Alexandre Abreu'],[6588,'Alexandre Quadrado'],[6566,'Ana Simões'],[6590,'André António'],
+    [6589,'André Basso'],[6139,'André Mendes'],[6096,'André Pinto'],[493,'Antero Sousa'],
+    [6614,'António Bairrada'],[6123,'Bernardo Clara'],[5621,'Bruno Branco'],[6558,'Bruno Costa'],
+    [6275,'Bruno Ferreira'],[6569,'Bruno Martins'],[6127,'Bruno Oliveira'],[6108,'Bruno Pais'],
+    [5878,'Bruno Pina'],[6344,'Bruno Silva'],[6568,'Bruno Simões'],[5611,'Carlos Gomes'],
+    [6105,'Carlos Nunes'],[5613,'Cristiano Macieira'],[6570,'Daniel Teixeira'],[6346,'Daniel Vaz'],
+    [6247,'David Bento'],[6133,'David Cardoso'],[6253,'David Lourenço'],[6605,'Dinis Panarra'],
+    [6611,'Diogo Alves'],[6560,'Diogo Fernandes'],[6348,'Diogo Marques'],[6349,'Diogo Mesquita'],
+    [6379,'Diogo Policarpo'],[6373,'Duarte Batista'],[6128,'Duarte Pinto'],[6571,'Eduardo Camejo'],
+    [6351,'Eduardo Pité'],[6255,'Eduardo Serra'],[6124,'Fernando Horto'],[6120,'Filipe Bambulo'],
+    [5810,'Filipe Monteiro'],[6355,'Francisco Baião'],[6352,'Francisco Nascimento'],
+    [6375,'Francisco Pires'],[6592,'Francisco Ribeiro'],[6574,'Gonçalo Abreu'],
+    [6257,'Gonçalo Ambrósio'],[6573,'Gonçalo Lameiras'],[6607,'Gonçalo Macedo'],
+    [6262,'Gonçalo Menino'],[6122,'Guilherme Ruano'],[6132,'Guilherme Tavares'],
+    [6372,'Guilherme Triguinho'],[6138,'Hélder Barroso'],[6358,'Hélder Magalhães'],
+    [5615,'Hélder Pinelo'],[6359,'Hérmino Borges'],[6575,'Hilário Furtado'],[6576,'Hugo Vieira'],
+    [6361,'João Alves'],[6100,'João Baptista'],[6578,'João Cabaço'],[5801,'João Direito'],
+    [6115,'João Leite'],[6615,'João M. Ferreira'],[6384,'João Magalhães'],[6363,'João Monteiro'],
+    [6610,'João Pimenta'],[6258,'João Póvoas'],[6140,'João Reis'],[6617,'João Silva'],
+    [6593,'João T. Ferreira'],[6577,'João P. Vaz'],[6370,'João R. Vaz'],[6279,'Jorge Pereira'],
+    [6561,'Jorge Simões'],[6273,'José C. Alves'],[6366,'José P. Alves'],[6619,'José Reis'],
+    [6125,'José Santos'],[6620,'José Senra'],[6579,'José Silva'],[6099,'Júlio Abreu'],
+    [6102,'Leandro Fernandes'],[6103,'Leandro Ferreira'],[6596,'Leandro Moura'],
+    [6114,'Leonardo Fundo'],[6616,'Leonardo Pires'],[6580,'Lúcia Cardoso'],[6562,'Luís Carrasco'],
+    [6276,'Luis Cordeiro'],[6121,'Luís Dias'],[6582,'Luís Escobar'],[6131,'Luís Francisco'],
+    [6134,'Luís Lameira'],[6371,'Luís Lameiras'],[6581,'Luís Moura'],[6116,'Luís Pereira'],
+    [6378,'Marcelo Diogo'],[6365,'Marcelo Ferradosa'],[6263,'Marcelo Ferraz'],
+    [6583,'Marcelo Monteiro'],[6364,'Marco Silva'],[5812,'Marco Tacanho'],[6256,'Miguel Alves'],
+    [6126,'Miguel Rosa'],[6362,'Miguel Salgueiro'],[6585,'Mónica Pinto'],[6360,'Natacha Querales'],
+    [6587,'Natálio Serafim'],[6248,'Nuno Gandum'],[6277,'Nuno Garcia'],[6357,'Paulo Gonçalves'],
+    [6280,'Paulo Inácio'],[6130,'Paulo Silva'],[5969,'Pedro Beguilhas'],[6599,'Pedro Belém'],
+    [6595,'Pedro Caetano'],[6113,'Pedro Capela'],[6600,'Pedro Carvalho'],[6597,'Pedro Duarte'],
+    [6274,'Pedro Ferreira'],[6062,'Pedro Figueiredo'],[6618,'Pedro Marques'],[6563,'Pedro Mendes'],
+    [6376,'Pedro Oliveira'],[6594,'Pedro G. Pereira'],[6602,'Pedro R. Pereira'],
+    [6129,'Rafael Justino'],[6254,'Rafael Pinto'],[6374,'Rafael Santos'],[6603,'Rafael Silva'],
+    [5817,'Ricardo Firmino'],[6367,'Ricardo Mendes'],[6354,'Ricardo Paçó'],[6282,'Ricardo Paulino'],
+    [6135,'Ricardo Pinheiro'],[6260,'Ricardo Pinto'],[5722,'Roberto Santos'],[6606,'Rodrigo Castro'],
+    [6609,'Rodrigo Dias'],[6601,'Rodrigo Ferreira'],[6368,'Rodrigo Pereira'],[5709,'Rodrigo Rodrigues'],
+    [6377,'Rúben Almeida'],[6281,'Rui Espanhol'],[6353,'Rui Venâncio'],[6252,'Samuel Nicolau'],
+    [6564,'Sandro Amaro'],[6350,'Sérgio Soares'],[6109,'Telmo Dias'],[6565,'Tiago Alves'],
+    [6118,'Tiago E. Costa'],[6612,'Tiago T. Costa'],[6347,'Tiago Jorge'],[6250,'Tiago Machado'],
+    [6608,'Tiago Martins'],[6604,'Tiago Tavares'],[6064,'Tomás Martins'],[5987,'Vasco Pereira'],
+    [6278,'Vitor Sabino'],
+  ];
+  await pool.query(
+    `INSERT INTO operacionais_fsbf (n_trab, nome)
+     SELECT unnest($1::int[]), unnest($2::text[])
+     ON CONFLICT (nome) DO UPDATE SET n_trab = EXCLUDED.n_trab`,
+    [FSBF_OP_SEED.map(r=>r[0]), FSBF_OP_SEED.map(r=>r[1])]
+  );
+  console.log(`Upsert de ${FSBF_OP_SEED.length} operacionais FSBF.`);
 }
 
 // ─── Start ────────────────────────────────────────────────────────
