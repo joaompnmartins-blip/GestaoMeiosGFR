@@ -6348,6 +6348,7 @@ function openNewViaturaModal(){
   document.getElementById('nv-title').textContent = 'Nova Viatura';
   document.getElementById('nv-save-btn').textContent = 'Criar';
   document.getElementById('nv-cod-field').style.display = '';
+  document.getElementById('nv-ddi-field').style.display = '';
   ['cod','matricula','classe','tipologia','marca','modelo','entidade','base','ddi'].forEach(f=>{
     document.getElementById('nv-'+f).value='';
   });
@@ -6360,7 +6361,8 @@ function openEditViaturaModal(v){
   document.getElementById('nv-title').textContent = 'Editar Viatura';
   document.getElementById('nv-save-btn').textContent = 'Guardar';
   document.getElementById('nv-cod-field').style.display = '';
-  document.getElementById('nv-cod').value = v.viatura_cod||'';
+  document.getElementById('nv-ddi-field').style.display = 'none';
+  document.getElementById('nv-cod').value       = v.viatura_cod||'';
   document.getElementById('nv-matricula').value = v.matricula||'';
   document.getElementById('nv-classe').value    = v.classe||'';
   document.getElementById('nv-megfr').value     = v.megfr||'';
@@ -6369,7 +6371,6 @@ function openEditViaturaModal(v){
   document.getElementById('nv-tipologia').value = v.tipologia||'';
   document.getElementById('nv-entidade').value  = v.entidade||'';
   document.getElementById('nv-base').value      = v.base||'';
-  document.getElementById('nv-ddi').value       = v.ddi_viatura||'';
   openModal('modal-new-viatura');
 }
 
@@ -6385,8 +6386,9 @@ async function saveViatura(){
     tipologia:   document.getElementById('nv-tipologia').value.trim()||null,
     entidade:    document.getElementById('nv-entidade').value.trim()||null,
     base:        document.getElementById('nv-base').value.trim()||null,
-    ddi_viatura: document.getElementById('nv-ddi').value.trim()||null,
   };
+  // DDI only settable on create; managed via Rádios tab on edit
+  if(!isEdit) body.ddi_viatura = document.getElementById('nv-ddi').value.trim()||null;
   const cod = document.getElementById('nv-cod').value.trim();
   if(!cod){ toast('Código obrigatório.','err'); return; }
   body.viatura_cod = cod;
@@ -6896,7 +6898,7 @@ async function editEgfrEntry(id, nome, capSup){
           <label class="form-label">Base</label>
           <input class="form-input" id="nv-base" placeholder="Localização da base"/>
         </div>
-        <div class="form-field">
+        <div class="form-field" id="nv-ddi-field">
           <label class="form-label">DDI Viatura</label>
           <input class="form-input" id="nv-ddi" placeholder="DDI do rádio de viatura"/>
         </div>
