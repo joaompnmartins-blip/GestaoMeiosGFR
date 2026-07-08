@@ -5822,7 +5822,7 @@ function fsbfViatOpts(viaturas, classes, selectedId){
 
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
-  const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','VAOP'], row.veiculo_id);
+  const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM'], row.veiculo_id);
   const savedViat = allViat.find(v => v.id === row.veiculo_id);
   const savedMat = savedViat?.matricula || row.matricula || '';
   return `<tr id="fsbf-bsbf-row-${id}">
@@ -5848,8 +5848,8 @@ function fsbfEmrCard(row, allViat){
   const id = row.id;
   const mrOpts   = fsbfViatOpts(allViat, ['MR'],                          row.mr_viatura_id);
   const vaopOpts = fsbfViatOpts(allViat, ['PM','MU','VAOP'],             row.vaop_viatura_id);
-  const vpilOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','VAOP'], row.vpiloto_viatura_id);
-  const vlciOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','VAOP'], row.vlci_viatura_id);
+  const vpilOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM'], row.vpiloto_viatura_id);
+  const vlciOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM'], row.vlci_viatura_id);
   const _mat = (vid) => allViat.find(v=>v.id===vid)?.matricula||'';
   return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:8px;">
@@ -5933,7 +5933,7 @@ async function renderFsbfCarta(){
                 + emr.reduce((s,r)=>s+(r.total_op||0),0)
                 + (carta.chefe_guarnicao||0);
 
-  const chViatOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','VAOP'], carta.chefe_veiculo_id);
+  const chViatOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM'], carta.chefe_veiculo_id);
 
   document.getElementById('fsbf-carta-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
