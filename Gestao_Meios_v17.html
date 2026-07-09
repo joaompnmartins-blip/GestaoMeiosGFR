@@ -1759,8 +1759,17 @@ async function syncNow(){
   const idMap = {};  // local temp-id → real server id (for chained inserts)
 
   for(const op of q){
+    const payload = remapIds(op.payload, idMap);
+
+    // If any temp ID survived remapping, the parent insert was discarded — orphan this op too.
+    if(JSON.stringify(payload).includes('"tmp_')){
+      console.warn('syncNow: descartando operação órfã (meio pai rejeitado):', op.table, op.op);
+      await clearQueueItem(op.id);
+      discarded++;
+      continue;
+    }
+
     try {
-      const payload = remapIds(op.payload, idMap);
       let ok = false;
 
       if(op.table==='ocorrencias'){
