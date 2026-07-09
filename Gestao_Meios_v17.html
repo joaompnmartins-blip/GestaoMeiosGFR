@@ -6901,6 +6901,7 @@ function openNewViaturaModal(prefillMegfr){
     document.getElementById('nv-'+f).value='';
   });
   document.getElementById('nv-megfr').value = prefillMegfr||'';
+  document.getElementById('nv-regiao').value = '';
   openModal('modal-new-viatura');
 }
 
@@ -6919,6 +6920,7 @@ function openEditViaturaModal(v){
   document.getElementById('nv-tipologia').value = v.tipologia||'';
   document.getElementById('nv-entidade').value  = v.entidade||'';
   document.getElementById('nv-base').value      = v.base||'';
+  document.getElementById('nv-regiao').value    = v.agfr||'';
   openModal('modal-new-viatura');
 }
 
@@ -6934,6 +6936,7 @@ async function saveViatura(){
     tipologia:   document.getElementById('nv-tipologia').value.trim()||null,
     entidade:    document.getElementById('nv-entidade').value.trim()||null,
     base:        document.getElementById('nv-base').value.trim()||null,
+    agfr:        document.getElementById('nv-regiao').value||null,
   };
   if(!isEdit){
     body.tipo = 'Viatura';
@@ -7667,6 +7670,18 @@ async function mergeSaveConfirm(){
         <div class="form-field">
           <label class="form-label">Base</label>
           <input class="form-input" id="nv-base" placeholder="Localização da base"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Região</label>
+          <select class="form-select" id="nv-regiao">
+            <option value="">—</option>
+            <option value="NACIONAL">NACIONAL</option>
+            <option value="ALENTEJO">ALENTEJO</option>
+            <option value="ALGARVE">ALGARVE</option>
+            <option value="CENTRO">CENTRO</option>
+            <option value="LVT">LVT</option>
+            <option value="NORTE">NORTE</option>
+          </select>
         </div>
         <div class="form-field" id="nv-ddi-field">
           <label class="form-label">DDI Viatura</label>
