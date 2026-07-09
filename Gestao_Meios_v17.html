@@ -7171,7 +7171,7 @@ function egfrHandleCSV(file){
 
 // ── Recurso Adicional (ad-hoc) ──────────────────────────────────
 function openRecursoAdicionalModal(){
-  ['ra-nome','ra-matricula','ra-concelho','ra-responsavel','ra-contacto','ra-obs'].forEach(id=>{
+  ['ra-nome','ra-matricula','ra-responsavel','ra-contacto','ra-obs'].forEach(id=>{
     document.getElementById(id).value='';
   });
   document.getElementById('ra-tipo').value='';
@@ -7185,7 +7185,6 @@ async function saveRecursoAdicional(){
     nome,
     tipo:        document.getElementById('ra-tipo').value||null,
     matricula:   document.getElementById('ra-matricula').value.trim().toUpperCase()||null,
-    concelho:    document.getElementById('ra-concelho').value.trim()||null,
     responsavel: document.getElementById('ra-responsavel').value.trim()||null,
     contacto:    document.getElementById('ra-contacto').value.trim()||null,
     obs:         document.getElementById('ra-obs').value.trim()||null,
@@ -7687,10 +7686,6 @@ async function mergeSaveConfirm(){
         <div class="form-field">
           <label class="form-label">Matrícula</label>
           <input class="form-input" id="ra-matricula" placeholder="00-AA-00">
-        </div>
-        <div class="form-field">
-          <label class="form-label">Concelho</label>
-          <input class="form-input" id="ra-concelho" placeholder="Concelho de origem">
         </div>
         <div class="form-field">
           <label class="form-label">Responsável</label>
