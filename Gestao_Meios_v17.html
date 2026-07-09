@@ -3506,6 +3506,7 @@ function teamCardHtml(t, isClosed, _teams){
       ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
       ${_canAct&&db.postos.length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
       ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
+      <button class="btn btn-ghost btn-xs" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">ℹ</button>
       ${_canEdit?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${_canEdit?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
     </div>`;
@@ -3547,6 +3548,41 @@ function teamCardHtml(t, isClosed, _teams){
     </div>
     ${actionsHtml}
   </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FICHA DO MEIO
+// ══════════════════════════════════════════════════════════════════
+function showMeioInfo(teamId){
+  const t = db.teams.find(x => x.id === teamId);
+  if(!t) return;
+  const row = (label, val) => val
+    ? `<div class="team-card-row"><span class="lbl">${label}</span><span class="val">${esc(String(val))}</span></div>`
+    : '';
+  const estadoMap={operacao:'OPERAÇÃO',descanso:'DESCANSO',desmobilizado:'DESMOB.',transito:'TRÂNSITO',previsto:'PREVISTO'};
+  const ops = (t.operativos||[]).filter(Boolean);
+  const opsHtml = ops.length
+    ? `<div class="team-card-row"><span class="lbl">Operacionais</span><span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">${ops.map(n=>`<span>${esc(n)}</span>`).join('')}</span></div>`
+    : row('Operacionais', t.operacionais ? `${t.operacionais} (sem nomes registados)` : '—');
+  document.getElementById('mi-title').textContent = t.eq || 'Ficha do Meio';
+  document.getElementById('mi-body').innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      ${t.tipo?`<span class="badge badge-y">${esc(t.tipo)}</span>`:''}
+      <span class="badge ${t.estado==='operacao'?'badge-ok':t.estado==='transito'?'badge-info':t.estado==='descanso'?'badge-warn':'badge-closed'}">${estadoMap[t.estado]||t.estado||'—'}</span>
+      ${t.setor?`<span class="badge badge-y">Setor: ${esc(t.setor)}</span>`:''}
+    </div>
+    ${row('Designação', t.eq)}
+    ${row('Tipo', t.tipo)}
+    ${row('Matrícula', t.matricula)}
+    ${row('Chefe de Equipa', t.responsavel)}
+    ${row('Contacto', t.contacto)}
+    ${row('N.º Operacionais', t.operacionais)}
+    ${opsHtml}
+    ${row('Missão', t.missao)}
+    ${row('Setor', t.setor)}
+    ${row('Observações', t.obs)}
+  `;
+  openModal('modal-meio-info');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -7988,6 +8024,20 @@ async function mergeSaveConfirm(){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-merge')">Cancelar</button>
       <button class="btn btn-primary" onclick="mergeSaveConfirm()">⇒ Fundir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: FICHA DO MEIO ══════════ -->
+<div class="modal-overlay" id="modal-meio-info" onclick="if(event.target===this)closeModal('modal-meio-info')">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="mi-title">Ficha do Meio</div>
+      <button class="modal-close" onclick="closeModal('modal-meio-info')">✕</button>
+    </div>
+    <div class="modal-body" id="mi-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-meio-info')">Fechar</button>
     </div>
   </div>
 </div>
