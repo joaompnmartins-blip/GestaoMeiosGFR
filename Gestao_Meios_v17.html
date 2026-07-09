@@ -4068,10 +4068,20 @@ function validateMeioDates(p, occInicio){
   return null;
 }
 
+function _updateOpsAddBtn(){
+  const limit=parseInt(document.getElementById('team-ops')?.value)||0;
+  const current=document.getElementById('ops-list')?.querySelectorAll('.ops-item').length||0;
+  const btn=document.querySelector('.ops-add');
+  if(!btn) return;
+  const atLimit=limit>0&&current>=limit;
+  btn.disabled=atLimit;
+  btn.style.opacity=atLimit?'0.4':'';
+  btn.style.cursor=atLimit?'not-allowed':'';
+}
+
 function syncOpsFields(n){
   const count=parseInt(n)||0;
   const list=document.getElementById('ops-list');
-  // ensure datalist exists
   if(!document.getElementById('ops-datalist')) list.insertAdjacentHTML('beforebegin',getOpsDatalist());
   const current=list.querySelectorAll('.ops-item').length;
   if(count>current){
@@ -4080,18 +4090,24 @@ function syncOpsFields(n){
     const items=list.querySelectorAll('.ops-item');
     for(let i=items.length-1;i>=count;i--) items[i].remove();
   }
+  _updateOpsAddBtn();
 }
 
 function addOpsField(){
   const list=document.getElementById('ops-list');
   if(!document.getElementById('ops-datalist')) list.insertAdjacentHTML('beforebegin',getOpsDatalist());
-  const i=list.querySelectorAll('.ops-item').length;
-  list.appendChild(makeOpsItem('',i));
-  document.getElementById('team-ops').value=i+1;
+  const limit=parseInt(document.getElementById('team-ops').value)||0;
+  const current=list.querySelectorAll('.ops-item').length;
+  if(limit&&current>=limit){ toast(`Limite de ${limit} operacionais atingido.`,'err'); return; }
+  list.appendChild(makeOpsItem('',current));
+  if(!limit) document.getElementById('team-ops').value=current+1;
+  _updateOpsAddBtn();
 }
 
 function recountOps(){
-  document.getElementById('team-ops').value=document.getElementById('ops-list').querySelectorAll('.ops-item').length;
+  const current=document.getElementById('ops-list').querySelectorAll('.ops-item').length;
+  document.getElementById('team-ops').value=current;
+  _updateOpsAddBtn();
 }
 
 // ── Operacionais do PM (criado a par do MR) ──────────────────────
@@ -4151,6 +4167,7 @@ function openAddTeam(){
   document.getElementById('team-data-demob').value='';
   const opsDl=document.getElementById('ops-datalist'); if(opsDl) opsDl.remove();
   document.getElementById('ops-list').innerHTML='';
+  _updateOpsAddBtn();
   // Reset filter dropdowns so they repopulate with fresh data (including new BSF entries)
   const pfTe = document.getElementById('preset-filter-te');
   const pfSr = document.getElementById('preset-filter-sr');
