@@ -1336,6 +1336,31 @@ app.patch('/api/gestao/egfr-escala/:id', requireAuth('visualizador'), EGFR_GESTO
   res.json(e);
 }));
 
+app.post('/api/gestao/egfr-escala/batch', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {
+  const { data, rows } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  if (!Array.isArray(rows)) return res.status(400).json({ error: 'rows deve ser um array.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM egfr_escala WHERE data = $1', [data]);
+    for (const r of rows) {
+      await client.query(
+        `INSERT INTO egfr_escala (data, turno, equipa, posicao, nome, capacidade_supressao)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [data, r.turno || null, r.equipa || null, r.posicao || null, r.nome || null, !!r.capacidade_supressao]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true, count: rows.length });
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
 // ── EGFR viatura assignment ─────────────────────────────────────
 
 app.get('/api/gestao/egfr-viatura', requireAuth('visualizador'), EGFR_GESTORES, wrap(async (req, res) => {

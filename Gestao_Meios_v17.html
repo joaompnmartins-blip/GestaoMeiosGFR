@@ -1098,10 +1098,16 @@
         <!-- Tab 5: EGFR -->
         <div id="icnf-tab-egfr" style="display:none">
           <div class="section-hdr">
-            <div class="section-title">Escala EGFR</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <div class="section-title">Escala EGFR</div>
+              <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+                <button id="egfr-btn-vista" class="btn btn-xs" style="border-radius:0;border:none;background:var(--accent);color:#fff;" onclick="egfrSwitchMode('vista')">Vista</button>
+                <button id="egfr-btn-editor" class="btn btn-xs" style="border-radius:0;border:none;background:transparent;" onclick="egfrSwitchMode('editor')">Editor</button>
+              </div>
+            </div>
             <div style="display:flex;gap:8px;align-items:center;">
               <input type="date" class="form-input" id="gicnf-egfr-data" onchange="renderICNFEgfr()" style="font-size:12px;padding:5px 8px;"/>
-              <select class="form-select" id="gicnf-egfr-turno" onchange="renderICNFEgfr()" style="font-size:12px;padding:5px 8px;">
+              <select class="form-select" id="gicnf-egfr-turno" onchange="if(_egfrMode==='vista')renderICNFEgfr()" style="font-size:12px;padding:5px 8px;">
                 <option value="Prontidão (A)">Prontidão (A)</option>
                 <option value="Prevenção (B)">Prevenção (B)</option>
                 <option value="">Todos os turnos</option>
@@ -1109,6 +1115,78 @@
             </div>
           </div>
           <div id="gicnf-egfr-cards" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;"></div>
+          <div id="gicnf-egfr-editor" style="display:none;margin-top:12px;">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
+              <button class="btn btn-xs btn-ghost" onclick="egfrAddRow()">+ Linha</button>
+              <button class="btn btn-xs btn-ghost" onclick="egfrCopyPrevDay()">↩ Dia anterior</button>
+              <label class="btn btn-xs btn-ghost" style="cursor:pointer;margin:0;">↑ Importar CSV<input type="file" accept=".csv" style="display:none;" onchange="egfrHandleCSV(this.files[0]);this.value=''"></label>
+              <button class="btn btn-xs btn-primary" onclick="egfrSaveBatch()">Guardar</button>
+              <span style="font-size:11px;color:var(--muted);">CSV: turno,equipa,posicao,nome,supr</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <colgroup><col style="width:145px"><col style="width:90px"><col style="width:90px"><col><col style="width:46px"><col style="width:32px"></colgroup>
+                <thead><tr style="text-align:left;">
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);">Turno</th>
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);">Equipa</th>
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);">Posição</th>
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);">Nome</th>
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);text-align:center;">Sup.</th>
+                  <th style="padding:6px 8px;border-bottom:2px solid var(--border);"></th>
+                </tr></thead>
+                <tbody id="egfr-editor-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <datalist id="egfr-nomes-list">
+            <option value="ALEXANDRA SOFIA GOUVEIA CARVALHO">
+            <option value="ALEXANDRE MANUEL FERNANDES DA SILVA NOGUEIRA">
+            <option value="ANDREIA NATIVIDADE GONÇALVES">
+            <option value="ÂNGELA MARIA FERNANDES FRAGA">
+            <option value="ANITA ISABEL FERREIRA DA COSTA PINTO">
+            <option value="ARTUR JORGE RAMOS DA SILVA CARVALHO BORGES">
+            <option value="BRUNO MIGUEL RAMOS FERNANDES">
+            <option value="CARLOS ALBERTO RODRIGUES LOUREIRO DA SILVA">
+            <option value="CARLOS JOÃO PIRES LOURENÇO">
+            <option value="DANIEL RICARDO MARANHÃO SANTANA">
+            <option value="FILIPE AUGUSTO VALENTE OLIVEIRA">
+            <option value="FILIPE DA SILVA ANTUNES">
+            <option value="HUGO HENRIQUE NETO ROCHA">
+            <option value="JOANA CRISTINA VITORINO CARINHAS">
+            <option value="JOÃO FILIPE LAMELAS PESTANA BAPTISTA DINIZ">
+            <option value="JOÃO HENRIQUE CRUZ LOUREIRO DA SILVA">
+            <option value="JOÃO LUÍS INÁCIO DONA">
+            <option value="JOÃO MANUEL DE CASTRO RIBEIRO">
+            <option value="JOÃO MIGUEL PIRES MARTINS">
+            <option value="JOAQUIM JOSÉ SOUSA PROENÇA">
+            <option value="JOSÉ EDUARDO PINHEIRO CARVALHO">
+            <option value="JOSÉ FILIPE AMORIM DE PINHO">
+            <option value="JOSÉ MANUEL CARVALHO RODRIGUES">
+            <option value="JOSÉ MARCOLINO BARRANHA LOPES">
+            <option value="JOSÉ MARCOS FERREIRA DE AZEVEDO GUERRA LIBERAL">
+            <option value="LUÍS MIGUEL DA CONCEIÇÃO HENRIQUES">
+            <option value="LUÍS PAULO DA COSTA PITA">
+            <option value="MAFALDA ISABEL CACHOPO VEIGAS">
+            <option value="MARCO ROSA SANTOS">
+            <option value="MARCOS PAULO DA EIRA COUTINHO">
+            <option value="MARIA AMÉLIA FERNANDES FREITAS">
+            <option value="MARIA JOÃO CIRÍACO ROSADO">
+            <option value="MARIA MANUELA DA SILVA FREITAS">
+            <option value="NÉLIA CRISTINA LUZ JOSÉ">
+            <option value="NUNO MANUEL MEIRELES GONÇALVES">
+            <option value="ORIANA ALEXANDRA G. AFONSO">
+            <option value="PAULO SÉRGIO PEREIRA DE BESSA">
+            <option value="PEDRO ALEXANDRE CAROCINHO DE JESUS">
+            <option value="PEDRO MIGUEL SEQUEIRA NETO GOMES DO AMARAL">
+            <option value="RICARDO MANUEL DE CARVALHO SALDANHA">
+            <option value="RUI FILIPE DIAS VENTURA">
+            <option value="RUI FILIPE FONTOURA TEIXEIRA">
+            <option value="RUI SAMUEL LOPES">
+            <option value="SAMUEL DAVID RODRIGUES MARTINS">
+            <option value="SARA MANUELA FERNANDES GONÇALVES">
+            <option value="TÂNIA ISABEL VAREJÃO PEREIRA">
+            <option value="VÍTOR JOSÉ RIJO PENEDO CARAMELO">
+          </datalist>
         </div>
       </div>
 
@@ -6394,6 +6472,8 @@ async function printFsbfCarta(){
 // ── ICNF Module — tab controller ─────────────────────────────────
 
 let _icnfTab = 'recursos';
+let _egfrMode = 'vista';
+const _EGFR_SUPR = new Set(['ARTUR JORGE RAMOS DA SILVA CARVALHO BORGES','CARLOS JOÃO PIRES LOURENÇO','DANIEL RICARDO MARANHÃO SANTANA','FILIPE DA SILVA ANTUNES','HUGO HENRIQUE NETO ROCHA','JOÃO FILIPE LAMELAS PESTANA BAPTISTA DINIZ','JOSÉ FILIPE AMORIM DE PINHO','JOSÉ MARCOLINO BARRANHA LOPES','LUÍS MIGUEL DA CONCEIÇÃO HENRIQUES','LUÍS PAULO DA COSTA PITA','MARCO ROSA SANTOS','PEDRO MIGUEL SEQUEIRA NETO GOMES DO AMARAL','RUI FILIPE DIAS VENTURA','SAMUEL DAVID RODRIGUES MARTINS','VÍTOR JOSÉ RIJO PENEDO CARAMELO']);
 let _olnRecursos = [];
 let _recursoTipos = [];
 
@@ -6782,6 +6862,7 @@ async function runEtlSync(){
 }
 
 async function renderICNFEgfr(){
+  if(_egfrMode === 'editor'){ await _egfrLoadEditor(); return; }
   const dataEl  = document.getElementById('gicnf-egfr-data');
   const turnoEl = document.getElementById('gicnf-egfr-turno');
   if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
@@ -6925,6 +7006,126 @@ async function editEgfrEntry(id, nome, capSup){
   if(error){ toast(error.message,'err'); return; }
   toast('Registo atualizado.','ok');
   renderICNFEgfr();
+}
+
+function egfrSwitchMode(mode){
+  if(mode==='editor'){
+    const isCCON = currentRole==='admin'||currentRole==='ofligacao_ccon';
+    if(!isCCON){ toast('Edição restrita a gestores CCON.','err'); return; }
+  }
+  _egfrMode = mode;
+  const cards  = document.getElementById('gicnf-egfr-cards');
+  const editor = document.getElementById('gicnf-egfr-editor');
+  const btnV   = document.getElementById('egfr-btn-vista');
+  const btnE   = document.getElementById('egfr-btn-editor');
+  if(mode==='vista'){
+    if(cards)  cards.style.display  = '';
+    if(editor) editor.style.display = 'none';
+    if(btnV){ btnV.style.background='var(--accent)'; btnV.style.color='#fff'; }
+    if(btnE){ btnE.style.background='transparent';   btnE.style.color=''; }
+    renderICNFEgfr();
+  } else {
+    if(cards)  cards.style.display  = 'none';
+    if(editor) editor.style.display = '';
+    if(btnV){ btnV.style.background='transparent'; btnV.style.color=''; }
+    if(btnE){ btnE.style.background='var(--accent)'; btnE.style.color='#fff'; }
+    _egfrLoadEditor();
+  }
+}
+
+async function _egfrLoadEditor(){
+  const dataEl = document.getElementById('gicnf-egfr-data');
+  if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
+  const tbody = document.getElementById('egfr-editor-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  const res = await apiFetch(`/api/gestao/egfr-escala?de=${dataEl.value}&ate=${dataEl.value}`);
+  const rows = res.data || [];
+  rows.forEach(r => egfrAddRow(r));
+}
+
+function egfrAddRow(data={}){
+  const tbody = document.getElementById('egfr-editor-tbody');
+  if(!tbody) return;
+  const tr = document.createElement('tr');
+  tr.style.borderBottom = '1px solid var(--border-faint,rgba(128,128,128,0.12))';
+  const turnos = ['Prontidão (A)','Prevenção (B)'];
+  const selTurno = data.turno || 'Prontidão (A)';
+  const turnoOpts = turnos.map(t=>`<option value="${t}"${t===selTurno?' selected':''}>${t}</option>`).join('');
+  tr.innerHTML = `
+    <td style="padding:4px 6px;"><select class="form-select egfr-ed-turno" style="font-size:12px;padding:3px 5px;width:100%;">${turnoOpts}</select></td>
+    <td style="padding:4px 6px;"><input class="form-input egfr-ed-equipa" type="text" value="${esc(data.equipa||'')}" style="font-size:12px;padding:3px 5px;width:100%;" placeholder="Equipa"></td>
+    <td style="padding:4px 6px;"><input class="form-input egfr-ed-posicao" type="text" value="${esc(data.posicao||'')}" style="font-size:12px;padding:3px 5px;width:100%;" placeholder="Posição"></td>
+    <td style="padding:4px 6px;"><input class="form-input egfr-ed-nome" type="text" value="${esc(data.nome||'')}" list="egfr-nomes-list" style="font-size:12px;padding:3px 5px;width:100%;" placeholder="Nome" oninput="egfrAutoFillSupr(this)"></td>
+    <td style="padding:4px 6px;text-align:center;"><input type="checkbox" class="egfr-ed-supr"${data.capacidade_supressao?' checked':''}></td>
+    <td style="padding:4px 6px;text-align:center;"><button class="btn btn-ghost btn-xs" style="color:var(--danger,#dc2626);" onclick="this.closest('tr').remove()">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function egfrAutoFillSupr(input){
+  const nome = input.value.trim().toUpperCase();
+  const tr = input.closest('tr');
+  if(!tr) return;
+  const suprCheck = tr.querySelector('.egfr-ed-supr');
+  if(suprCheck) suprCheck.checked = _EGFR_SUPR.has(nome);
+}
+
+async function egfrCopyPrevDay(){
+  const dataEl = document.getElementById('gicnf-egfr-data');
+  if(!dataEl.value) return;
+  const d = new Date(dataEl.value+'T12:00:00');
+  d.setDate(d.getDate()-1);
+  const prevDate = d.toISOString().slice(0,10);
+  const res = await apiFetch(`/api/gestao/egfr-escala?de=${prevDate}&ate=${prevDate}`);
+  const rows = res.data||[];
+  if(!rows.length){ toast('Sem escala no dia anterior.','warn'); return; }
+  const tbody = document.getElementById('egfr-editor-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  rows.forEach(r=>egfrAddRow({turno:r.turno,equipa:r.equipa,posicao:r.posicao,nome:r.nome,capacidade_supressao:r.capacidade_supressao}));
+  toast(`${rows.length} linha(s) copiadas de ${prevDate}.`,'ok');
+}
+
+async function egfrSaveBatch(){
+  const dataEl = document.getElementById('gicnf-egfr-data');
+  if(!dataEl.value){ toast('Selecione uma data.','err'); return; }
+  const tbody = document.getElementById('egfr-editor-tbody');
+  const trs = tbody ? [...tbody.querySelectorAll('tr')] : [];
+  const rows = trs.map(tr=>({
+    turno:               tr.querySelector('.egfr-ed-turno')?.value||'',
+    equipa:              tr.querySelector('.egfr-ed-equipa')?.value.trim()||'',
+    posicao:             tr.querySelector('.egfr-ed-posicao')?.value.trim()||'',
+    nome:                tr.querySelector('.egfr-ed-nome')?.value.trim()||'',
+    capacidade_supressao:!!tr.querySelector('.egfr-ed-supr')?.checked,
+  })).filter(r=>r.nome||r.equipa);
+  const { error } = await apiFetch('/api/gestao/egfr-escala/batch',{
+    method:'POST', body:JSON.stringify({ data:dataEl.value, rows })
+  });
+  if(error){ toast(error.message||'Erro ao guardar escala.','err'); return; }
+  toast(`Escala guardada — ${rows.length} elemento(s).`,'ok');
+  egfrSwitchMode('vista');
+}
+
+function egfrHandleCSV(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l=>l.trim()).filter(Boolean);
+    const tbody = document.getElementById('egfr-editor-tbody');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    let count = 0;
+    for(const line of lines){
+      const parts = line.split(',').map(p=>p.trim());
+      const [turno, equipa, posicao, nome, suprRaw] = parts;
+      if(!turno || turno.toLowerCase()==='turno') continue;
+      egfrAddRow({ turno, equipa:equipa||'', posicao:posicao||'', nome:nome||'',
+        capacidade_supressao: suprRaw && suprRaw.toLowerCase()==='sim' });
+      count++;
+    }
+    toast(`${count} linha(s) importadas.`,'ok');
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 </script>
 
