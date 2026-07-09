@@ -166,6 +166,51 @@ app.delete('/api/ocorrencias/:id', requireAuth('admin'), wrap(async (req, res) =
   res.json({ ok: true });
 }));
 
+app.post('/api/ocorrencias/merge', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { ids, local_ignicao, codigo_ocorrencia, subregiao, concelho, inicio } = req.body;
+  if (!Array.isArray(ids) || ids.length < 2)
+    return res.status(400).json({ error: 'São necessárias pelo menos 2 ocorrências para fundir.' });
+  if (!local_ignicao)
+    return res.status(400).json({ error: 'Nome da nova ocorrência obrigatório.' });
+
+  const { rows: sources } = await pool.query(
+    'SELECT id, local_ignicao, status FROM ocorrencias WHERE id = ANY($1)', [ids]
+  );
+  if (sources.length !== ids.length)
+    return res.status(404).json({ error: 'Uma ou mais ocorrências não encontradas.' });
+  const nonActive = sources.filter(s => s.status !== 'active');
+  if (nonActive.length)
+    return res.status(409).json({ error: 'Todas as ocorrências devem estar ativas para serem fundidas.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [nova] } = await client.query(
+      `INSERT INTO ocorrencias (local_ignicao, codigo_ocorrencia, subregiao, concelho, inicio, status, created_by, oficial_ligacao_id, oficial_ligacao_nome)
+       VALUES ($1,$2,$3,$4,$5,'active',$6,$6,$7) RETURNING *`,
+      [local_ignicao, codigo_ocorrencia || null, subregiao || null, concelho || null,
+       inicio || null, req.user.id, req.user.nome]
+    );
+    await client.query('UPDATE meios               SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
+    await client.query('UPDATE postos_comando       SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
+    await client.query('UPDATE ocorrencias_eventos  SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
+    await client.query('UPDATE meio_delete_requests SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
+    await client.query(`UPDATE ocorrencias SET status = 'merged', merged_into = $1 WHERE id = ANY($2)`, [nova.id, ids]);
+    await client.query(
+      `INSERT INTO ocorrencias_eventos (ocorrencia_id, tag, msg, user_id) VALUES ($1,'occ',$2,$3)`,
+      [nova.id, `Fundida a partir de: ${sources.map(s => s.local_ignicao).join(', ')}.`, req.user.id]
+    );
+    await client.query('COMMIT');
+    res.json(nova);
+  } catch (e) {
+    await client.query('ROLLBACK');
+    if (e.code === '23505') return res.status(409).json({ error: `Já existe uma ocorrência com o código "${codigo_ocorrencia}".` });
+    throw e;
+  } finally {
+    client.release();
+  }
+}));
+
 // ══════════════════════════════════════════════════════════════════
 //  MEIOS
 // ══════════════════════════════════════════════════════════════════
@@ -2060,6 +2105,7 @@ async function runMigrations() {
          ORDER BY codigo_ocorrencia, created_at DESC NULLS LAST
        )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS ocorrencias_codigo_idx ON ocorrencias (codigo_ocorrencia) WHERE codigo_ocorrencia IS NOT NULL`,
+    `ALTER TABLE IF EXISTS ocorrencias ADD COLUMN IF NOT EXISTS merged_into UUID REFERENCES ocorrencias(id) ON DELETE SET NULL`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

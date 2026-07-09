@@ -682,6 +682,7 @@
               <button class="view-btn" id="vbtn-table" onclick="setView('table')">≡ Tabela</button>
             </div>
             <button class="btn btn-ghost btn-sm auth-ofligacao" onclick="openAddTeam()">+ Adicionar Meio</button>
+            <button class="btn btn-ghost btn-sm auth-ofligacao" id="btnFundir" onclick="openMergeModal()" style="display:none;">⇒ Fundir</button>
             <button class="btn btn-warn btn-sm auth-ofligacao" id="btnCloseOcc" onclick="toggleCloseOcorrencia()">Fechar Ocorrência</button>
             <button class="btn btn-ghost btn-sm auth-op" onclick="exportLog()" title="Exportar log completo">⬇ Log</button>
             <button class="btn btn-warn btn-sm" onclick="toggleTimeline()" id="btnTimeline">Fita do Tempo</button>
@@ -2232,7 +2233,7 @@ async function loadAllData(){
 }
 
 // ── Map Supabase snake_case → app camelCase ──────────────────────
-function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_ocorrencia, concelho:r.concelho, subregiao:r.subregiao||'', obs:r.obs, inicio:r.inicio, status:r.status, created:r.created_at, oficialLigacaoId:r.oficial_ligacao_id||null, oficialLigacaoNome:r.oficial_ligacao_nome||'' }; }
+function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_ocorrencia, concelho:r.concelho, subregiao:r.subregiao||'', obs:r.obs, inicio:r.inicio, status:r.status, mergedInto:r.merged_into||null, created:r.created_at, oficialLigacaoId:r.oficial_ligacao_id||null, oficialLigacaoNome:r.oficial_ligacao_nome||'' }; }
 
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
@@ -2618,7 +2619,7 @@ function arqCardHtml(o){
       <div class="arq-card-id">Cód. ${esc(o.ref||'—')} · Início: ${fmtDate(o.inicio)} · Fechada: ${closedAt}</div>
       <div class="arq-card-name">${esc(o.nome)}</div>
       <div class="arq-card-meta">
-        <span class="badge badge-closed">🗄 ARQUIVADA</span>
+        ${o.status==='merged'?'<span class="badge" style="background:#7c3aed;color:#fff;">⇒ FUNDIDA</span>':'<span class="badge badge-closed">🗄 ARQUIVADA</span>'}
         ${o.subregiao?`<span class="badge badge-y" style="font-size:9px">${esc(o.subregiao)}</span>`:''}
         ${o.concelho?`<span class="badge badge-info">${esc(o.concelho)}</span>`:''}
       </div>
@@ -2640,7 +2641,7 @@ function arqCardHtml(o){
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="event.stopPropagation();exportArqLog('${o.id}')">⬇ Log</button>
-        ${['admin','ofligacao','ofligacao_ccon'].includes(currentRole)?`<button class="btn btn-warn btn-sm" style="font-size:10px;" onclick="event.stopPropagation();reopenOcorrencia('${o.id}')">↩ Reabrir</button>`:''}
+        ${o.status==='closed'&&['admin','ofligacao','ofligacao_ccon'].includes(currentRole)?`<button class="btn btn-warn btn-sm" style="font-size:10px;" onclick="event.stopPropagation();reopenOcorrencia('${o.id}')">↩ Reabrir</button>`:''}
       </div>
     </div>
   </div>`;
@@ -2648,7 +2649,7 @@ function arqCardHtml(o){
 
 function renderArquivo(){
   const isAdmin = currentRole==='admin';
-  let list = db.ocorrencias.filter(o=>o.status==='closed');
+  let list = db.ocorrencias.filter(o=>o.status==='closed'||o.status==='merged');
 
   // OfLigacao: only their sub-região
   if(currentRole==='ofligacao' && currentSubregiao){
@@ -2661,7 +2662,7 @@ function renderArquivo(){
     if(sel){
       sel.style.display='';
       const cur=sel.value;
-      const subs=[...new Set(db.ocorrencias.filter(o=>o.status==='closed').map(o=>o.subregiao).filter(Boolean))].sort();
+      const subs=[...new Set(db.ocorrencias.filter(o=>o.status==='closed'||o.status==='merged').map(o=>o.subregiao).filter(Boolean))].sort();
       sel.innerHTML='<option value="">Todas as sub-regiões</option>'+subs.map(s=>`<option value="${esc(s)}"${s===cur?' selected':''}>${esc(s)}</option>`).join('');
       if(cur) list=list.filter(o=>o.subregiao===cur);
     }
@@ -2800,7 +2801,8 @@ function openDetalhe(id){
   currentPostoId=null;
   const o=db.ocorrencias.find(x=>x.id===id);
   if(!o) return;
-  const isClosed = o.status==='closed';
+  const isMerged = o.status==='merged';
+  const isClosed = o.status==='closed' || isMerged;
   document.getElementById('bc-nome').textContent=o.nome+(o.ref?' — Cód. '+o.ref:'');
   document.getElementById('d-lbl-id').textContent='ID / Ref.';
   document.getElementById('d-lbl-nome').textContent='Local ignição';
@@ -2809,7 +2811,9 @@ function openDetalhe(id){
   document.getElementById('d-nome').textContent=o.nome;
   document.getElementById('d-ref').textContent=o.ref||'—';
   document.getElementById('d-concelho').textContent=o.concelho||'—';
-  document.getElementById('d-estado').innerHTML=isClosed
+  document.getElementById('d-estado').innerHTML=isMerged
+    ?'<span class="badge" style="background:#7c3aed;color:#fff;">⇒ FUNDIDA</span>'
+    :isClosed
     ?'<span class="badge badge-closed">🗄 ARQUIVADA</span>'
     :'<span class="badge badge-active">● ATIVA</span>';
   document.getElementById('d-inicio').textContent=fmtDateTime(o.inicio);
@@ -2826,7 +2830,8 @@ function openDetalhe(id){
   }).catch(() => {});
   _refreshOccPostos(id, isClosed);
   document.getElementById('btn-change-oflig').style.display=isClosed?'none':'';
-  document.getElementById('btnCloseOcc').style.display='';
+  document.getElementById('btnFundir').style.display=isClosed?'none':'';
+  document.getElementById('btnCloseOcc').style.display=isMerged?'none':'';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
   document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
   // Hide "Adicionar Meio" and quick actions for archived ocorrências
@@ -7127,6 +7132,58 @@ function egfrHandleCSV(file){
   };
   reader.readAsText(file, 'UTF-8');
 }
+
+// ── Merge ocorrências ───────────────────────────────────────────
+function openMergeModal(){
+  const o = db.ocorrencias.find(x=>x.id===currentOccId);
+  if(!o || o.status!=='active') return;
+  document.getElementById('merge-current-nome').textContent = o.nome + (o.ref ? ` — Cód. ${o.ref}` : '');
+  document.getElementById('merge-novo-nome').value = o.nome;
+  document.getElementById('merge-novo-codigo').value = '';
+  document.getElementById('merge-search').value = '';
+  renderMergeList();
+  openModal('modal-merge');
+}
+
+function renderMergeList(){
+  const q = (document.getElementById('merge-search')?.value||'').toLowerCase();
+  const others = db.ocorrencias.filter(x => x.id !== currentOccId && x.status === 'active'
+    && (!q || x.nome.toLowerCase().includes(q) || (x.ref||'').toLowerCase().includes(q)));
+  const el = document.getElementById('merge-occ-list');
+  if(!el) return;
+  el.innerHTML = others.length ? others.map(x=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border-faint,rgba(128,128,128,0.1));cursor:pointer;">
+      <input type="checkbox" class="merge-occ-chk" value="${x.id}">
+      <span style="flex:1;font-size:13px;">${esc(x.nome)}</span>
+      ${x.ref?`<span class="badge" style="font-size:10px;">${esc(x.ref)}</span>`:''}
+      ${x.concelho?`<span style="font-size:11px;color:var(--muted);">${esc(x.concelho)}</span>`:''}
+    </label>`).join('')
+    : '<p style="color:var(--muted);padding:10px;font-size:13px;">Sem outras ocorrências ativas.</p>';
+}
+
+async function mergeSaveConfirm(){
+  const o = db.ocorrencias.find(x=>x.id===currentOccId);
+  if(!o) return;
+  const checked = [...document.querySelectorAll('.merge-occ-chk:checked')].map(c=>c.value);
+  if(!checked.length){ toast('Selecione pelo menos uma ocorrência para fundir.','err'); return; }
+  const novoNome = document.getElementById('merge-novo-nome').value.trim();
+  if(!novoNome){ toast('Nome da nova ocorrência obrigatório.','err'); return; }
+  const novoCodigo = document.getElementById('merge-novo-codigo').value.trim()||null;
+  const nomes = [o.nome, ...checked.map(id=>db.ocorrencias.find(x=>x.id===id)?.nome||id)];
+  if(!confirm(`Fundir:\n• ${nomes.join('\n• ')}\n\n→ Nova ocorrência: "${novoNome}"\n\nAs ocorrências originais serão fechadas como FUNDIDAS. Continuar?`)) return;
+  const { data, error } = await apiFetch('/api/ocorrencias/merge',{
+    method:'POST', body:JSON.stringify({ ids:[currentOccId,...checked], local_ignicao:novoNome,
+      codigo_ocorrencia:novoCodigo, subregiao:o.subregiao, concelho:o.concelho, inicio:o.inicio })
+  });
+  if(error){ toast(error.message||'Erro ao fundir ocorrências.','err'); return; }
+  toast('Ocorrências fundidas com sucesso.','ok');
+  closeModal('modal-merge');
+  // Update local db — mark sources as merged, add new ocorrência
+  const allIds = [currentOccId, ...checked];
+  allIds.forEach(id=>{ const x=db.ocorrencias.find(o=>o.id===id); if(x){ x.status='merged'; x.mergedInto=data.id; } });
+  db.ocorrencias.unshift(mapOcorrencia(data));
+  openDetalhe(data.id);
+}
 </script>
 
 <!-- Modal: editar recurso (gestão SF/FSBF/ICNF) -->
@@ -7531,6 +7588,43 @@ function egfrHandleCSV(file){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-fsbf-op')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveFsbfOp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-merge" onclick="if(event.target===this)closeModal('modal-merge')">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <div class="modal-title">Fundir Ocorrências</div>
+      <button class="modal-close" onclick="closeModal('modal-merge')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px;">
+        <div class="form-label" style="margin-bottom:4px;">Ocorrência atual</div>
+        <div id="merge-current-nome" style="font-weight:600;padding:6px 8px;background:var(--bg-alt,var(--bg));border-radius:6px;border:1px solid var(--border);"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div class="form-label" style="margin-bottom:4px;">Fundir com <span style="color:var(--danger)">*</span></div>
+        <input class="form-input" id="merge-search" placeholder="Filtrar ocorrências..." oninput="renderMergeList()" style="margin-bottom:6px;font-size:12px;">
+        <div id="merge-occ-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;"></div>
+      </div>
+      <div style="margin-bottom:4px;">
+        <div class="form-label" style="margin-bottom:4px;">Nova ocorrência</div>
+        <div class="form-grid-2" style="gap:8px;">
+          <div class="form-field">
+            <label class="form-label">Nome / Local ignição <span style="color:var(--danger)">*</span></label>
+            <input class="form-input" id="merge-novo-nome" placeholder="Nome da nova ocorrência">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Código (opcional)</label>
+            <input class="form-input" id="merge-novo-codigo" placeholder="Código ocorrência">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-merge')">Cancelar</button>
+      <button class="btn btn-primary" onclick="mergeSaveConfirm()">⇒ Fundir</button>
     </div>
   </div>
 </div>
