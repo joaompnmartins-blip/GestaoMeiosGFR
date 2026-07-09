@@ -2025,6 +2025,15 @@ async function runMigrations() {
     )`,
     `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS n_trab INTEGER`,
     `CREATE UNIQUE INDEX IF NOT EXISTS operacionais_fsbf_nome_idx ON operacionais_fsbf (nome)`,
+    // Nullify duplicate codigo_ocorrencia before creating unique index (keep newest per code)
+    `UPDATE ocorrencias SET codigo_ocorrencia = NULL
+     WHERE codigo_ocorrencia IS NOT NULL
+       AND id NOT IN (
+         SELECT DISTINCT ON (codigo_ocorrencia) id
+         FROM ocorrencias
+         WHERE codigo_ocorrencia IS NOT NULL
+         ORDER BY codigo_ocorrencia, created_at DESC NULLS LAST
+       )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS ocorrencias_codigo_idx ON ocorrencias (codigo_ocorrencia) WHERE codigo_ocorrencia IS NOT NULL`,
   ];
   for (const sql of preSchemaAlters) {
