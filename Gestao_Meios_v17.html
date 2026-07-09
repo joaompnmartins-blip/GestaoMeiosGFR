@@ -4064,21 +4064,24 @@ async function saveTeam(){
     postoComandoId: editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null),
   };
 
-  // Exclusividade entre ocorrências: um meio activo (trânsito/operação/descanso)
-  // numa ocorrência não pode ser usado noutra.
-  const ACTIVE_ESTADOS=['transito','operacao','descanso'];
-  if(ACTIVE_ESTADOS.includes(payload.estado)){
+  // Exclusividade: um meio em uso (previsto/trânsito/operação/descanso)
+  // não pode ser adicionado a nenhuma ocorrência, incluindo a mesma.
+  const OCUPADO_ESTADOS_FE=['previsto','transito','operacao','descanso'];
+  if(OCUPADO_ESTADOS_FE.includes(payload.estado)){
     const conflict=db.teams.find(other=>{
       if(other.id===editId) return false;
-      if(other.ocorrencia_id===currentOccId) return false;
-      if(!ACTIVE_ESTADOS.includes(other.estado)) return false;
+      if(!OCUPADO_ESTADOS_FE.includes(other.estado)) return false;
       if(payload.equipaId && other.equipaId) return other.equipaId===payload.equipaId;
       return other.eq.trim().toLowerCase()===eq.toLowerCase()
         && payload.matricula && other.matricula && other.matricula===payload.matricula;
     });
     if(conflict){
       const occ=db.ocorrencias.find(o=>o.id===conflict.ocorrencia_id);
-      toast(`Este meio já está activo na ocorrência "${occ?occ.nome:'desconhecida'}".`,'err');
+      const local = occ?.nome || 'ocorrência desconhecida';
+      const msg = conflict.ocorrencia_id===currentOccId
+        ? `Este meio já está adicionado a esta ocorrência.`
+        : `Este meio já está activo na ocorrência "${local}".`;
+      toast(msg,'err');
       return;
     }
   }
