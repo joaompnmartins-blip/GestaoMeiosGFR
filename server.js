@@ -121,34 +121,44 @@ app.get('/api/ocorrencias', requireAuth('visualizador'), wrap(async (req, res) =
 
 app.post('/api/ocorrencias', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
-  const { rows } = await pool.query(
-    `INSERT INTO ocorrencias
-       (local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status, created_by, oficial_ligacao_id, oficial_ligacao_nome)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9) RETURNING *`,
-    [b.local_ignicao, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-     b.obs || null, b.inicio || null, b.status || 'active', req.user.id, req.user.nome]
-  );
-  res.json(rows[0]);
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO ocorrencias
+         (local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status, created_by, oficial_ligacao_id, oficial_ligacao_nome)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9) RETURNING *`,
+      [b.local_ignicao, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
+       b.obs || null, b.inicio || null, b.status || 'active', req.user.id, req.user.nome]
+    );
+    res.json(rows[0]);
+  } catch(e) {
+    if (e.code === '23505') return res.status(409).json({ error: `Já existe uma ocorrência com o código "${b.codigo_ocorrencia}".` });
+    throw e;
+  }
 }));
 
 app.patch('/api/ocorrencias/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
-  await pool.query(
-    `UPDATE ocorrencias
-     SET local_ignicao        = COALESCE($1, local_ignicao),
-         codigo_ocorrencia    = COALESCE($2, codigo_ocorrencia),
-         subregiao            = COALESCE($3, subregiao),
-         concelho             = COALESCE($4, concelho),
-         obs                  = COALESCE($5, obs),
-         inicio               = COALESCE($6, inicio),
-         status               = COALESCE($7, status),
-         oficial_ligacao_id   = COALESCE($8, oficial_ligacao_id),
-         oficial_ligacao_nome = COALESCE($9, oficial_ligacao_nome)
-     WHERE id=$10`,
-    [b.local_ignicao || null, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-     b.obs || null, b.inicio || null, b.status || null, b.oficial_ligacao_id || null, b.oficial_ligacao_nome || null, req.params.id]
-  );
-  res.json({ ok: true });
+  try {
+    await pool.query(
+      `UPDATE ocorrencias
+       SET local_ignicao        = COALESCE($1, local_ignicao),
+           codigo_ocorrencia    = COALESCE($2, codigo_ocorrencia),
+           subregiao            = COALESCE($3, subregiao),
+           concelho             = COALESCE($4, concelho),
+           obs                  = COALESCE($5, obs),
+           inicio               = COALESCE($6, inicio),
+           status               = COALESCE($7, status),
+           oficial_ligacao_id   = COALESCE($8, oficial_ligacao_id),
+           oficial_ligacao_nome = COALESCE($9, oficial_ligacao_nome)
+       WHERE id=$10`,
+      [b.local_ignicao || null, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
+       b.obs || null, b.inicio || null, b.status || null, b.oficial_ligacao_id || null, b.oficial_ligacao_nome || null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch(e) {
+    if (e.code === '23505') return res.status(409).json({ error: `Já existe uma ocorrência com o código "${b.codigo_ocorrencia}".` });
+    throw e;
+  }
 }));
 
 app.delete('/api/ocorrencias/:id', requireAuth('admin'), wrap(async (req, res) => {
@@ -2015,6 +2025,7 @@ async function runMigrations() {
     )`,
     `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS n_trab INTEGER`,
     `CREATE UNIQUE INDEX IF NOT EXISTS operacionais_fsbf_nome_idx ON operacionais_fsbf (nome)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS ocorrencias_codigo_idx ON ocorrencias (codigo_ocorrencia) WHERE codigo_ocorrencia IS NOT NULL`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

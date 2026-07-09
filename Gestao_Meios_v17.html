@@ -2694,6 +2694,10 @@ async function saveOcorrencia(){
   }
   const editId=document.getElementById('occ-edit-id').value;
   const payload={nome,ref:document.getElementById('occ-ref').value.trim(),subregiao,concelho:document.getElementById('occ-concelho').value.trim(),obs:document.getElementById('occ-obs').value.trim(),inicio:document.getElementById('occ-inicio').value,status:'active'};
+  if(payload.ref){
+    const dup = db.ocorrencias.find(o => o.ref === payload.ref && o.id !== editId);
+    if(dup){ toast(`Já existe uma ocorrência com o código "${payload.ref}" — ${dup.nome}.`,'err'); return; }
+  }
   const id = await persistOcorrencia(payload, editId||null);
   if(!id) return;
   if(editId){ const idx=db.ocorrencias.findIndex(x=>x.id===editId); if(idx>-1) db.ocorrencias[idx]={...db.ocorrencias[idx],...payload}; await persistOccEvento(editId, 'occ', `Ocorrência editada — ${nome}${payload.obs?' · '+payload.obs:''}`); }
@@ -5129,6 +5133,11 @@ function initFogosLeafletMap() {
   if(fogosData.length) renderFogosMarkers();
 }
 
+function _fogosTracked(inc) {
+  const key = inc.sadoId || inc.id;
+  return key ? db.ocorrencias.find(o => o.ref === key) : null;
+}
+
 function renderFogosMarkers() {
   if(!fogosMap) return;
   fogosMarkers.forEach(m => fogosMap.removeLayer(m));
@@ -5136,14 +5145,25 @@ function renderFogosMarkers() {
   fogosData.forEach(inc => {
     const color = '#' + (inc.statusColor || 'BDBDBD');
     const isSelected = inc.id === fogosSelectedId;
-    const markerHtml = `<div style="
-      width:${isSelected?16:11}px;height:${isSelected?16:11}px;
-      border-radius:50%;background:${color};
-      border:2px solid ${isSelected?'#fff':color};
-      box-shadow:0 0 ${isSelected?'8px 2px':'4px 1px'} ${color}88;
-      transition:all .15s;
-    "></div>`;
-    const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [isSelected?16:11, isSelected?16:11], iconAnchor: [isSelected?8:5, isSelected?8:5] });
+    const tracked = _fogosTracked(inc);
+    const sz = isSelected ? 16 : 11;
+    const markerHtml = tracked
+      ? `<div style="
+          width:${sz}px;height:${sz}px;
+          background:${color};
+          transform:rotate(45deg);
+          border:2px solid ${isSelected?'#fff':'rgba(255,255,255,0.7)'};
+          box-shadow:0 0 ${isSelected?'8px 2px':'4px 1px'} ${color}88;
+          transition:all .15s;
+        "></div>`
+      : `<div style="
+          width:${sz}px;height:${sz}px;
+          border-radius:50%;background:${color};
+          border:2px solid ${isSelected?'#fff':color};
+          box-shadow:0 0 ${isSelected?'8px 2px':'4px 1px'} ${color}88;
+          transition:all .15s;
+        "></div>`;
+    const icon = L.divIcon({ html: markerHtml, className: '', iconSize: [sz, sz], iconAnchor: [sz/2, sz/2] });
     const marker = L.marker([inc.lat, inc.lng], { icon })
       .addTo(fogosMap)
       .bindPopup(buildFogosPopup(inc), { maxWidth: 260 });
@@ -5157,6 +5177,10 @@ function buildFogosPopup(inc) {
   if(inc.man)    meios.push(`👷 ${inc.man} operacionais`);
   if(inc.terrain) meios.push(`🚒 ${inc.terrain} terrestres`);
   if(inc.aerial)  meios.push(`🚁 ${inc.aerial} aéreos`);
+  const tracked = _fogosTracked(inc);
+  const btn = tracked
+    ? `<button class="fogos-popup-btn" style="background:var(--accent3);" onclick="closeModal('modal-fogos');openDetalhe('${tracked.id}')">↗ Ver ocorrência GFR</button>`
+    : `<button class="fogos-popup-btn" onclick="selectFogosItem('${inc.id}', true)">+ Criar Ocorrência GFR</button>`;
   return `<div>
     <div class="fogos-popup-title">${esc(inc.location||inc.localidade||'—')}</div>
     <div style="font-size:11px;color:#aaa;margin-bottom:4px;">${esc(inc.natureza||'')} · ${esc(inc.date||'')} ${esc(inc.hour||'')}</div>
@@ -5165,7 +5189,7 @@ function buildFogosPopup(inc) {
       <b>${esc(inc.status||'')}</b>
     </div>
     ${meios.length ? `<div style="font-size:10px;color:#999;margin-bottom:6px;">${meios.join(' · ')}</div>` : ''}
-    <button class="fogos-popup-btn" onclick="selectFogosItem('${inc.id}', true)">+ Criar Ocorrência GFR</button>
+    ${btn}
   </div>`;
 }
 
@@ -5187,14 +5211,18 @@ function renderFogosList() {
   document.getElementById('fogos-list').innerHTML = list.map(inc => {
     const color = '#' + (inc.statusColor || 'BDBDBD');
     const isSelected = inc.id === fogosSelectedId;
+    const tracked = _fogosTracked(inc);
     const meiosTags = [];
     if(inc.man)    meiosTags.push(`👷 ${inc.man}`);
     if(inc.terrain) meiosTags.push(`🚒 ${inc.terrain}`);
     if(inc.aerial)  meiosTags.push(`🚁 ${inc.aerial}`);
     return `<div class="fogos-item${isSelected?' selected':''}" onclick="selectFogosItem('${inc.id}', false)" data-id="${inc.id}">
       <div class="fogos-item-top">
-        <span class="fogos-status-dot" style="background:${color};box-shadow:0 0 4px ${color}88;"></span>
+        <span style="display:inline-block;width:9px;height:9px;flex-shrink:0;background:${color};
+          ${tracked?'transform:rotate(45deg);border:1.5px solid rgba(255,255,255,0.7)':'border-radius:50%'};
+          box-shadow:0 0 4px ${color}88;"></span>
         <span class="fogos-item-loc">${esc(inc.location||inc.localidade||'—')}</span>
+        ${tracked?`<span style="font-size:9px;padding:1px 4px;border-radius:2px;background:var(--accent3);color:#fff;font-weight:700;white-space:nowrap;">GFR</span>`:''}
       </div>
       <div class="fogos-item-meta">
         <span>${esc(inc.status||'')}</span>
