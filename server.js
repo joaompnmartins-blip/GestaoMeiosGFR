@@ -215,7 +215,7 @@ app.post('/api/ocorrencias/merge', requireAuth('ofligacao'), wrap(async (req, re
 //  MEIOS
 // ══════════════════════════════════════════════════════════════════
 const MEIO_COLS = [
-  'ocorrencia_id','recurso_id','viatura_id','composicao_id','meio_pai_id',
+  'ocorrencia_id','recurso_id','recurso_adicional_id','viatura_id','composicao_id','meio_pai_id',
   'eq','tipo','matricula','concelho','setor','posto_comando_id',
   'operacionais','responsavel','contacto',
   'data_despacho','hora_despacho','data_saida_entidade','hora_saida_entidade',
@@ -236,6 +236,18 @@ async function findRecursoConflict(recursoId, estado, excludeId) {
      WHERE m.recurso_id = $1 AND m.estado = ANY($2) AND m.id <> $3
      LIMIT 1`,
     [recursoId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
+  );
+  return rows[0] || null;
+}
+
+async function findRecursoAdicionalConflict(recursoAdicionalId, estado, excludeId) {
+  if (!recursoAdicionalId || !OCUPADO_ESTADOS.includes(estado)) return null;
+  const { rows } = await pool.query(
+    `SELECT o.local_ignicao FROM meios m
+     JOIN ocorrencias o ON o.id = m.ocorrencia_id
+     WHERE m.recurso_adicional_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     LIMIT 1`,
+    [recursoAdicionalId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
   );
   return rows[0] || null;
 }
@@ -281,6 +293,10 @@ app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
   if (conflict) {
     return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
   }
+  const raConflict = await findRecursoAdicionalConflict(b.recurso_adicional_id, b.estado, null);
+  if (raConflict) {
+    return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${raConflict.local_ignicao}".` });
+  }
   const vConflict = await findViaturaConflict(b.viatura_id, b.estado, null);
   if (vConflict) {
     return res.status(409).json({ error: `Esta viatura já está em uso na ocorrência "${vConflict.local_ignicao}".` });
@@ -307,15 +323,21 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
 
   if ('estado' in b && OCUPADO_ESTADOS.includes(b.estado)) {
     let recursoId = b.recurso_id;
+    let recursoAdicionalId = b.recurso_adicional_id;
     let viaturaId = b.viatura_id;
-    if (recursoId === undefined || viaturaId === undefined) {
-      const { rows } = await pool.query('SELECT recurso_id, viatura_id FROM meios WHERE id=$1', [req.params.id]);
-      if (recursoId === undefined) recursoId = rows[0]?.recurso_id;
-      if (viaturaId === undefined) viaturaId = rows[0]?.viatura_id;
+    if (recursoId === undefined || recursoAdicionalId === undefined || viaturaId === undefined) {
+      const { rows } = await pool.query('SELECT recurso_id, recurso_adicional_id, viatura_id FROM meios WHERE id=$1', [req.params.id]);
+      if (recursoId === undefined)          recursoId          = rows[0]?.recurso_id;
+      if (recursoAdicionalId === undefined) recursoAdicionalId = rows[0]?.recurso_adicional_id;
+      if (viaturaId === undefined)          viaturaId          = rows[0]?.viatura_id;
     }
     const conflict = await findRecursoConflict(recursoId, b.estado, req.params.id);
     if (conflict) {
       return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
+    }
+    const raConflict = await findRecursoAdicionalConflict(recursoAdicionalId, b.estado, req.params.id);
+    if (raConflict) {
+      return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${raConflict.local_ignicao}".` });
     }
     const vConflict = await findViaturaConflict(viaturaId, b.estado, req.params.id);
     if (vConflict) {
@@ -334,6 +356,28 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
 app.delete('/api/meios/:id', requireAuth('admin'), wrap(async (req, res) => {
   await pool.query('DELETE FROM meios WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  RECURSOS ADICIONAIS (ad-hoc, por ocorrência)
+// ══════════════════════════════════════════════════════════════════
+
+app.get('/api/recursos-adicionais', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM recursos_adicionais ORDER BY created_at DESC');
+  res.json(rows);
+}));
+
+app.post('/api/recursos-adicionais', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.nome) return res.status(400).json({ error: 'Nome obrigatório.' });
+  const { rows: [r] } = await pool.query(
+    `INSERT INTO recursos_adicionais
+       (nome, tipo, matricula, subregiao, concelho, responsavel, contacto, obs, criado_em_ocorrencia_id, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [b.nome, b.tipo||null, b.matricula||null, b.subregiao||null, b.concelho||null,
+     b.responsavel||null, b.contacto||null, b.obs||null, b.criado_em_ocorrencia_id||null, req.user.id]
+  );
+  res.json(r);
 }));
 
 // Replace all operativos for a meio in one shot
@@ -2106,6 +2150,21 @@ async function runMigrations() {
        )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS ocorrencias_codigo_idx ON ocorrencias (codigo_ocorrencia) WHERE codigo_ocorrencia IS NOT NULL`,
     `ALTER TABLE IF EXISTS ocorrencias ADD COLUMN IF NOT EXISTS merged_into UUID REFERENCES ocorrencias(id) ON DELETE SET NULL`,
+    `CREATE TABLE IF NOT EXISTS recursos_adicionais (
+       id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+       nome                    TEXT NOT NULL,
+       tipo                    TEXT,
+       matricula               TEXT,
+       subregiao               TEXT,
+       concelho                TEXT,
+       responsavel             TEXT,
+       contacto                TEXT,
+       obs                     TEXT,
+       criado_em_ocorrencia_id UUID REFERENCES ocorrencias(id) ON DELETE SET NULL,
+       created_by              UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+       created_at              TIMESTAMPTZ DEFAULT now()
+     )`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS recurso_adicional_id UUID REFERENCES recursos_adicionais(id) ON DELETE SET NULL`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

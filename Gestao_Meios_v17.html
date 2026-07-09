@@ -1252,6 +1252,7 @@
     <input type="hidden" id="team-edit-id"/>
     <input type="hidden" id="team-equipa-id"/>
     <input type="hidden" id="team-recurso-id"/>
+    <input type="hidden" id="team-recurso-adicional-id"/>
     <input type="hidden" id="team-transporte-id"/>
 
     <input type="hidden" id="team-bsf-id"/>
@@ -2080,7 +2081,7 @@ const SUBREGIOES = [
 ];
 
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
-let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[], postos:[] };
+let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], recursosAdicionais:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[], postos:[] };
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
@@ -2182,7 +2183,7 @@ async function loadAllData(){
   }
 
   // Subregião filtering is handled server-side based on JWT role
-  const [occRes, teamsRes, equipasRes, opsRes, recursosRes, compRes, postosRes] = await Promise.all([
+  const [occRes, teamsRes, equipasRes, opsRes, recursosRes, compRes, postosRes, raRes] = await Promise.all([
     apiFetch('/api/ocorrencias'),
     apiFetch('/api/meios'),
     apiFetch('/api/equipas'),
@@ -2190,6 +2191,7 @@ async function loadAllData(){
     apiFetch('/api/recursos'),
     apiFetch('/api/composicoes'),
     apiFetch('/api/postos'),
+    apiFetch('/api/recursos-adicionais'),
   ]);
   if(occRes.error)    console.warn('loadAllData ocorrencias:', occRes.error.message);
   else                db.ocorrencias = occRes.data.map(mapOcorrencia);
@@ -2203,6 +2205,7 @@ async function loadAllData(){
   else                  db.recursos = recursosRes.data || [];
   if(!compRes.error)  db.composicoes = (compRes.data || []).filter(c => ['BSF','BSBF'].includes(c.tipo) && c.ativo !== false);
   if(!postosRes.error) db.postos = postosRes.data || [];
+  if(!raRes.error)    db.recursosAdicionais = raRes.data || [];
   if(occRes.error||teamsRes.error||equipasRes.error)
     toast('Algumas tabelas não carregaram. Verifique a ligação ao servidor.','err');
 
@@ -2238,7 +2241,7 @@ function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -2273,7 +2276,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null, posto_comando_id:payload.postoComandoId||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, recurso_adicional_id:payload.recursoAdicionalId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null, posto_comando_id:payload.postoComandoId||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -3885,6 +3888,7 @@ function openAddTeam(){
   document.getElementById('team-tipo').value='';
   document.getElementById('team-equipa-id').value='';
   document.getElementById('team-recurso-id').value='';
+  document.getElementById('team-recurso-adicional-id').value='';
   document.getElementById('team-transporte-id').value='';
   document.getElementById('team-pm-pick').value='';
   document.getElementById('team-pm-new-eq').value='';
@@ -3929,6 +3933,29 @@ function applyPreset(id){
 
   if(!id) return;
 
+  // Ad-hoc recurso adicional
+  if(id.startsWith('ra:')){
+    const raId = id.slice(3);
+    const ra = (db.recursosAdicionais||[]).find(x=>x.id===raId);
+    if(ra){
+      document.getElementById('team-eq').value = ra.nome;
+      const tipoSel = document.getElementById('team-tipo');
+      if(ra.tipo && ![...tipoSel.options].some(o=>o.value===ra.tipo)){
+        const opt=document.createElement('option'); opt.value=opt.textContent=ra.tipo; tipoSel.appendChild(opt);
+      }
+      tipoSel.value = ra.tipo||'';
+      document.getElementById('team-matricula').value = ra.matricula||'';
+      document.getElementById('team-concelho').value  = ra.concelho||'';
+      if(ra.responsavel) document.getElementById('team-resp').value = ra.responsavel;
+      if(ra.contacto)    document.getElementById('team-contacto').value = ra.contacto;
+      document.getElementById('team-recurso-id').value          = '';
+      document.getElementById('team-equipa-id').value           = '';
+      document.getElementById('team-recurso-adicional-id').value = raId;
+      onTeamTipoChange();
+    }
+    return;
+  }
+
   // Try recursos catalog, then BSF composicoes, then legacy equipas
   const r = db.recursos.find(x=>x.id===id);
   const c = r ? null : (db.composicoes||[]).find(x=>x.id===id);
@@ -3968,8 +3995,9 @@ function applyPreset(id){
   document.getElementById('team-ops').value = capacidade || '';
   document.getElementById('team-concelho').value = concelho;
   if(contacto) document.getElementById('team-contacto').value = contacto;
-  document.getElementById('team-equipa-id').value  = e ? id : '';
-  document.getElementById('team-recurso-id').value = r ? id : '';
+  document.getElementById('team-equipa-id').value           = e ? id : '';
+  document.getElementById('team-recurso-id').value          = r ? id : '';
+  document.getElementById('team-recurso-adicional-id').value = '';
   syncOpsFields(capacidade || 0);
   onTeamTipoChange();
 
@@ -4046,6 +4074,7 @@ function editTeam(id){
   document.getElementById('team-tipo').value=t.tipo||'';
   document.getElementById('team-equipa-id').value=t.equipaId||'';
   document.getElementById('team-recurso-id').value=t.recursoId||'';
+  document.getElementById('team-recurso-adicional-id').value=t.recursoAdicionalId||'';
   document.getElementById('team-transporte-id').value=t.transporteId||'';
   document.getElementById('team-pm-new-eq').value='';
   document.getElementById('team-pm-new-matricula').value='';
@@ -4157,6 +4186,7 @@ async function saveTeam(){
     previstoHora:document.getElementById('team-previsto-hora').value||null,
     equipaId:document.getElementById('team-equipa-id').value||null,
     recursoId:document.getElementById('team-recurso-id').value||null,
+    recursoAdicionalId:document.getElementById('team-recurso-adicional-id').value||null,
     postoComandoId: editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null),
   };
 
@@ -4167,6 +4197,7 @@ async function saveTeam(){
     const conflict=db.teams.find(other=>{
       if(other.id===editId) return false;
       if(!OCUPADO_ESTADOS_FE.includes(other.estado)) return false;
+      if(payload.recursoAdicionalId && other.recursoAdicionalId) return other.recursoAdicionalId===payload.recursoAdicionalId;
       if(payload.equipaId && other.equipaId) return other.equipaId===payload.equipaId;
       return other.eq.trim().toLowerCase()===eq.toLowerCase()
         && payload.matricula && other.matricula && other.matricula===payload.matricula;
@@ -4399,8 +4430,7 @@ function renderEquipas(){
 }
 
 function openNewEquipaFromTeam(){
-  _equipa_from_team=true;
-  openNewEquipa();
+  openRecursoAdicionalModal();
 }
 let _equipa_from_team=false;
 
@@ -4419,7 +4449,12 @@ function refreshPresetSelect(selectedId){
     num_elementos: null, prontidao: c.prontidao_derivada||'operacional',
     em_uso: false, _isBSF: true
   }));
-  const catalog = [...base, ...bsfEntries];
+  const raEntries = (db.recursosAdicionais||[]).map(r=>({
+    id: 'ra:'+r.id, codigo: r.nome, tipo: r.tipo||'',
+    subregiao: r.subregiao||null, concelho: r.concelho||null,
+    num_elementos: null, prontidao: 'operacional', em_uso: false, _isAdicional: true
+  }));
+  const catalog = [...base, ...bsfEntries, ...raEntries];
 
   const teSel = document.getElementById('preset-filter-te');
   const srSel = document.getElementById('preset-filter-sr');
@@ -4441,9 +4476,10 @@ function refreshPresetSelect(selectedId){
   const busyNome = new Set();
   db.teams.forEach(t=>{
     if(t.id===editId || t.ocorrencia_id===currentOccId || t.estado==='desmobilizado') return;
-    if(t.recursoId) busyRecurso.add(t.recursoId);
-    if(t.equipaId)  busyRecurso.add(t.equipaId);
-    if(t.eq)        busyNome.add(t.eq.trim().toLowerCase());
+    if(t.recursoId)          busyRecurso.add(t.recursoId);
+    if(t.equipaId)           busyRecurso.add(t.equipaId);
+    if(t.recursoAdicionalId) busyRecurso.add('ra:'+t.recursoAdicionalId);
+    if(t.eq)                 busyNome.add(t.eq.trim().toLowerCase());
   });
 
   const filtered = catalog.filter(r => {
@@ -4458,9 +4494,9 @@ function refreshPresetSelect(selectedId){
     filtered.map(r => {
       const inop  = r.prontidao === 'inoperacional';
       const emUso = r.em_uso && r.id !== selectedId;
-      const badge = inop ? ' ⚠ INOP' : emUso ? ' (em uso)' : '';
+      const badge = inop ? ' ⚠ INOP' : emUso ? ' (em uso)' : r._isAdicional ? ' ★ ad-hoc' : '';
       const label = `${esc(r.codigo)}${r.tipo?' ('+esc(r.tipo)+')':''}${r.concelho?' · '+esc(r.concelho):''}${badge}`;
-      return `<option value="${r.id}"${r.id===selectedId?' selected':''}${inop||emUso?' style="color:var(--warn)"':''}>${label}</option>`;
+      return `<option value="${r.id}"${r.id===selectedId?' selected':''}${inop||emUso?' style="color:var(--warn)"':r._isAdicional?' style="color:var(--accent3)"':''}>${label}</option>`;
     }).join('');
   if(selectedId) applyPreset(selectedId);
 }
@@ -7133,6 +7169,39 @@ function egfrHandleCSV(file){
   reader.readAsText(file, 'UTF-8');
 }
 
+// ── Recurso Adicional (ad-hoc) ──────────────────────────────────
+function openRecursoAdicionalModal(){
+  ['ra-nome','ra-matricula','ra-concelho','ra-responsavel','ra-contacto','ra-obs'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('ra-tipo').value='';
+  openModal('modal-recurso-adicional');
+}
+
+async function saveRecursoAdicional(){
+  const nome = document.getElementById('ra-nome').value.trim();
+  if(!nome){ toast('Insira a designação.','err'); return; }
+  const payload = {
+    nome,
+    tipo:        document.getElementById('ra-tipo').value||null,
+    matricula:   document.getElementById('ra-matricula').value.trim().toUpperCase()||null,
+    concelho:    document.getElementById('ra-concelho').value.trim()||null,
+    responsavel: document.getElementById('ra-responsavel').value.trim()||null,
+    contacto:    document.getElementById('ra-contacto').value.trim()||null,
+    obs:         document.getElementById('ra-obs').value.trim()||null,
+    criado_em_ocorrencia_id: currentOccId||null,
+  };
+  const { data, error } = await apiFetch('/api/recursos-adicionais',{
+    method:'POST', body:JSON.stringify(payload)
+  });
+  if(error){ toast(error.message||'Erro ao criar recurso.','err'); return; }
+  db.recursosAdicionais.unshift(data);
+  toast(`Recurso "${nome}" criado.`,'ok');
+  closeModal('modal-recurso-adicional');
+  refreshPresetSelect('ra:'+data.id);
+  openModal('modal-team');
+}
+
 // ── Merge ocorrências ───────────────────────────────────────────
 function openMergeModal(){
   const o = db.ocorrencias.find(x=>x.id===currentOccId);
@@ -7588,6 +7657,58 @@ async function mergeSaveConfirm(){
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-fsbf-op')">Cancelar</button>
       <button class="btn btn-primary" onclick="saveFsbfOp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-recurso-adicional" onclick="if(event.target===this)closeModal('modal-recurso-adicional')">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">Novo Recurso Ad-hoc</div>
+      <button class="modal-close" onclick="closeModal('modal-recurso-adicional')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Este recurso ficará disponível nesta ocorrência e não altera o catálogo de meios predefinidos.</p>
+      <div class="form-grid-2" style="gap:8px;">
+        <div class="form-field span2">
+          <label class="form-label">Designação / EQ <span style="color:var(--danger)">*</span></label>
+          <input class="form-input" id="ra-nome" placeholder="Ex: VLCI 22 FSBF">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="ra-tipo">
+            <option value="">— Tipo —</option>
+            <option>VLCI</option><option>VCOT</option><option>VFCI</option>
+            <option>VTTU</option><option>VTTD</option><option>VTSV</option>
+            <option>HEFI</option><option>MR</option><option>PM</option>
+            <option>MEFI</option><option>MELF</option><option>MEIO</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Matrícula</label>
+          <input class="form-input" id="ra-matricula" placeholder="00-AA-00">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Concelho</label>
+          <input class="form-input" id="ra-concelho" placeholder="Concelho de origem">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Responsável</label>
+          <input class="form-input" id="ra-responsavel" placeholder="Chefe de equipa">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Contacto</label>
+          <input class="form-input" id="ra-contacto" placeholder="9xx xxx xxx">
+        </div>
+        <div class="form-field span2">
+          <label class="form-label">Obs.</label>
+          <input class="form-input" id="ra-obs" placeholder="Notas adicionais">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-recurso-adicional')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRecursoAdicional()">Adicionar</button>
     </div>
   </div>
 </div>
