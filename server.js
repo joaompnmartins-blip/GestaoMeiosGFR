@@ -376,6 +376,38 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
     }
   }
 
+  // Datetime ordering validation: merge incoming fields with current DB values
+  const DT_FIELDS = ['data_despacho','hora_despacho','data_saida_entidade','hora_saida_entidade',
+                     'data_chegada','hora_chegada','data_demob','hora_demob',
+                     'data_chegada_entidade','hora_chegada_entidade'];
+  if (DT_FIELDS.some(f => f in b)) {
+    const { rows: cur } = await pool.query(
+      `SELECT ${DT_FIELDS.join(',')}, o.inicio FROM meios m
+       JOIN ocorrencias o ON o.id = m.ocorrencia_id
+       WHERE m.id=$1`, [req.params.id]
+    );
+    if (cur.length) {
+      const m = { ...cur[0], ...Object.fromEntries(DT_FIELDS.filter(f => f in b).map(f => [f, b[f]])) };
+      const parseDT = (d, t) => (d ? new Date(`${d}T${t || '00:00'}`) : null);
+      const inicio   = m.inicio ? new Date(m.inicio) : null;
+      const despacho = parseDT(m.data_despacho,         m.hora_despacho);
+      const saida    = parseDT(m.data_saida_entidade,    m.hora_saida_entidade);
+      const chegada  = parseDT(m.data_chegada,           m.hora_chegada);
+      const demob    = parseDT(m.data_demob,             m.hora_demob);
+      const chegadaE = parseDT(m.data_chegada_entidade,  m.hora_chegada_entidade);
+      if (inicio && despacho && despacho < inicio)
+        return res.status(422).json({ error: 'Despacho deve ser igual ou posterior ao início da ocorrência.' });
+      if (despacho && saida && saida < despacho)
+        return res.status(422).json({ error: 'Saída Entidade deve ser igual ou posterior ao Despacho.' });
+      if (saida && chegada && chegada < saida)
+        return res.status(422).json({ error: 'Chegada TO deve ser igual ou posterior à Saída Entidade.' });
+      if (chegada && demob && demob < chegada)
+        return res.status(422).json({ error: 'Saída TO deve ser igual ou posterior à Chegada TO.' });
+      if (demob && chegadaE && chegadaE < demob)
+        return res.status(422).json({ error: 'Chegada Entidade deve ser igual ou posterior à Saída TO.' });
+    }
+  }
+
   const sets = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
   const vals = [...cols.map(c => b[c] ?? null), req.params.id];
   await pool.query(`UPDATE meios SET ${sets} WHERE id=$${cols.length + 1}`, vals);

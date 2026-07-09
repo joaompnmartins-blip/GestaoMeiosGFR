@@ -3797,10 +3797,12 @@ async function doQuickTransit(id){
   const t=db.teams.find(x=>x.id===id); if(!t) return;
   const saidaDate=document.getElementById('qa-saida-date')?.value||'';
   const saidaTime=document.getElementById('qa-saida-time')?.value||'';
-  const despDate=document.getElementById('qa-desp-date')?.value||'';
-  const despTime=document.getElementById('qa-desp-time')?.value||'';
+  const despDate=document.getElementById('qa-desp-date')?.value||t.dataDespacho||'';
+  const despTime=document.getElementById('qa-desp-time')?.value||t.horaDespacho||'';
   const obs=document.getElementById('qa-transit-obs')?.value?.trim()||'';
   const applyAll=document.getElementById('qa-apply-all')?.checked;
+  const _dtErr=validateMeioDates({dataDespacho:despDate,horaDespacho:despTime,dataSaidaEntidade:saidaDate,horaSaidaEntidade:saidaTime},db.ocorrencias.find(o=>o.id===t.ocorrencia_id)?.inicio||null);
+  if(_dtErr){ toast(_dtErr,'err'); return; }
   try {
     await applyTransitToTeam(t,saidaDate,saidaTime,obs,despDate||null,despTime||null);
     if(applyAll) for(const s of compositeGroupSiblings(t)) await applyTransitToTeam(s,saidaDate,saidaTime,'',despDate||null,despTime||null);
@@ -3841,6 +3843,8 @@ async function doQuickOp(id){
   const hmax=parseInt(document.getElementById('qa-hmax').value)||12;
   const setor=document.getElementById('qa-setor').value.trim()||t.setor;
   const missao=document.getElementById('qa-missao').value.trim()||t.missao;
+  const _dtErrOp=validateMeioDates({dataDespacho:t.dataDespacho,horaDespacho:t.horaDespacho,dataSaidaEntidade:t.dataSaidaEntidade,horaSaidaEntidade:t.horaSaidaEntidade,dataChegada:d,horaChegada:h},null);
+  if(_dtErrOp){ toast(_dtErrOp,'err'); return; }
   try {
     await applyOpToTeam(t,d,h,hmax,setor,missao);
     if(applyAll) for(const s of compositeGroupSiblings(t)) await applyOpToTeam(s,d,h,hmax,setor,missao);
@@ -3868,6 +3872,8 @@ async function doQuickDemob(id){
   const time=document.getElementById('qa-demob-time').value;
   const obs=document.getElementById('qa-obs-demob').value.trim();
   const applyAll=document.getElementById('qa-apply-all')?.checked;
+  const _dtErrDmb=validateMeioDates({dataDespacho:t.dataDespacho,horaDespacho:t.horaDespacho,dataSaidaEntidade:t.dataSaidaEntidade,horaSaidaEntidade:t.horaSaidaEntidade,dataChegada:t.dataChegada,horaChegada:t.horaChegada,dataDemob:date,horaDemob:time},null);
+  if(_dtErrDmb){ toast(_dtErrDmb,'err'); return; }
   try {
     await applyDemobToTeam(t,date,time,obs);
     if(applyAll) for(const s of compositeGroupSiblings(t)) await applyDemobToTeam(s,date,time,obs);
@@ -3897,6 +3903,8 @@ async function doQuickChegadaBase(id){
   const km=document.getElementById('qa-cb-km')?.value||'';
   const obs=document.getElementById('qa-obs-cb')?.value?.trim()||'';
   if(!date||!time){ toast('Data e hora de chegada obrigatórias.','err'); return; }
+  const _dtErrCB=validateMeioDates({dataDespacho:t.dataDespacho,horaDespacho:t.horaDespacho,dataSaidaEntidade:t.dataSaidaEntidade,horaSaidaEntidade:t.horaSaidaEntidade,dataChegada:t.dataChegada,horaChegada:t.horaChegada,dataDemob:t.dataDemob,horaDemob:t.horaDemob,dataChegadaEntidade:date,horaChegadaEntidade:time},null);
+  if(_dtErrCB){ toast(_dtErrCB,'err'); return; }
   const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
     await applyChegadaBaseToTeam(t,date,time,km,obs);
@@ -3985,6 +3993,34 @@ function toggleMobilizacaoFields(estado, isEdit){
   s('previsto-hora-field', estado==='previsto');
 }
 function togglePrevistoFields(val){ toggleMobilizacaoFields(val, false); }
+
+// ── Datetime ordering validation ──────────────────────────────────
+function parseDT(date, time){
+  if(!date) return null;
+  return new Date(`${date}T${time||'00:00'}`);
+}
+function validateMeioDates(p, occInicio){
+  // p = { dataDespacho, horaDespacho, dataSaidaEntidade, horaSaidaEntidade,
+  //        dataChegada, horaChegada, dataDemob, horaDemob,
+  //        dataChegadaEntidade, horaChegadaEntidade }
+  const inicio    = occInicio ? new Date(occInicio) : null;
+  const despacho  = parseDT(p.dataDespacho,         p.horaDespacho);
+  const saida     = parseDT(p.dataSaidaEntidade,     p.horaSaidaEntidade);
+  const chegada   = parseDT(p.dataChegada,           p.horaChegada);
+  const demob     = parseDT(p.dataDemob,             p.horaDemob);
+  const chegadaE  = parseDT(p.dataChegadaEntidade,   p.horaChegadaEntidade);
+  if(inicio && despacho && despacho < inicio)
+    return 'Despacho deve ser igual ou posterior ao início da ocorrência.';
+  if(despacho && saida && saida < despacho)
+    return 'Saída Entidade deve ser igual ou posterior ao Despacho.';
+  if(saida && chegada && chegada < saida)
+    return 'Chegada TO deve ser igual ou posterior à Saída Entidade.';
+  if(chegada && demob && demob < chegada)
+    return 'Saída TO deve ser igual ou posterior à Chegada TO.';
+  if(demob && chegadaE && chegadaE < demob)
+    return 'Chegada Entidade deve ser igual ou posterior à Saída TO.';
+  return null;
+}
 
 function syncOpsFields(n){
   const count=parseInt(n)||0;
@@ -4375,6 +4411,11 @@ async function saveTeam(){
       return;
     }
   }
+
+  // Datetime ordering validation
+  const _occ=db.ocorrencias.find(o=>o.id===currentOccId);
+  const _dtErr=validateMeioDates(payload, _occ?.inicio);
+  if(_dtErr){ toast(_dtErr,'err'); return; }
 
   // MR / PM: garantir que o MR tem sempre um PM de transporte associado.
   // O PM criado de raiz herda a mobilização, missão, estado e observações do MR.
