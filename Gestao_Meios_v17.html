@@ -231,6 +231,9 @@
     .previsto-section{margin-bottom:28px;}
     .previsto-section-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(152,112,208,.06);border:1px solid rgba(152,112,208,.22);border-radius:2px;}
     .previsto-section-label{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#b890e8;}
+    .transito-section{margin-bottom:28px;}
+    .transito-section-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(66,154,189,.06);border:1px solid rgba(66,154,189,.22);border-radius:2px;}
+    .transito-section-label{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--icnf-blue-light);}
     .team-card.closed-occ{opacity:.75;filter:saturate(.5);}
     .team-card.closed-occ .team-card-head{opacity:.85;}
     .team-card-head{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid var(--border);}
@@ -3292,7 +3295,6 @@ function renderSectorGroups(ativos, isClosed){
     const st=sectors[s];
     const ops=st.filter(t=>t.estado==='operacao').length;
     const rest=st.filter(t=>t.estado==='descanso').length;
-    const transit=st.filter(t=>t.estado==='transito').length;
     const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
     return `<div class="sector-group">
       <div class="sector-header">
@@ -3300,7 +3302,6 @@ function renderSectorGroups(ativos, isClosed){
         <div class="sector-stats">
           <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
           <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
-          <span class="sector-stat" style="color:var(--accent3)">🔵 ${transit} trâns.</span>
           <span class="sector-stat">👥 ${totalOps} op.ais</span>
         </div>
       </div>
@@ -3312,8 +3313,9 @@ function renderSectorGroups(ativos, isClosed){
 function renderSectorView(teams, isClosed){
   const container=document.getElementById('view-sector');
   const previstos=teams.filter(t=>t.estado==='previsto');
-  const ativos=teams.filter(t=>t.estado!=='previsto'&&t.estado!=='desmobilizado');
-  if(!previstos.length&&!ativos.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div>';return;}
+  const transitos=teams.filter(t=>t.estado==='transito');
+  const ativos=teams.filter(t=>t.estado!=='previsto'&&t.estado!=='transito'&&t.estado!=='desmobilizado');
+  if(!previstos.length&&!transitos.length&&!ativos.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div>';return;}
 
   let html='';
 
@@ -3325,6 +3327,17 @@ function renderSectorView(teams, isClosed){
         <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
       </div>
       <div class="teams-grid">${sortWithChildren(previstos).map(t=>teamCardHtml(t,isClosed,previstos)).join('')}</div>
+    </div>`;
+  }
+
+  // EM TRÂNSITO block (below previstos, above sectors)
+  if(transitos.length){
+    html+=`<div class="transito-section">
+      <div class="transito-section-hdr">
+        <span class="transito-section-label">🚒 Em Trânsito</span>
+        <div class="sector-stats"><span class="sector-stat" style="color:var(--icnf-blue-light)">${transitos.length} meio${transitos.length!==1?'s':''} a caminho do TO</span></div>
+      </div>
+      <div class="teams-grid">${sortWithChildren(transitos).map(t=>teamCardHtml(t,isClosed,transitos)).join('')}</div>
     </div>`;
   }
 
