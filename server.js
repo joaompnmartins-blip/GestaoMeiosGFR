@@ -229,11 +229,15 @@ const MEIO_COLS = [
 const OCUPADO_ESTADOS = ['previsto','transito','operacao','descanso'];
 
 async function findRecursoConflict(recursoId, estado, excludeId) {
-  if (!recursoId || !OCUPADO_ESTADOS.includes(estado)) return null;
+  if (!recursoId) return null;
+  // Occupied = active state OR desmobilizado still "em regresso" (no chegada_entidade)
+  if (!OCUPADO_ESTADOS.includes(estado) && estado !== 'desmobilizado') return null;
   const { rows } = await pool.query(
     `SELECT o.local_ignicao FROM meios m
      JOIN ocorrencias o ON o.id = m.ocorrencia_id
-     WHERE m.recurso_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     WHERE m.recurso_id = $1
+     AND (m.estado = ANY($2) OR (m.estado = 'desmobilizado' AND m.data_chegada_entidade IS NULL))
+     AND m.id <> $3
      LIMIT 1`,
     [recursoId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
   );
@@ -241,11 +245,14 @@ async function findRecursoConflict(recursoId, estado, excludeId) {
 }
 
 async function findRecursoAdicionalConflict(recursoAdicionalId, estado, excludeId) {
-  if (!recursoAdicionalId || !OCUPADO_ESTADOS.includes(estado)) return null;
+  if (!recursoAdicionalId) return null;
+  if (!OCUPADO_ESTADOS.includes(estado) && estado !== 'desmobilizado') return null;
   const { rows } = await pool.query(
     `SELECT o.local_ignicao FROM meios m
      JOIN ocorrencias o ON o.id = m.ocorrencia_id
-     WHERE m.recurso_adicional_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     WHERE m.recurso_adicional_id = $1
+     AND (m.estado = ANY($2) OR (m.estado = 'desmobilizado' AND m.data_chegada_entidade IS NULL))
+     AND m.id <> $3
      LIMIT 1`,
     [recursoAdicionalId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
   );
@@ -253,11 +260,14 @@ async function findRecursoAdicionalConflict(recursoAdicionalId, estado, excludeI
 }
 
 async function findViaturaConflict(viaturaId, estado, excludeId) {
-  if (!viaturaId || !OCUPADO_ESTADOS.includes(estado)) return null;
+  if (!viaturaId) return null;
+  if (!OCUPADO_ESTADOS.includes(estado) && estado !== 'desmobilizado') return null;
   const { rows } = await pool.query(
     `SELECT o.local_ignicao FROM meios m
      JOIN ocorrencias o ON o.id = m.ocorrencia_id
-     WHERE m.viatura_id = $1 AND m.estado = ANY($2) AND m.id <> $3
+     WHERE m.viatura_id = $1
+     AND (m.estado = ANY($2) OR (m.estado = 'desmobilizado' AND m.data_chegada_entidade IS NULL))
+     AND m.id <> $3
      LIMIT 1`,
     [viaturaId, OCUPADO_ESTADOS, excludeId || '00000000-0000-0000-0000-000000000000']
   );
@@ -319,6 +329,27 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
 
   if (await hasPendingDeleteRequest(req.params.id)) {
     return res.status(409).json({ error: 'Este meio tem um pedido de remoção pendente e não pode ser editado.' });
+  }
+
+  // State machine: validate transitions (operacional role is strictly enforced; ofligacao/admin may correct)
+  if ('estado' in b && req.user.role === 'operacional') {
+    const { rows: curr } = await pool.query('SELECT estado FROM meios WHERE id=$1', [req.params.id]);
+    if (curr.length) {
+      const oldEstado = curr[0].estado;
+      const newEstado = b.estado;
+      if (oldEstado !== newEstado) {
+        const VALID = {
+          previsto:      new Set(['transito']),
+          transito:      new Set(['operacao']),
+          operacao:      new Set(['descanso','desmobilizado']),
+          descanso:      new Set(['operacao','desmobilizado']),
+          desmobilizado: new Set([]),
+        };
+        if (!(VALID[oldEstado] || new Set()).has(newEstado)) {
+          return res.status(422).json({ error: `Transição de estado inválida: ${oldEstado} → ${newEstado}.` });
+        }
+      }
+    }
   }
 
   if ('estado' in b && OCUPADO_ESTADOS.includes(b.estado)) {

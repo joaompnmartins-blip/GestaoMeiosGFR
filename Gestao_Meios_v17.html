@@ -735,6 +735,8 @@
             </table>
           </div>
         </div>
+        <!-- Desmobilização sections (always below main views) -->
+        <div id="desmob-section"></div>
       </div>
 
       <!-- ══════════ PAGE: MEIOS PREDEFINIDOS ══════════ -->
@@ -1349,27 +1351,27 @@
 
     <div class="modal-section">Mobilização</div>
     <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-data-despacho">
         <label class="form-label">Data Despacho</label>
         <input class="form-input" type="date" id="team-data-despacho"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-hora-despacho">
         <label class="form-label">Hora Despacho</label>
         <input class="form-input" type="time" id="team-hora-despacho"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-data-saida" style="display:none;">
         <label class="form-label">Data Saída Entidade</label>
         <input class="form-input" type="date" id="team-data-saida-entidade"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-hora-saida" style="display:none;">
         <label class="form-label">Hora Saída Entidade</label>
         <input class="form-input" type="time" id="team-hora-saida-entidade"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-data-chegada" style="display:none;">
         <label class="form-label">Data Chegada TO</label>
         <input class="form-input" type="date" id="team-data-chegada"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-hora-chegada" style="display:none;">
         <label class="form-label">Hora Chegada TO</label>
         <input class="form-input" type="time" id="team-hora-chegada"/>
       </div>
@@ -1381,23 +1383,23 @@
         <label class="form-label">Limite Op. (hora)</label>
         <input class="form-input" type="time" id="team-limite-op" placeholder="Calculado automaticamente"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-data-demob" style="display:none;">
         <label class="form-label">Data Saída TO</label>
         <input class="form-input" type="date" id="team-data-demob"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-hora-demob" style="display:none;">
         <label class="form-label">Hora Saída TO</label>
         <input class="form-input" type="time" id="team-hora-demob"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-data-chegada-entidade" style="display:none;">
         <label class="form-label">Data Chegada Entidade</label>
         <input class="form-input" type="date" id="team-data-chegada-entidade"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="mob-fld-hora-chegada-entidade" style="display:none;">
         <label class="form-label">Hora Chegada Entidade</label>
         <input class="form-input" type="time" id="team-hora-chegada-entidade"/>
       </div>
-      <div class="form-field span2">
+      <div class="form-field span2" id="mob-fld-km" style="display:none;">
         <label class="form-label">Km Percorridos</label>
         <input class="form-input" type="number" id="team-km" min="0" placeholder="Ex: 120" title="Quilómetros percorridos pelo meio"/>
       </div>
@@ -1407,7 +1409,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label class="form-label">Estado</label>
-        <select class="form-select" id="team-estado" onchange="togglePrevistoFields(this.value)">
+        <select class="form-select" id="team-estado" onchange="toggleMobilizacaoFields(this.value,!!document.getElementById('team-edit-id').value)">
           <option value="previsto">Previsto</option>
           <option value="transito">Em Trânsito</option>
           <option value="operacao">Em Operação</option>
@@ -3182,8 +3184,59 @@ function renderTeams(){
   if(currentView==='sector') renderSectorView(teams, isClosed);
   else if(currentView==='cards') renderCardsView(teams, isClosed);
   else renderTableView(teams, isClosed);
+  renderDesmobSection(teams, isClosed);
   // refresh timeline panel if visible
   if(document.getElementById('tl-panel').style.display!=='none') loadTimeline();
+}
+
+function renderDesmobSection(teams, isClosed){
+  const container=document.getElementById('desmob-section');
+  if(!container) return;
+  const canAct=['admin','ofligacao','operacional'].includes(currentRole);
+  const canEdit=['admin','ofligacao'].includes(currentRole);
+  const emRegresso=teams.filter(t=>t.estado==='desmobilizado'&&!t.dataChegadaEntidade);
+  const finalizado=teams.filter(t=>t.estado==='desmobilizado'&&t.dataChegadaEntidade);
+  let html='';
+  if(emRegresso.length){
+    html+=`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);">↩ Em regresso à base</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--inactive);background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 6px;">${emRegresso.length}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        ${emRegresso.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px;flex-wrap:wrap;">
+          ${nationalBadge(t)}
+          <span style="font-size:12px;font-weight:600;flex:1;min-width:120px;">${esc(t.eq)}</span>
+          <span class="badge badge-y" style="font-size:9px;">${esc(t.tipo||'—')}</span>
+          ${t.dataDemob?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);">Saída: ${t.dataDemob} ${t.horaDemob||''}</span>`:''}
+          <div style="display:flex;gap:4px;margin-left:auto;">
+            ${!isClosed&&canAct?`<button class="btn btn-success btn-xs" onclick="quickAction('chegadaBase','${t.id}')">✓ Chegada Base</button>`:''}
+            ${!isClosed&&canEdit?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎</button>`:''}
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  if(finalizado.length){
+    html+=`<div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--inactive);">✓ Desmobilização finalizada</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--inactive);background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 6px;">${finalizado.length}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        ${finalizado.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:4px;opacity:.7;flex-wrap:wrap;">
+          ${nationalBadge(t)}
+          <span style="font-size:12px;font-weight:600;flex:1;min-width:120px;">${esc(t.eq)}</span>
+          <span class="badge badge-y" style="font-size:9px;">${esc(t.tipo||'—')}</span>
+          ${t.dataDemob?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--inactive);">Saída: ${t.dataDemob} ${t.horaDemob||''}</span>`:''}
+          ${t.dataChegadaEntidade?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--inactive);">Base: ${t.dataChegadaEntidade} ${t.horaChegadaEntidade||''}</span>`:''}
+          ${t.km?`<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--inactive);">${t.km} km</span>`:''}
+          ${!isClosed&&canEdit?`<button class="btn btn-ghost btn-xs" style="margin-left:auto;" onclick="editTeam('${t.id}')">✎</button>`:''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  container.innerHTML=html;
 }
 
 function nationalBadge(t){
@@ -3258,10 +3311,9 @@ function renderSectorGroups(ativos, isClosed){
 
 function renderSectorView(teams, isClosed){
   const container=document.getElementById('view-sector');
-  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
-
   const previstos=teams.filter(t=>t.estado==='previsto');
-  const ativos=teams.filter(t=>t.estado!=='previsto');
+  const ativos=teams.filter(t=>t.estado!=='previsto'&&t.estado!=='desmobilizado');
+  if(!previstos.length&&!ativos.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div>';return;}
 
   let html='';
 
@@ -3311,11 +3363,12 @@ function renderSectorView(teams, isClosed){
 // ─── CARDS VIEW ────────────────────────────────────────────────
 function renderCardsView(teams, isClosed){
   const container=document.getElementById('view-cards');
-  if(!teams.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios registados.</div></div>';return;}
-  // Sort: operacao first, then transito, descanso, desmobilizado; within each sort by urgency
-  const order={operacao:0,transito:1,descanso:2,previsto:3,desmobilizado:4};
-  const sorted=[...teams].sort((a,b)=>{
-    const od=(order[a.estado]||0)-(order[b.estado]||0);
+  const active=teams.filter(t=>t.estado!=='desmobilizado');
+  if(!active.length){container.innerHTML='<div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos registados.</div></div>';return;}
+  // Sort: operacao first, then transito, descanso, previsto; within each sort by urgency
+  const order={operacao:0,transito:1,descanso:2,previsto:3};
+  const sorted=[...active].sort((a,b)=>{
+    const od=(order[a.estado]??9)-(order[b.estado]??9);
     if(od!==0) return od;
     const ta=timeInfo(a), tb=timeInfo(b);
     const pa=ta?ta.pct:0, pb=tb?tb.pct:0;
@@ -3327,13 +3380,14 @@ function renderCardsView(teams, isClosed){
 
 function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
-  if(!teams.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios.</div></div></td></tr>';return;}
-  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
-  const sorted = sortWithChildren([...teams]);
+  const active=teams.filter(t=>t.estado!=='desmobilizado');
+  if(!active.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div></td></tr>';return;}
+  const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
+  const sorted = sortWithChildren([...active]);
   tbody.innerHTML=sorted.map(t=>{
     const isChild  = !!t.meioPaiId;
-    const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
-    const childCount = isParent ? teams.filter(c=>c.meioPaiId===t.id).length : 0;
+    const isParent = !isChild && active.some(c=>c.meioPaiId===t.id);
+    const childCount = isParent ? active.filter(c=>c.meioPaiId===t.id).length : 0;
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
     const timeCell=ti?`<div style="display:flex;flex-direction:column;gap:2px;">
@@ -3341,7 +3395,7 @@ function renderTableView(teams, isClosed){
       <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}</span>
     </div>`:'—';
     const gc = t.egfrEquipa?'#1d4ed8':t.fsbfEmrId?'#b91c1c':t.fsbfBsbfId?'#b45309':null;
-    const parentGc = isChild ? (()=>{ const p=teams.find(x=>x.id===t.meioPaiId); return p?.egfrEquipa?'#1d4ed8':p?.fsbfEmrId?'#b91c1c':p?.fsbfBsbfId?'#b45309':null; })() : null;
+    const parentGc = isChild ? (()=>{ const p=active.find(x=>x.id===t.meioPaiId); return p?.egfrEquipa?'#1d4ed8':p?.fsbfEmrId?'#b91c1c':p?.fsbfBsbfId?'#b45309':null; })() : null;
     const nameCell = isChild
       ? `<span style="padding-left:16px;border-left:3px solid ${parentGc||'var(--border)'};display:inline-block;color:var(--muted)">└ ${esc(t.eq)}</span>`
       : isParent
@@ -3426,18 +3480,21 @@ function teamCardHtml(t, isClosed, _teams){
   }
 
   // Action buttons — hidden for closed ocorrências, or replaced by lock notice if a delete request is pending
+  const _canAct=['admin','ofligacao','operacional'].includes(currentRole);
+  const _canEdit=['admin','ofligacao'].includes(currentRole);
   const actionsHtml = isClosed ? '' : pendingDelete ? `<div class="team-card-actions">
       <span class="badge badge-warn" style="font-size:10px">🔒 Pedido de remoção pendente — edição bloqueada</span>
     </div>` : `<div class="team-card-actions">
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='operacao'&&t.estado!=='previsto'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='desmobilizado'?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">✕ Desmob.</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&t.estado!=='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)&&db.postos.length>0?`<button class="btn btn-ghost btn-xs" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
-      ${['admin','ofligacao','operacional'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
-      ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
-      ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
+      ${_canAct&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
+      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
+      ${_canAct&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
+      ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
+      ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
+      ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${_canAct&&db.postos.length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
+      ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
+      ${_canEdit?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
+      ${_canEdit?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
     </div>`;
 
   const natBadge = isParent ? nationalBadge(t) : '';
@@ -3495,31 +3552,46 @@ function quickAction(type, teamId){
   if(type==='transit'){
     title.textContent=`Activar Trânsito — ${t.eq}`;
     const now=new Date();
-    body.innerHTML=`
-      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma activação em <strong>trânsito</strong> para <strong>${esc(t.eq)}</strong>?</p>
-      <div class="form-grid" style="margin-top:14px;">
-        <div class="form-field"><label class="form-label">Data despacho</label><input class="form-input" id="qa-transit-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
-        <div class="form-field"><label class="form-label">Hora despacho</label><input class="form-input" id="qa-transit-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
-        <div class="form-field span2"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-transit-obs" rows="2" placeholder="Origem, destino, instruções…"></textarea></div>
-      </div>`;
-    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
-      <button class="btn btn-info" style="border-color:rgba(152,112,208,.4);color:#b890e8" onclick="doQuickTransit('${teamId}')">▶ Confirmar Trânsito</button>`;
-  }
-  else if(type==='op'){
-    title.textContent=`Activar Operação — ${t.eq}`;
-    const now=new Date();
     const dateStr=now.toISOString().split('T')[0];
     const timeStr=now.toTimeString().slice(0,5);
     body.innerHTML=`
-      <div class="form-grid" style="margin-top:12px;">
-        <div class="form-field"><label class="form-label">Data chegada/activação</label><input class="form-input" id="qa-date" type="date" value="${dateStr}"/></div>
-        <div class="form-field"><label class="form-label">Hora activação</label><input class="form-input" id="qa-time" type="time" value="${timeStr}"/></div>
-        <div class="form-field"><label class="form-label">Horas máx. operação</label><input class="form-input" id="qa-hmax" type="number" min="1" max="24" value="${t.horasMax||12}" placeholder="12"/></div>
-        <div class="form-field"><label class="form-label">Setor</label><select class="form-select" id="qa-setor">${['<option value="">— Setor —</option>',...SECTORES_PREDEFINIDOS.map(s=>`<option value="${s}"${t.setor===s?' selected':''}>${s}</option>`)].join('')}</select></div>
-        <div class="form-field span2"><label class="form-label">Missão</label><input class="form-input" id="qa-missao" value="${esc(t.missao||'')}" placeholder="Posição / missão atribuída"/></div>
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Regista a <strong>saída da entidade</strong> de <strong>${esc(t.eq)}</strong> para o teatro de operações.</p>
+      <div class="form-grid" style="margin-top:14px;">
+        ${!t.dataDespacho?`
+        <div class="form-field"><label class="form-label">Data Despacho</label><input class="form-input" id="qa-desp-date" type="date" value="${dateStr}"/></div>
+        <div class="form-field"><label class="form-label">Hora Despacho</label><input class="form-input" id="qa-desp-time" type="time" value="${timeStr}"/></div>
+        `:`<div class="form-field span2" style="font-size:11px;color:var(--muted);padding-top:4px;">Despacho registado: <strong>${t.dataDespacho} ${t.horaDespacho||''}</strong></div>`}
+        <div class="form-field"><label class="form-label">Data Saída Entidade</label><input class="form-input" id="qa-saida-date" type="date" value="${dateStr}"/></div>
+        <div class="form-field"><label class="form-label">Hora Saída Entidade</label><input class="form-input" id="qa-saida-time" type="time" value="${timeStr}"/></div>
+        <div class="form-field span2"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-transit-obs" rows="2" placeholder="Destino, rota…"></textarea></div>
       </div>`;
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
-      <button class="btn btn-success" onclick="doQuickOp('${teamId}')">▶ Confirmar Activação</button>`;
+      <button class="btn btn-info" style="border-color:rgba(152,112,208,.4);color:#b890e8" onclick="doQuickTransit('${teamId}')">▶ Confirmar Saída</button>`;
+  }
+  else if(type==='op'){
+    const now=new Date();
+    const dateStr=now.toISOString().split('T')[0];
+    const timeStr=now.toTimeString().slice(0,5);
+    if(t.estado==='descanso'){
+      title.textContent=`Retomar Operação — ${t.eq}`;
+      body.innerHTML=`
+        <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma retoma de <strong>operação</strong> por <strong>${esc(t.eq)}</strong>?</p>
+        <div class="form-field" style="margin-top:14px;"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-obs-resume" rows="2"></textarea></div>`;
+      footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+        <button class="btn btn-success" onclick="doQuickOp('${teamId}')">▶ Confirmar Retoma</button>`;
+    } else {
+      title.textContent=`Activar Operação — ${t.eq}`;
+      body.innerHTML=`
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-field"><label class="form-label">Data Chegada TO</label><input class="form-input" id="qa-date" type="date" value="${dateStr}"/></div>
+          <div class="form-field"><label class="form-label">Hora Chegada TO</label><input class="form-input" id="qa-time" type="time" value="${timeStr}"/></div>
+          <div class="form-field"><label class="form-label">Horas máx. operação</label><input class="form-input" id="qa-hmax" type="number" min="1" max="24" value="${t.horasMax||12}" placeholder="12"/></div>
+          <div class="form-field"><label class="form-label">Setor</label><select class="form-select" id="qa-setor">${['<option value="">— Setor —</option>',...SECTORES_PREDEFINIDOS.map(s=>`<option value="${s}"${t.setor===s?' selected':''}>${s}</option>`)].join('')}</select></div>
+          <div class="form-field span2"><label class="form-label">Missão</label><input class="form-input" id="qa-missao" value="${esc(t.missao||'')}" placeholder="Posição / missão atribuída"/></div>
+        </div>`;
+      footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+        <button class="btn btn-success" onclick="doQuickOp('${teamId}')">▶ Confirmar Activação</button>`;
+    }
   }
   else if(type==='rest'){
     title.textContent=`Activar Descanso — ${t.eq}`;
@@ -3534,17 +3606,31 @@ function quickAction(type, teamId){
       <button class="btn btn-warn" onclick="doQuickRest('${teamId}')">⏸ Confirmar Descanso</button>`;
   }
   else if(type==='demob'){
-    title.textContent=`Desmobilização — ${t.eq}`;
+    title.textContent=`Desmobilizar — ${t.eq}`;
     const now=new Date();
     body.innerHTML=`
-      <p style="font-size:13px;color:var(--muted);margin-top:12px;">Confirma a desmobilização de <strong>${esc(t.eq)}</strong>?</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Regista a <strong>saída do teatro de operações</strong> de <strong>${esc(t.eq)}</strong>. O meio ficará em regresso à base.</p>
       <div class="form-grid" style="margin-top:14px;">
-        <div class="form-field"><label class="form-label">Data desmob.</label><input class="form-input" id="qa-demob-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
-        <div class="form-field"><label class="form-label">Hora desmob.</label><input class="form-input" id="qa-demob-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
-        <div class="form-field span2"><label class="form-label">Observação</label><textarea class="form-textarea" id="qa-obs-demob" rows="2" placeholder="Motivo, destino…"></textarea></div>
+        <div class="form-field"><label class="form-label">Data Saída TO</label><input class="form-input" id="qa-demob-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
+        <div class="form-field"><label class="form-label">Hora Saída TO</label><input class="form-input" id="qa-demob-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
+        <div class="form-field span2"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-obs-demob" rows="2" placeholder="Destino, motivo…"></textarea></div>
       </div>`;
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
-      <button class="btn btn-danger" onclick="doQuickDemob('${teamId}')">✕ Confirmar Desmob.</button>`;
+      <button class="btn btn-danger" onclick="doQuickDemob('${teamId}')">↩ Confirmar Saída TO</button>`;
+  }
+  else if(type==='chegadaBase'){
+    title.textContent=`Chegada à Base — ${t.eq}`;
+    const now=new Date();
+    body.innerHTML=`
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Regista a <strong>chegada à entidade de origem</strong> de <strong>${esc(t.eq)}</strong>. O meio ficará disponível para nova mobilização.</p>
+      <div class="form-grid" style="margin-top:14px;">
+        <div class="form-field"><label class="form-label">Data Chegada Entidade</label><input class="form-input" id="qa-cb-date" type="date" value="${now.toISOString().split('T')[0]}"/></div>
+        <div class="form-field"><label class="form-label">Hora Chegada Entidade</label><input class="form-input" id="qa-cb-time" type="time" value="${now.toTimeString().slice(0,5)}"/></div>
+        <div class="form-field"><label class="form-label">Km Percorridos (opcional)</label><input class="form-input" id="qa-cb-km" type="number" min="0" value="${t.km||''}"/></div>
+        <div class="form-field"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-obs-cb" rows="2"></textarea></div>
+      </div>`;
+    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+      <button class="btn btn-success" onclick="doQuickChegadaBase('${teamId}')">✓ Confirmar Chegada</button>`;
   }
   else if(type==='sector'){
     title.textContent=`Mudar Setor — ${t.eq}`;
@@ -3590,7 +3676,7 @@ function quickAction(type, teamId){
       <button class="btn btn-primary" onclick="doQuickMovePCO('${teamId}')">⇄ Confirmar Transferência</button>`;
   }
   // If this meio belongs to a composite team, offer "apply to all" checkbox
-  if(['transit','op','rest','demob','sector','posto'].includes(type)){
+  if(['transit','op','rest','demob','sector','posto','chegadaBase'].includes(type)){
     const siblings = compositeGroupSiblings(t);
     if(siblings.length > 0){
       const label = compositeGroupLabel(t);
@@ -3632,14 +3718,18 @@ function compositeGroupLabel(t){
 }
 
 // ── Per-team apply helpers (reused by doQuick* and sibling loops) ─
-async function applyTransitToTeam(t, d, h, obs){
-  t.estado='transito'; t.dataDespacho=d||null; t.horaDespacho=h||null;
+async function applyTransitToTeam(t, saidaDate, saidaTime, obs, despDate, despTime){
+  t.estado='transito';
+  t.dataSaidaEntidade=saidaDate||null; t.horaSaidaEntidade=saidaTime||null;
+  if(despDate){ t.dataDespacho=despDate; t.horaDespacho=despTime||null; }
   t.previstoData=null; t.previstoHora=null;
-  const msg=`Activado em trânsito${d?' — despacho: '+d+' '+h:''}${obs?' — '+obs:''}.`;
+  const msg=`Saída da entidade${saidaDate?' '+saidaDate+' '+saidaTime:''}${obs?' — '+obs:''}.`;
   addEventLog(t,msg);
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'transito',data_despacho:d||null,hora_despacho:h||null,previsto_data:null,previsto_hora:null}},t.id,`Trânsito: ${t.eq}`);
+  const row={estado:'transito',data_saida_entidade:saidaDate||null,hora_saida_entidade:saidaTime||null,previsto_data:null,previsto_hora:null};
+  if(despDate){ row.data_despacho=despDate; row.hora_despacho=despTime||null; }
+  await supaWriteOrQueue('meios','update',{id:t.id,row},t.id,`Trânsito: ${t.eq}`);
   await persistEvento(t.id,msg);
-  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em trânsito.`,t.eq,t.postoComandoId);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — em trânsito${saidaDate?' (saída '+saidaDate+' '+saidaTime+')':''}.`,t.eq,t.postoComandoId);
 }
 
 async function applyOpToTeam(t, d, h, hmax, setor, missao){
@@ -3705,13 +3795,15 @@ async function applyPostoToTeam(t, postoId, postoNome){
 
 async function doQuickTransit(id){
   const t=db.teams.find(x=>x.id===id); if(!t) return;
-  const d=document.getElementById('qa-transit-date').value;
-  const h=document.getElementById('qa-transit-time').value;
-  const obs=document.getElementById('qa-transit-obs').value.trim();
+  const saidaDate=document.getElementById('qa-saida-date')?.value||'';
+  const saidaTime=document.getElementById('qa-saida-time')?.value||'';
+  const despDate=document.getElementById('qa-desp-date')?.value||'';
+  const despTime=document.getElementById('qa-desp-time')?.value||'';
+  const obs=document.getElementById('qa-transit-obs')?.value?.trim()||'';
   const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
-    await applyTransitToTeam(t,d,h,obs);
-    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyTransitToTeam(s,d,h,'');
+    await applyTransitToTeam(t,saidaDate,saidaTime,obs,despDate||null,despTime||null);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyTransitToTeam(s,saidaDate,saidaTime,'',despDate||null,despTime||null);
   } catch(e){ console.warn('doQuickTransit:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Em Trânsito.`,'ok');
@@ -3719,12 +3811,36 @@ async function doQuickTransit(id){
 
 async function doQuickOp(id){
   const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
+
+  if(t.estado==='descanso'){
+    // Resume operation from rest — no new timestamps
+    const obs=document.getElementById('qa-obs-resume')?.value?.trim()||'';
+    try {
+      t.estado='operacao';
+      const msg=`Retomou operação${obs?' — '+obs:''}.`;
+      addEventLog(t,msg);
+      await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao'}},t.id,`Retoma Op.: ${t.eq}`);
+      await persistEvento(t.id,msg);
+      await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — retomou operação.`,t.eq,t.postoComandoId);
+      if(applyAll) for(const s of compositeGroupSiblings(t)){
+        if(s.estado==='descanso'){
+          s.estado='operacao';
+          await supaWriteOrQueue('meios','update',{id:s.id,row:{estado:'operacao'}},s.id,`Retoma Op.: ${s.eq}`);
+          await persistEvento(s.id,'Retomou operação.');
+        }
+      }
+    } catch(e){ console.warn('doQuickOp resume:', e); }
+    closeModal('modal-action'); await cacheToIDB(); renderTeams();
+    toast(`✓ ${t.eq} — Em Operação.`,'ok');
+    return;
+  }
+
   const d=document.getElementById('qa-date').value;
   const h=document.getElementById('qa-time').value;
   const hmax=parseInt(document.getElementById('qa-hmax').value)||12;
   const setor=document.getElementById('qa-setor').value.trim()||t.setor;
   const missao=document.getElementById('qa-missao').value.trim()||t.missao;
-  const applyAll=document.getElementById('qa-apply-all')?.checked;
   try {
     await applyOpToTeam(t,d,h,hmax,setor,missao);
     if(applyAll) for(const s of compositeGroupSiblings(t)) await applyOpToTeam(s,d,h,hmax,setor,missao);
@@ -3757,7 +3873,40 @@ async function doQuickDemob(id){
     if(applyAll) for(const s of compositeGroupSiblings(t)) await applyDemobToTeam(s,date,time,obs);
   } catch(e){ console.warn('doQuickDemob:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
-  toast(`✓ ${t.eq} — Desmobilizado.`,'info');
+  toast(`✓ ${t.eq} — Em regresso à base.`,'info');
+}
+
+async function applyChegadaBaseToTeam(t, date, time, km, obs){
+  t.dataChegadaEntidade=date; t.horaChegadaEntidade=time;
+  const kmVal=km?parseInt(km):null; if(kmVal) t.km=kmVal;
+  if(obs) t.obs=obs;
+  const msg=`Chegada à base ${date} ${time}${kmVal?' · '+kmVal+' km':''}.`;
+  addEventLog(t,msg);
+  const row={data_chegada_entidade:date,hora_chegada_entidade:time};
+  if(kmVal!==null) row.km=kmVal;
+  if(obs) row.obs=obs;
+  await supaWriteOrQueue('meios','update',{id:t.id,row},t.id,`Chegada base: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — chegada à base ${date} ${time}.`,t.eq,t.postoComandoId);
+}
+
+async function doQuickChegadaBase(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const date=document.getElementById('qa-cb-date').value;
+  const time=document.getElementById('qa-cb-time').value;
+  const km=document.getElementById('qa-cb-km')?.value||'';
+  const obs=document.getElementById('qa-obs-cb')?.value?.trim()||'';
+  if(!date||!time){ toast('Data e hora de chegada obrigatórias.','err'); return; }
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
+  try {
+    await applyChegadaBaseToTeam(t,date,time,km,obs);
+    if(applyAll) for(const s of compositeGroupSiblings(t)){
+      if(s.estado==='desmobilizado'&&!s.dataChegadaEntidade)
+        await applyChegadaBaseToTeam(s,date,time,km,'');
+    }
+  } catch(e){ console.warn('doQuickChegadaBase:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — Desmobilização finalizada.`,'ok');
 }
 
 async function doQuickSector(id){
@@ -3818,11 +3967,24 @@ function makeOpsItem(val, idx){
   return div;
 }
 
-function togglePrevistoFields(val){
-  const show=val==='previsto';
-  document.getElementById('previsto-data-field').style.display=show?'':'none';
-  document.getElementById('previsto-hora-field').style.display=show?'':'none';
+function toggleMobilizacaoFields(estado, isEdit){
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.style.display=v?'':'none';};
+  const hasSaida  = isEdit || ['transito','operacao','descanso','desmobilizado'].includes(estado);
+  const hasChegad = isEdit || ['operacao','descanso','desmobilizado'].includes(estado);
+  const hasDmob   = isEdit || estado==='desmobilizado';
+  s('mob-fld-data-saida', hasSaida);
+  s('mob-fld-hora-saida', hasSaida);
+  s('mob-fld-data-chegada', hasChegad);
+  s('mob-fld-hora-chegada', hasChegad);
+  s('mob-fld-data-demob', hasDmob);
+  s('mob-fld-hora-demob', hasDmob);
+  s('mob-fld-data-chegada-entidade', hasDmob);
+  s('mob-fld-hora-chegada-entidade', hasDmob);
+  s('mob-fld-km', hasDmob);
+  s('previsto-data-field', estado==='previsto');
+  s('previsto-hora-field', estado==='previsto');
 }
+function togglePrevistoFields(val){ toggleMobilizacaoFields(val, false); }
 
 function syncOpsFields(n){
   const count=parseInt(n)||0;
@@ -3900,10 +4062,10 @@ function openAddTeam(){
   document.getElementById('team-estado').value='previsto';
   document.getElementById('team-previsto-data').value='';
   document.getElementById('team-previsto-hora').value='';
-  togglePrevistoFields('previsto');
+  toggleMobilizacaoFields('previsto', false);
   document.getElementById('team-data-despacho').value='';
   document.getElementById('team-data-saida-entidade').value='';
-  document.getElementById('team-data-chegada').value=new Date().toISOString().split('T')[0];
+  document.getElementById('team-data-chegada').value='';
   document.getElementById('team-data-demob').value='';
   const opsDl=document.getElementById('ops-datalist'); if(opsDl) opsDl.remove();
   document.getElementById('ops-list').innerHTML='';
@@ -4104,7 +4266,7 @@ function editTeam(id){
   document.getElementById('team-estado').value=t.estado||'transito';
   document.getElementById('team-previsto-data').value=t.previstoData||'';
   document.getElementById('team-previsto-hora').value=t.previstoHora||'';
-  togglePrevistoFields(t.estado||'transito');
+  toggleMobilizacaoFields(t.estado||'transito', true);
   document.getElementById('team-obs').value=t.obs||'';
   // Operatives
   const list=document.getElementById('ops-list');
@@ -4190,13 +4352,14 @@ async function saveTeam(){
     postoComandoId: editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null),
   };
 
-  // Exclusividade: um meio em uso (previsto/trânsito/operação/descanso)
-  // não pode ser adicionado a nenhuma ocorrência, incluindo a mesma.
+  // Exclusividade: meio ocupado = activo OU desmobilizado sem chegada_entidade
   const OCUPADO_ESTADOS_FE=['previsto','transito','operacao','descanso'];
-  if(OCUPADO_ESTADOS_FE.includes(payload.estado)){
+  const isOccupying = OCUPADO_ESTADOS_FE.includes(payload.estado) || payload.estado==='desmobilizado';
+  if(isOccupying){
     const conflict=db.teams.find(other=>{
       if(other.id===editId) return false;
-      if(!OCUPADO_ESTADOS_FE.includes(other.estado)) return false;
+      const otherOccupied = OCUPADO_ESTADOS_FE.includes(other.estado) || (other.estado==='desmobilizado'&&!other.dataChegadaEntidade);
+      if(!otherOccupied) return false;
       if(payload.recursoAdicionalId && other.recursoAdicionalId) return other.recursoAdicionalId===payload.recursoAdicionalId;
       if(payload.equipaId && other.equipaId) return other.equipaId===payload.equipaId;
       return other.eq.trim().toLowerCase()===eq.toLowerCase()
@@ -4470,12 +4633,14 @@ function refreshPresetSelect(selectedId){
   const fTE = teSel?.value || '';
   const fSR = srSel?.value || '';
 
-  // Busy set: recursos already allocated elsewhere (any state except desmobilizado)
+  // Busy set: recursos allocated elsewhere (active states OR desmobilizado without chegada_entidade)
   const editId = document.getElementById('team-edit-id')?.value || null;
   const busyRecurso = new Set();
   const busyNome = new Set();
   db.teams.forEach(t=>{
-    if(t.id===editId || t.ocorrencia_id===currentOccId || t.estado==='desmobilizado') return;
+    if(t.id===editId || t.ocorrencia_id===currentOccId) return;
+    // Released only when desmobilização is fully complete (chegada_entidade registered)
+    if(t.estado==='desmobilizado' && t.dataChegadaEntidade) return;
     if(t.recursoId)          busyRecurso.add(t.recursoId);
     if(t.equipaId)           busyRecurso.add(t.equipaId);
     if(t.recursoAdicionalId) busyRecurso.add('ra:'+t.recursoAdicionalId);
