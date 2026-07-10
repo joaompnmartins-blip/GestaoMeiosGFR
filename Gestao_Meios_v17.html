@@ -403,7 +403,12 @@
     /* ALERTS ROW */
     .alerts-row{margin-bottom:16px;}
     .alert-item{display:flex;align-items:center;gap:10px;padding:8px 14px;background:rgba(224,80,80,.06);border:1px solid rgba(224,80,80,.2);border-radius:2px;margin-bottom:6px;font-size:12px;}
-    .alert-item .alert-icon{font-size:14px;}
+    .alert-item.alert-posit{background:rgba(200,154,42,.06);border-color:rgba(200,154,42,.22);}
+    .alert-item .alert-icon{font-size:14px;flex-shrink:0;}
+    .alert-item .alert-body{flex:1;}
+    .alert-item .alert-btns{display:flex;gap:4px;flex-shrink:0;margin-left:8px;}
+    .alert-item .alert-btns button{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:.04em;}
+    .alert-item .alert-btns button:hover{background:var(--surface2);color:var(--text);}
 
     /* ARQUIVO CARD */
     .arq-card{background:var(--surface);border:1px solid var(--border);border-radius:2px;cursor:pointer;transition:border-color .15s;position:relative;overflow:hidden;opacity:.82;}
@@ -3266,15 +3271,57 @@ function sortWithChildren(teams){
   return result;
 }
 
+// ── Alert suppress state (in-memory; resets on page reload) ─────
+const _alertSuppress={};
+function _isAlertSuppressed(key){ return !!(_alertSuppress[key] && Date.now()<_alertSuppress[key]); }
+function dismissAlert(key,ms){ _alertSuppress[key]=Date.now()+(ms||3600000); _reRenderAlerts(); }
+function snoozeAlert(key){      _alertSuppress[key]=Date.now()+1800000;       _reRenderAlerts(); }
+function _reRenderAlerts(){
+  const teams=(db.teams||[]).filter(t=>t.ocorrencia_id===currentOccId);
+  renderAlerts(teams);
+}
+
+function _alertHtml(icon, key, msg, extraCls){
+  if(_isAlertSuppressed(key)) return '';
+  return `<div class="alert-item${extraCls?' '+extraCls:''}">
+    <span class="alert-icon">${icon}</span>
+    <span class="alert-body">${msg}</span>
+    <span class="alert-btns">
+      <button onclick="snoozeAlert('${key}')">Adiar 30m</button>
+      <button onclick="dismissAlert('${key}')">Dispensar</button>
+    </span>
+  </div>`;
+}
+
 function renderAlerts(teams){
   const alerts=[];
+
+  // ── Operational limit alerts ──────────────────────────────────
   teams.forEach(t=>{
     if(t.estado!=='operacao') return;
     const ti=timeInfo(t);
     if(!ti) return;
-    if(ti.remMin<=0) alerts.push(`<div class="alert-item"><span class="alert-icon">🚨</span><strong>${esc(t.eq)}</strong>&nbsp;— limite de operação EXPIRADO. Activar descanso imediatamente.</div>`);
-    else if(ti.pct>=85) alerts.push(`<div class="alert-item"><span class="alert-icon">⚠️</span><strong>${esc(t.eq)}</strong>&nbsp;— ${ti.label} restantes antes do limite obrigatório.</div>`);
+    const key=`op-lim-${t.id}`;
+    if(ti.remMin<=0)
+      alerts.push(_alertHtml('🚨',key,`<strong>${esc(t.eq)}</strong> — limite de operação EXPIRADO. Ativar descanso logo que possível.`));
+    else if(ti.pct>=85)
+      alerts.push(_alertHtml('⚠️',key,`<strong>${esc(t.eq)}</strong> — ${ti.label} restantes antes do limite de descanso recomendado.`));
   });
+
+  // ── POSIT reminder (every 3h from ocorrência início) ─────────
+  const occ=db.ocorrencias.find(o=>o.id===currentOccId);
+  if(occ&&occ.inicio){
+    const elapsed=Date.now()-new Date(occ.inicio).getTime();
+    const slot=Math.floor(elapsed/(3*3600000));
+    if(slot>=1){
+      const key=`posit-${currentOccId}-${slot}`;
+      const hoursElapsed=slot*3;
+      alerts.push(_alertHtml('📋',key,
+        `<strong>POSIT</strong> — Decorreram ${hoursElapsed}h desde o início da ocorrência. Publicar relatório de situação.`,
+        'alert-posit'));
+    }
+  }
+
   document.getElementById('alerts-row').innerHTML=alerts.join('');
 }
 
