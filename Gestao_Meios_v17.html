@@ -5248,8 +5248,25 @@ function exportLog(){
   lines.push(`  Concelho       : ${o.concelho||'—'}`);
   lines.push(`  Início         : ${o.inicio?new Date(o.inicio).toLocaleString('pt-PT'):'—'}`);
   lines.push(`  Estado         : ${o.status==='active'?'ATIVA':'FECHADA'}`);
+  lines.push(`  Of. Ligação    : ${o.oficialLigacaoNome||'—'}`);
+  const olnServico = (db.olnServico||[]);
+  lines.push(`  OLN/CCON serv. : ${olnServico.length ? olnServico.map(s=>s.nome+(s.contacto?' ('+s.contacto+')':'')).join(' / ') : '—'}`);
   lines.push(`  Relatório em   : ${now}`);
   lines.push('');
+
+  // Postos de comando
+  const postos = db.postos.filter(p=>p.ocorrencia_id===currentOccId);
+  if(postos.length){
+    lines.push(sep2);
+    lines.push('  POSTOS DE COMANDO');
+    lines.push(sep2);
+    postos.forEach(p=>{
+      const meioCount = teams.filter(t=>t.postoComandoId===p.id).length;
+      lines.push(`  [${p.tipo||'PCO'}] ${p.nome}  ·  OL: ${p.oficial_ligacao_nome||'—'}  ·  ${meioCount} meio${meioCount!==1?'s':''}`);
+    });
+    lines.push('');
+  }
+
   lines.push(sep2);
   lines.push(`  RESUMO: ${teams.length} meios · ${teams.filter(t=>t.estado==='operacao').length} em op. · ${teams.filter(t=>t.estado==='descanso').length} descanso · ${teams.filter(t=>t.estado==='desmobilizado').length} desmob.`);
   lines.push(sep2);
