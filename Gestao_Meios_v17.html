@@ -153,6 +153,7 @@
     .btn-info{background:rgba(90,184,214,.1);color:var(--accent3);border:1px solid rgba(90,184,214,.25);}
     .btn-sm{padding:4px 10px;font-size:11px;}
     .btn-xs{padding:3px 7px;font-size:10px;}
+    .btn-card{padding:5px 11px;font-size:11px;}
 
     /* STAT CARDS */
     .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px;}
@@ -3588,17 +3589,17 @@ function teamCardHtml(t, isClosed, _teams){
   const actionsHtml = isClosed ? '' : pendingDelete ? `<div class="team-card-actions">
       <span class="badge badge-warn" style="font-size:10px">🔒 Pedido de remoção pendente — edição bloqueada</span>
     </div>` : `<div class="team-card-actions">
-      ${_canAct&&t.estado==='previsto'?`<button class="btn btn-info btn-xs" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
-      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
-      ${_canAct&&t.estado==='operacao'?`<button class="btn btn-warn btn-xs" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
-      ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-xs" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
-      ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-xs" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
-      ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-xs" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
-      ${_canAct&&db.postos.length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
-      ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-xs" onclick="quickAction('obs','${t.id}')">📝 Obs.</button>`:''}
-      <button class="btn btn-ghost btn-xs" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">ℹ</button>
-      ${_canEdit?`<button class="btn btn-ghost btn-xs" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
-      ${_canEdit?`<button class="btn btn-danger btn-xs" onclick="deleteTeam('${t.id}')">🗑</button>`:''}
+      ${_canAct&&t.estado==='previsto'?`<button class="btn btn-info btn-card" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
+      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
+      ${_canAct&&t.estado==='operacao'?`<button class="btn btn-warn btn-card" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
+      ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
+      ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
+      ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${_canAct&&db.postos.length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
+      ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('obs','${t.id}')">📝 Evento</button>`:''}
+      <button class="btn btn-ghost btn-card" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">Ficha Meio</button>
+      ${_canEdit?`<button class="btn btn-ghost btn-card" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
+      ${_canEdit?`<button class="btn btn-danger btn-card" onclick="deleteTeam('${t.id}')">✕ Remover</button>`:''}
     </div>`;
 
   const natBadge = isParent ? nationalBadge(t) : '';
