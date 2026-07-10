@@ -3590,7 +3590,7 @@ function teamCardHtml(t, isClosed, _teams){
       <span class="badge badge-warn" style="font-size:10px">🔒 Pedido de remoção pendente — edição bloqueada</span>
     </div>` : `<div class="team-card-actions">
       ${_canAct&&t.estado==='previsto'?`<button class="btn btn-info btn-card" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
-      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Activar Op.</button>`:''}
+      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Entrada TO</button>`:''}
       ${_canAct&&t.estado==='operacao'?`<button class="btn btn-warn btn-card" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
       ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
       ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
