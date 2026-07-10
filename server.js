@@ -2213,6 +2213,11 @@ async function runMigrations() {
        )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS ocorrencias_codigo_idx ON ocorrencias (codigo_ocorrencia) WHERE codigo_ocorrencia IS NOT NULL`,
     `ALTER TABLE IF EXISTS ocorrencias ADD COLUMN IF NOT EXISTS merged_into UUID REFERENCES ocorrencias(id) ON DELETE SET NULL`,
+    `DO $$ BEGIN
+       ALTER TABLE ocorrencias DROP CONSTRAINT IF EXISTS ocorrencias_status_check;
+       ALTER TABLE ocorrencias ADD CONSTRAINT ocorrencias_status_check
+         CHECK (status IN ('active','closed','merged'));
+     EXCEPTION WHEN OTHERS THEN NULL; END $$`,
     `CREATE TABLE IF NOT EXISTS recursos_adicionais (
        id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
        nome                    TEXT NOT NULL,
