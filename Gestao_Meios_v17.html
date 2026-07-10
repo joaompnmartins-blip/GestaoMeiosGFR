@@ -2803,7 +2803,9 @@ async function saveOcorrencia(){
     await persistOccEvento(id, 'occ', `Ocorrência criada — ${nome}${payload.ref?' · Cód. '+payload.ref:''}${payload.concelho?' · '+payload.concelho:''}`);
     await persistOccEvento(id, 'oficial_ligacao', `${currentNome} assumiu o papel de Oficial de Ligação desta ocorrência.`);
   }
-  closeModal('modal-occ'); toast('Ocorrência guardada!','ok'); await cacheToIDB(); renderOcorrencias();
+  closeModal('modal-occ'); await cacheToIDB(); renderOcorrencias();
+  if(!editId){ toast('Ocorrência criada!','ok'); openOcorrencia(id); }
+  else toast('Ocorrência guardada!','ok');
 }
 
 function _refreshOccPostos(occId, isClosed){
