@@ -2804,7 +2804,7 @@ async function saveOcorrencia(){
     await persistOccEvento(id, 'oficial_ligacao', `${currentNome} assumiu o papel de Oficial de Ligação desta ocorrência.`);
   }
   closeModal('modal-occ'); await cacheToIDB(); renderOcorrencias();
-  if(!editId){ toast('Ocorrência criada!','ok'); openOcorrencia(id); }
+  if(!editId){ toast('Ocorrência criada!','ok'); openDetalhe(id); }
   else toast('Ocorrência guardada!','ok');
 }
 
