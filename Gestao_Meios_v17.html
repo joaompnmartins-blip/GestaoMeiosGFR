@@ -141,6 +141,11 @@
     .btn-primary:hover{background:#a0ab20;}
     .btn-danger{background:rgba(224,80,80,.1);color:var(--danger);border:1px solid rgba(224,80,80,.25);}
     .btn-danger:hover{background:rgba(224,80,80,.18);}
+    .btn-danger-fill{background:rgba(200,60,60,.85);color:#fff;border:1px solid rgba(200,60,60,.9);}
+    .btn-danger-fill:hover{background:rgb(200,60,60);}
+    /* MEIOS ACTION BAR */
+    .meios-hdr-actions{display:flex;align-items:center;justify-content:space-between;flex:1;margin-left:20px;gap:8px;}
+    .meios-hdr-left,.meios-hdr-center,.meios-hdr-right{display:flex;align-items:center;gap:6px;}
     .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
     .btn-ghost:hover{color:var(--text);border-color:var(--inactive);}
     .btn-warn{background:rgba(200,154,42,.1);color:var(--warn);border:1px solid rgba(200,154,42,.28);}
@@ -699,17 +704,26 @@
 
         <div class="section-hdr">
           <div class="section-title">Listagem de meios <span id="team-count-label"></span></div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <div class="view-toggle">
-              <button class="view-btn active" id="vbtn-sector" onclick="setView('sector')">⊞ Setores</button>
-              <button class="view-btn" id="vbtn-cards" onclick="setView('cards')">⊟ Cartões</button>
-              <button class="view-btn" id="vbtn-table" onclick="setView('table')">≡ Tabela</button>
+          <div class="meios-hdr-actions">
+            <!-- Left: view toggles -->
+            <div class="meios-hdr-left">
+              <div class="view-toggle">
+                <button class="view-btn active" id="vbtn-sector" onclick="setView('sector')">⊞ Setores</button>
+                <button class="view-btn" id="vbtn-cards" onclick="setView('cards')">⊟ Cartões</button>
+                <button class="view-btn" id="vbtn-table" onclick="setView('table')">≡ Tabela</button>
+              </div>
             </div>
-            <button class="btn btn-ghost btn-sm auth-ofligacao" onclick="openAddTeam()">+ Adicionar Meio</button>
-            <button class="btn btn-ghost btn-sm auth-ofligacao" id="btnFundir" onclick="openMergeModal()" style="display:none;">⇒ Fundir</button>
-            <button class="btn btn-warn btn-sm auth-ofligacao" id="btnCloseOcc" onclick="toggleCloseOcorrencia()">Fechar Ocorrência</button>
-            <button class="btn btn-ghost btn-sm auth-op" onclick="exportLog()" title="Exportar log completo">⬇ Log</button>
-            <button class="btn btn-warn btn-sm" onclick="toggleTimeline()" id="btnTimeline">Fita do Tempo</button>
+            <!-- Centre: operative actions -->
+            <div class="meios-hdr-center">
+              <button class="btn btn-primary auth-ofligacao" onclick="openAddTeam()">+ Adicionar Meio</button>
+              <button class="btn btn-primary auth-ofligacao" id="btnFundir" onclick="openMergeModal()" style="display:none;">⇒ Fundir</button>
+            </div>
+            <!-- Right: secondary actions + close -->
+            <div class="meios-hdr-right">
+              <button class="btn btn-ghost btn-sm auth-op" onclick="exportLog()" title="Exportar relatório completo">⬇ Relatório</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleTimeline()" id="btnTimeline">Fita do Tempo</button>
+              <button class="btn btn-danger-fill auth-ofligacao" id="btnCloseOcc" onclick="toggleCloseOcorrencia()">Fechar Ocorrência</button>
+            </div>
           </div>
         </div>
 
@@ -2869,7 +2883,7 @@ function openDetalhe(id){
   document.getElementById('btnFundir').style.display=isClosed?'none':'';
   document.getElementById('btnCloseOcc').style.display=isMerged?'none':'';
   document.getElementById('btnCloseOcc').textContent=isClosed?'↩ Reabrir Ocorrência':'Fechar Ocorrência';
-  document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success btn-sm auth-ofligacao':'btn btn-warn btn-sm auth-ofligacao';
+  document.getElementById('btnCloseOcc').className=isClosed?'btn btn-success auth-ofligacao':'btn btn-danger-fill auth-ofligacao';
   // Hide "Adicionar Meio" and quick actions for archived ocorrências
   const addMeioBtn=document.querySelector('.section-hdr .btn-ghost.auth-ofligacao[onclick="openAddTeam()"]');
   if(addMeioBtn) addMeioBtn.style.display=isClosed?'none':'';
