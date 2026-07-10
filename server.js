@@ -194,6 +194,7 @@ app.post('/api/ocorrencias/merge', requireAuth('ofligacao'), wrap(async (req, re
     await client.query('UPDATE meios               SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
     await client.query('UPDATE postos_comando       SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
     await client.query('UPDATE ocorrencias_eventos  SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
+    await client.query('UPDATE ocorrencia_timeline  SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
     await client.query('UPDATE meio_delete_requests SET ocorrencia_id = $1 WHERE ocorrencia_id = ANY($2)', [nova.id, ids]);
     await client.query(`UPDATE ocorrencias SET status = 'merged', merged_into = $1 WHERE id = ANY($2)`, [nova.id, ids]);
     await client.query(
