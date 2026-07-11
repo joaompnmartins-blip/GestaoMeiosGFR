@@ -2210,7 +2210,7 @@ function applyRoleUI(){
     if(navEl) navEl.style.display = currentRole==='ofligacao' ? 'none' : '';
   });
   // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
-  const showSrFilter = isAdmin || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
+  const showSrFilter = isAdmin || currentRole==='visualizador' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   // OfLigacao+ elements
@@ -2573,7 +2573,7 @@ function tipologiaBreakdown(teams){
     counts[c].ops+=parseInt(t.operacionais)||0;
   });
   return cats.filter(c=>counts[c].meios>0)
-    .map(c=>`<span class="viz-tip-item"><strong>${c}</strong> ${counts[c].meios}m · ${counts[c].ops} op.</span>`)
+    .map(c=>`<span class="viz-tip-item"><strong>${c}</strong> ${counts[c].meios} Meios · ${counts[c].ops} Operacionais</span>`)
     .join('');
 }
 
@@ -2587,10 +2587,13 @@ function postoCardHtmlViz(p){
         <span class="badge ${tipoCls}" style="font-size:9px">${esc(p.tipo)}</span>
         <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;">${esc(p.nome)}</span>
         ${p.oficial_ligacao_nome?`<span style="font-size:10px;color:var(--muted)">OL: ${esc(p.oficial_ligacao_nome)}</span>`:''}
-        <span style="font-size:10px;color:var(--muted);margin-left:auto;">${pt.length} meio${pt.length!==1?'s':''} · ${totalOps} op.</span>
       </div>
     </div>
-    ${pt.length?`<div style="padding:4px 14px 8px 16px;"><div class="viz-tip-grid">${tipologiaBreakdown(pt)}</div></div>`:''}
+    <div style="padding:6px 14px 10px 16px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;">
+      <div><span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;line-height:1;">${pt.length}</span><div style="font-size:10px;color:var(--muted);">Meios</div></div>
+      <div><span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;line-height:1;">${totalOps}</span><div style="font-size:10px;color:var(--muted);">Operacionais</div></div>
+      ${pt.length?`<div class="viz-tip-grid" style="flex:1;">${tipologiaBreakdown(pt)}</div>`:''}
+    </div>
   </div>`;
 }
 
@@ -2616,8 +2619,15 @@ function occCardHtmlViz(o){
         </div>
       </div>
       <div style="padding:10px 16px 12px 20px;">
-        ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
-        <div style="font-size:11px;font-weight:600;margin-bottom:6px;color:var(--muted);">PCO Principal: <span style="color:var(--text)">${mainTeams.length} meio${mainTeams.length!==1?'s':''} · ${mainOps} op.</span>${postos.length?` &nbsp;|&nbsp; Total geral: <span style="color:var(--text)">${activeT.length} meios · ${totalOps} op.</span>`:''}</div>
+        ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
+        <div style="display:flex;gap:28px;margin-bottom:10px;flex-wrap:wrap;">
+          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${mainTeams.length}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios PCO</div></div>
+          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${mainOps}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Operacionais PCO</div></div>
+          ${postos.length?`<div style="border-left:1px solid var(--border);padding-left:28px;display:flex;gap:28px;">
+            <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${activeT.length}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios Total</div></div>
+            <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${totalOps}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Operacionais Total</div></div>
+          </div>`:''}
+        </div>
         <div class="viz-tip-grid">${tipologiaBreakdown(mainTeams)||'<span style="font-size:10px;color:var(--muted)">Sem meios ativos no PCO</span>'}</div>
       </div>
     </div>
@@ -2673,7 +2683,7 @@ function renderOcorrencias(){
   const grid=document.getElementById('occ-grid');
   const isAdmin = currentRole==='admin';
   // OfLigacao "nacional" (sem sub-região fixa) vê e organiza tal como o admin
-  const groupBySubregiao = isAdmin || (currentRole==='ofligacao' && !currentSubregiao);
+  const groupBySubregiao = isAdmin || currentRole==='visualizador' || (currentRole==='ofligacao' && !currentSubregiao);
 
   // Admin / OfLigacao nacional: populate sub-região filter and apply
   if(groupBySubregiao){
