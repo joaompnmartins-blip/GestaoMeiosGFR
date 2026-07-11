@@ -2630,6 +2630,18 @@ function esfBsfBlock(teams, compact=false){
   </div>`;
 }
 
+function sfResourceChips(teams){
+  const esf=teams.filter(t=>categorizeMeio(t)==='ESF');
+  const bsf=teams.filter(t=>categorizeMeio(t)==='BSF');
+  if(!esf.length&&!bsf.length) return '';
+  const chip=(t,clr)=>`<span style="font-size:10px;padding:1px 6px;background:${clr}1a;border:1px solid ${clr}4d;border-radius:2px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${esc(t.eq)}</span>`;
+  const esfClr='#8c961c'; const bsfClr='#b45309';
+  let html='<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">';
+  if(esf.length) html+=`<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;"><span style="font-size:9px;letter-spacing:.1em;color:${esfClr};font-family:'IBM Plex Mono',monospace;min-width:28px;">ESF</span>${esf.map(t=>chip(t,esfClr)).join('')}</div>`;
+  if(bsf.length) html+=`<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;"><span style="font-size:9px;letter-spacing:.1em;color:${bsfClr};font-family:'IBM Plex Mono',monospace;min-width:28px;">BSF</span>${bsf.map(t=>chip(t,bsfClr)).join('')}</div>`;
+  return html+'</div>';
+}
+
 function postoCardHtmlGestorSF(p){
   const pt=db.teams.filter(t=>t.postoComandoId===p.id&&t.estado!=='desmobilizado');
   const tipoCls=p.tipo==='PCF'?'badge-info':'badge-warn';
@@ -2644,7 +2656,8 @@ function postoCardHtmlGestorSF(p){
     </div>
     <div style="padding:6px 14px 10px 16px;">
       ${esfBsfBlock(pt,true)}
-      ${others?`<div class="viz-tip-grid">${others}</div>`:''}
+      ${sfResourceChips(pt)}
+      ${others?`<div class="viz-tip-grid" style="margin-top:6px;">${others}</div>`:''}
     </div>
   </div>`;
 }
@@ -2672,7 +2685,8 @@ function occCardHtmlGestorSF(o){
       <div style="padding:10px 16px 12px 20px;">
         ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
         ${esfBsfBlock(mainTeams)}
-        ${others?`<div class="viz-tip-grid">${others}</div>`:''}
+        ${sfResourceChips(mainTeams)}
+        ${others?`<div class="viz-tip-grid" style="margin-top:6px;">${others}</div>`:''}
       </div>
     </div>
     ${postos.map(postoCardHtmlGestorSF).join('')}
