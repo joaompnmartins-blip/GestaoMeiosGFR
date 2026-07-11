@@ -916,6 +916,7 @@
           <div class="section-hdr">
             <div class="section-title">Recursos SF <span id="gsf-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" id="gsf-btn-novo" onclick="openNewRecursoModalSF()" style="display:none;">+ Novo</button>
               <input class="form-input" id="gsf-filter-text" placeholder="🔍 Código / entidade…" oninput="renderGestaoSF()" style="width:180px;font-size:12px;padding:5px 8px;"/>
               <select class="form-select" id="gsf-filter-subregiao" onchange="renderGestaoSF()" style="font-size:12px;padding:5px 8px;">
                 <option value="">Sub-região…</option>
@@ -2233,6 +2234,8 @@ function applyRoleUI(){
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   const sfStatsRow = document.getElementById('sf-stats-row');
   if(sfStatsRow) sfStatsRow.style.display = currentRole==='gestor_sf' ? '' : 'none';
+  const gsfBtnNovo = document.getElementById('gsf-btn-novo');
+  if(gsfBtnNovo) gsfBtnNovo.style.display = (isAdmin||currentRole==='gestor_sf') ? '' : 'none';
   // OfLigacao+ elements
   document.querySelectorAll('.auth-ofligacao').forEach(el=>el.style.display=isOfLigacao?'':'none');
   // Operacional+ elements
@@ -6456,7 +6459,7 @@ async function renderGestaoSF(){
     <td style="display:flex;gap:4px;white-space:nowrap;">
       <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡</button>
-      ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}','SF')">✕</button>`:''}
+      ${['admin','ofligacao','gestor_sf'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}','SF')">✕</button>`:''}
     </td>
   </tr>`).join('');
 }
@@ -7302,6 +7305,36 @@ async function openNewRecursoModal(){
   document.getElementById('grec-radios-linked').innerHTML='';
   document.getElementById('grec-viatura-select').innerHTML='';
   document.getElementById('grec-radio-select').innerHTML='';
+  openModal('modal-gestao-recurso');
+}
+
+async function openNewRecursoModalSF(){
+  if(!_recursoTipos.length){
+    const { data } = await apiFetch('/api/recursos/tipos');
+    _recursoTipos = data || [];
+  }
+  document.getElementById('grec-id').value = '';
+  document.getElementById('grec-mode').value = 'create';
+  document.getElementById('grec-codigo').textContent = 'Novo Recurso SF';
+  document.getElementById('grec-create-fields').style.display = '';
+  document.getElementById('grec-new-codigo').value = '';
+  const sfTipos = _recursoTipos.filter(t=>t.fonte==='SF');
+  const sel = document.getElementById('grec-new-tipo');
+  sel.innerHTML = '<option value="">— Selecionar tipo —</option>' +
+    sfTipos.map(t=>`<option value="${t.codigo}">${esc(t.codigo)}</option>`).join('');
+  ['entidade','contacto','email','agfr','subregiao','concelho','local-base','notas'].forEach(f=>{
+    const el = document.getElementById('grec-'+f);
+    if(el) el.value='';
+  });
+  document.getElementById('grec-num-elem').value = '1';
+  document.getElementById('grec-regime').value = '';
+  document.getElementById('grec-ativo').checked = true;
+  document.getElementById('grec-viaturas-linked').innerHTML='';
+  document.getElementById('grec-radios-linked').innerHTML='';
+  document.getElementById('grec-viatura-select').innerHTML='';
+  document.getElementById('grec-radio-select').innerHTML='';
+  document.getElementById('grec-viatura-icnf-filters').style.display='none';
+  document.getElementById('grec-radio-icnf-filters').style.display='none';
   openModal('modal-gestao-recurso');
 }
 
