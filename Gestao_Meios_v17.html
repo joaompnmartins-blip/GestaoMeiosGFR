@@ -3058,7 +3058,11 @@ async function toggleCloseOcorrencia(){
     // Generate Excel summary on close
     exportMeiosExcel(o);
     toast('Ocorrência fechada e arquivada. Excel gerado!','info');
-    navTo('arquivo', document.querySelector('[data-page="arquivo"]'));
+    if(currentRole==='ofligacao'){
+      navTo('ocorrencias', document.querySelector('[data-page="ocorrencias"]'));
+    } else {
+      navTo('arquivo', document.querySelector('[data-page="arquivo"]'));
+    }
   } else {
     o.status='active';
     await supaWriteOrQueue('ocorrencias','update',{id:o.id, row:{status:'active'}}, o.id, `Reabrir: ${o.nome}`);
