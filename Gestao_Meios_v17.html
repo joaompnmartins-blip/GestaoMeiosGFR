@@ -6332,13 +6332,17 @@ async function renderSFBrigadas(){
       </td>
     </tr>`;
     const memHtml = membros.length ? membros.map(m=>{
-      const isviat = !!m.viatura_cod;
-      const label  = m.viatura_cod || m.codigo || '—';
+      const isviat = !!m.viatura?.viatura_cod;
+      const label  = m.viatura?.viatura_cod || m.recurso?.codigo || '—';
+      const tipo   = m.recurso?.tipo || '';
+      const pront  = m.viatura?.prontidao || m.recurso?.prontidao || 'operacional';
+      const resId  = isviat ? m.viatura.id : m.recurso?.id;
+      const resType= isviat ? 'viatura' : 'recurso';
       return `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:4px 8px;margin:2px;">
         <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;">${esc(label)}</span>
-        ${m.tipo?`<span class="badge badge-y" style="font-size:8px">${esc(m.tipo)}</span>`:''}
-        ${prontidaoBadge(m.prontidao)}
-        ${canEdit?`<button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('${isviat?'viatura':'recurso'}','${m.id}','${m.prontidao}')" title="Alternar prontidão">⚡</button>`:''}
+        ${tipo?`<span class="badge badge-y" style="font-size:8px">${esc(tipo)}</span>`:''}
+        ${prontidaoBadge(pront)}
+        ${canEdit&&resId?`<button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('${resType}','${resId}','${pront}')" title="Alternar prontidão">⚡</button>`:''}
       </div>`;
     }).join('') : '<span style="font-size:11px;color:var(--muted)">Sem membros registados.</span>';
     const membrosRow = `<tr id="sf-mem-${c.id}" style="display:none;">
@@ -6361,7 +6365,7 @@ function openBrigadaProntidaoModal(id){
   if(!c){ toast('Brigada não encontrada.','err'); return; }
   const membros = Array.isArray(c.membros) ? c.membros : [];
   _prontidaoTarget = { type:'composicao', id, members:membros };
-  document.getElementById('pront-estado').value = c.prontidao_derivada||'operacional';
+  document.getElementById('pront-estado').value = c.prontidao_derivada==='inoperacional' ? 'operacional' : 'inoperacional';
   document.getElementById('pront-motivo').value = '';
   openModal('modal-prontidao');
 }
