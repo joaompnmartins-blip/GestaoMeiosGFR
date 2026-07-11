@@ -3662,9 +3662,9 @@ function teamCardHtml(t, isClosed, _teams){
     opsHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">👥 ${t.operacionais} operacionais</span>`;
   }
 
-  // MR / PM pairing
+  // MR / PM pairing (suppressed for EMR-linked MRs — PM is included in the EMR set as VOPE)
   let mrPmHtml='';
-  if(t.tipo==='MR'){
+  if(t.tipo==='MR' && !t.fsbfEmrId){
     if(t.transporteId){
       const pm=db.teams.find(x=>x.id===t.transporteId);
       if(pm){
@@ -4469,9 +4469,13 @@ function applyPreset(id){
 // ── MR / PM pairing ──────────────────────────────────────────────
 function onTeamTipoChange(){
   const isMR = document.getElementById('team-tipo').value==='MR';
-  document.getElementById('mr-pm-section').style.display = isMR?'':'none';
-  document.getElementById('mr-pm-block').style.display = isMR?'':'none';
-  if(isMR) populatePMPicker();
+  const editId = document.getElementById('team-edit-id').value;
+  const editingTeam = editId ? db.teams.find(x=>x.id===editId) : null;
+  const isEmrMR = isMR && !!editingTeam?.fsbfEmrId;
+  const showPM = isMR && !isEmrMR;
+  document.getElementById('mr-pm-section').style.display = showPM?'':'none';
+  document.getElementById('mr-pm-block').style.display = showPM?'':'none';
+  if(showPM) populatePMPicker();
 }
 
 function populatePMPicker(){
@@ -4675,8 +4679,9 @@ async function saveTeam(){
   if(_dtErr){ toast(_dtErr,'err'); return; }
 
   // MR / PM: garantir que o MR tem sempre um PM de transporte associado.
-  // O PM criado de raiz herda a mobilização, missão, estado e observações do MR.
-  if(payload.tipo==='MR'){
+  // Excepção: MRs que fazem parte de uma equipa EMR já incluem o seu próprio PM (VOPE).
+  const _editingTeamForPM = editId ? db.teams.find(x=>x.id===editId) : null;
+  if(payload.tipo==='MR' && !_editingTeamForPM?.fsbfEmrId){
     const pmPick=document.getElementById('team-pm-pick').value;
     const pmOperativos=[...document.getElementById('pm-ops-list').querySelectorAll('.ops-item input')].map(i=>i.value.trim()).filter(Boolean);
     const pmOperacionais=parseInt(document.getElementById('team-pm-ops').value)||pmOperativos.length||0;
