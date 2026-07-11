@@ -6050,9 +6050,25 @@ function openProntidaoModal(type, id, currentProntidao){
 
 async function saveProntidao(){
   if(!_prontidaoTarget) return;
-  const { type, id } = _prontidaoTarget;
+  const { type, id, members } = _prontidaoTarget;
   const prontidao = document.getElementById('pront-estado').value;
   const motivo    = document.getElementById('pront-motivo').value.trim() || null;
+
+  if(type === 'composicao'){
+    if(!members?.length){ toast('Sem membros para actualizar.','err'); return; }
+    const results = await Promise.all(members.map(m=>{
+      const url = m.viatura_cod
+        ? `/api/gestao/viaturas/${m.id}/prontidao`
+        : `/api/gestao/recursos/${m.id}/prontidao`;
+      return apiFetch(url, { method:'POST', body:JSON.stringify({ prontidao, motivo }) });
+    }));
+    if(results.some(r=>r.error)){ toast('Erro ao actualizar alguns membros.','err'); return; }
+    toast('Prontidão da brigada actualizada.','ok');
+    closeModal('modal-prontidao');
+    renderSFBrigadas();
+    return;
+  }
+
   const url = type === 'viatura'
     ? `/api/gestao/viaturas/${id}/prontidao`
     : `/api/gestao/recursos/${id}/prontidao`;
@@ -6296,21 +6312,56 @@ async function renderSFBrigadas(){
   brigadas.forEach(c=>{ _sfBrigadasCache[c.id]=c; });
   if(countEl) countEl.textContent = `(${brigadas.length})`;
   if(!brigadas.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem brigadas.</div></div></td></tr>'; return; }
-  tbody.innerHTML = brigadas.map(c=>{
+  const canEdit = ['admin','ofligacao','gestor_sf'].includes(currentRole);
+  tbody.innerHTML = brigadas.flatMap(c=>{
     const membros = Array.isArray(c.membros) ? c.membros : [];
-    const canEdit = ['admin','ofligacao','gestor_sf'].includes(currentRole);
-    return `<tr>
+    const mainRow = `<tr>
       <td><strong>${esc(c.codigo)}</strong></td>
       <td><span class="badge badge-y">${esc(c.tipo||'—')}</span></td>
       <td>${esc(c.subregiao||'—')}</td>
-      <td class="mono" style="text-align:center">${membros.length}</td>
+      <td class="mono" style="text-align:center">
+        <button class="btn btn-ghost btn-xs" onclick="toggleBrigadaMembros('${c.id}')" title="Ver membros">${membros.length} ▾</button>
+      </td>
       <td>${prontidaoBadge(c.prontidao_derivada)}</td>
       <td style="display:flex;gap:4px;white-space:nowrap;">
-        ${canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openComposicaoModal('${c.id}')">✎</button>
+        ${canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openBrigadaProntidaoModal('${c.id}')" title="Alternar prontidão da brigada">⚡</button>
+        <button class="btn btn-ghost btn-xs" onclick="openComposicaoModal('${c.id}')">✎</button>
         <button class="btn btn-danger btn-xs" onclick="deleteComposicao('${c.id}','${esc(c.codigo)}')">✕</button>` : ''}
       </td>
     </tr>`;
+    const memHtml = membros.length ? membros.map(m=>{
+      const isviat = !!m.viatura_cod;
+      const label  = m.viatura_cod || m.codigo || '—';
+      return `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:4px 8px;margin:2px;">
+        <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;">${esc(label)}</span>
+        ${m.tipo?`<span class="badge badge-y" style="font-size:8px">${esc(m.tipo)}</span>`:''}
+        ${prontidaoBadge(m.prontidao)}
+        ${canEdit?`<button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('${isviat?'viatura':'recurso'}','${m.id}','${m.prontidao}')" title="Alternar prontidão">⚡</button>`:''}
+      </div>`;
+    }).join('') : '<span style="font-size:11px;color:var(--muted)">Sem membros registados.</span>';
+    const membrosRow = `<tr id="sf-mem-${c.id}" style="display:none;">
+      <td colspan="6" style="padding:4px 16px 12px 20px;background:var(--surface2);border-top:none;">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Membros</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${memHtml}</div>
+      </td>
+    </tr>`;
+    return [mainRow, membrosRow];
   }).join('');
+}
+
+function toggleBrigadaMembros(id){
+  const row = document.getElementById(`sf-mem-${id}`);
+  if(row) row.style.display = row.style.display==='none' ? '' : 'none';
+}
+
+function openBrigadaProntidaoModal(id){
+  const c = _sfBrigadasCache[id];
+  if(!c){ toast('Brigada não encontrada.','err'); return; }
+  const membros = Array.isArray(c.membros) ? c.membros : [];
+  _prontidaoTarget = { type:'composicao', id, members:membros };
+  document.getElementById('pront-estado').value = c.prontidao_derivada||'operacional';
+  document.getElementById('pront-motivo').value = '';
+  openModal('modal-prontidao');
 }
 
 function openComposicaoModal(id){
