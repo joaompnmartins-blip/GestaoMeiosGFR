@@ -191,6 +191,8 @@
     .stat-val-sm.y{color:var(--accent);}.stat-val-sm.r{color:var(--accent2);}.stat-val-sm.b{color:var(--accent3);}.stat-val-sm.g{color:var(--success);}.stat-val-sm.o{color:var(--warn);}
     .sf-esf-block{flex:1;background:rgba(140,150,28,.06);border:1px solid rgba(140,150,28,.2);border-radius:2px;padding:8px 12px;}
     .sf-bsf-block{flex:1;background:rgba(180,83,9,.06);border:1px solid rgba(180,83,9,.2);border-radius:2px;padding:8px 12px;}
+    .fsbf-bsbf-block{flex:1;background:rgba(180,83,9,.06);border:1px solid rgba(180,83,9,.2);border-radius:2px;padding:8px 12px;}
+    .fsbf-emr-block{flex:1;background:rgba(185,28,28,.06);border:1px solid rgba(185,28,28,.2);border-radius:2px;padding:8px 12px;}
     .sf-block-label{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;}
     .sf-block-num{font-family:'Barlow Condensed',sans-serif;font-weight:900;line-height:1;}
     .sf-block-sub{font-size:10px;color:var(--muted);margin-top:2px;}
@@ -638,6 +640,14 @@
           <div class="stat-card-sm b"><div class="stat-label">ESF operacionais</div><div class="stat-val-sm b" id="sf-s-esf-opn">0</div></div>
           <div class="stat-card-sm y"><div class="stat-label">BSF meios ativos</div><div class="stat-val-sm y" id="sf-s-bsf-meios">0</div></div>
           <div class="stat-card-sm y"><div class="stat-label">BSF operacionais</div><div class="stat-val-sm y" id="sf-s-bsf-opn">0</div></div>
+        </div>
+        <div class="stats-row" id="fsbf-stats-row" style="display:none;margin-top:-12px;">
+          <div class="stat-card-sm g"><div class="stat-label">FSBF em op.</div><div class="stat-val-sm g" id="fsbf-s-fsbf-op">0</div></div>
+          <div class="stat-card-sm o"><div class="stat-label">FSBF descanso</div><div class="stat-val-sm o" id="fsbf-s-fsbf-rest">0</div></div>
+          <div class="stat-card-sm y"><div class="stat-label">FSBF meios ativos</div><div class="stat-val-sm y" id="fsbf-s-fsbf-meios">0</div></div>
+          <div class="stat-card-sm y"><div class="stat-label">FSBF operacionais</div><div class="stat-val-sm y" id="fsbf-s-fsbf-opn">0</div></div>
+          <div class="stat-card-sm r"><div class="stat-label">EMR meios ativos</div><div class="stat-val-sm r" id="fsbf-s-emr-meios">0</div></div>
+          <div class="stat-card-sm r"><div class="stat-label">EMR operacionais</div><div class="stat-val-sm r" id="fsbf-s-emr-opn">0</div></div>
         </div>
         <div class="section-hdr">
           <div class="section-title">Ocorrências Ativas <span id="occ-count"></span></div>
@@ -2229,11 +2239,13 @@ function applyRoleUI(){
     if(navEl) navEl.style.display = currentRole==='ofligacao' ? 'none' : '';
   });
   // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
-  const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
+  const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   const sfStatsRow = document.getElementById('sf-stats-row');
   if(sfStatsRow) sfStatsRow.style.display = currentRole==='gestor_sf' ? '' : 'none';
+  const fsbfStatsRow = document.getElementById('fsbf-stats-row');
+  if(fsbfStatsRow) fsbfStatsRow.style.display = currentRole==='gestor_fsbf' ? '' : 'none';
   const gsfBtnNovo = document.getElementById('gsf-btn-novo');
   if(gsfBtnNovo) gsfBtnNovo.style.display = (isAdmin||currentRole==='gestor_sf') ? '' : 'none';
   // OfLigacao+ elements
@@ -2645,6 +2657,99 @@ function sfResourceChips(teams){
   return html+'</div>';
 }
 
+function tipologiaBreakdownNonFSBF(teams){
+  const cats=['EGFR','BSF','ESF','VN','Outros'];
+  const counts={};
+  cats.forEach(c=>counts[c]={meios:0,ops:0});
+  teams.forEach(t=>{ const c=categorizeMeio(t); if(cats.includes(c)){ counts[c].meios++; counts[c].ops+=parseInt(t.operacionais)||0; } });
+  return cats.filter(c=>counts[c].meios>0)
+    .map(c=>`<span class="viz-tip-item"><strong>${c}</strong> ${counts[c].meios} Meios · ${counts[c].ops} Operacionais</span>`)
+    .join('');
+}
+
+function fsbfEmrBlock(teams, compact=false){
+  const fsbfT=teams.filter(t=>t.fsbfBsbfId&&!t.fsbfEmrId);
+  const emrT =teams.filter(t=>!!t.fsbfEmrId);
+  const fsbfOps=fsbfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const emrOps =emrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const sz=compact?'22px':'32px';
+  return `<div style="display:flex;gap:8px;margin-bottom:8px;">
+    <div class="fsbf-bsbf-block">
+      <div class="sf-block-label" style="color:var(--warn)">FSBF</div>
+      <div class="sf-block-num" style="font-size:${sz}">${fsbfT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${fsbfOps}</div><div class="sf-block-sub">Operacionais</div>
+    </div>
+    <div class="fsbf-emr-block">
+      <div class="sf-block-label" style="color:var(--accent2)">EMR</div>
+      <div class="sf-block-num" style="font-size:${sz}">${emrT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${emrOps}</div><div class="sf-block-sub">Operacionais</div>
+    </div>
+  </div>`;
+}
+
+function fsbfResourceChips(teams){
+  const fsbfT=teams.filter(t=>t.fsbfBsbfId&&!t.fsbfEmrId);
+  const emrT =teams.filter(t=>!!t.fsbfEmrId);
+  if(!fsbfT.length&&!emrT.length) return '';
+  const fsbfClr='#b45309'; const emrClr='#b91c1c';
+  const chip=(t,clr)=>`<span style="font-size:10px;padding:1px 6px;background:${clr}1a;border:1px solid ${clr}4d;border-radius:2px;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${esc(t.eq)}</span>`;
+  let html='<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">';
+  if(fsbfT.length) html+=`<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;"><span style="font-size:9px;letter-spacing:.1em;color:${fsbfClr};font-family:'IBM Plex Mono',monospace;min-width:32px;">FSBF</span>${fsbfT.map(t=>chip(t,fsbfClr)).join('')}</div>`;
+  if(emrT.length)  html+=`<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;"><span style="font-size:9px;letter-spacing:.1em;color:${emrClr};font-family:'IBM Plex Mono',monospace;min-width:32px;">EMR</span>${emrT.map(t=>chip(t,emrClr)).join('')}</div>`;
+  return html+'</div>';
+}
+
+function postoCardHtmlGestorFSBF(p){
+  const pt=db.teams.filter(t=>t.postoComandoId===p.id&&t.estado!=='desmobilizado');
+  const tipoCls=p.tipo==='PCF'?'badge-info':'badge-warn';
+  const others=tipologiaBreakdownNonFSBF(pt);
+  return `<div class="occ-card occ-card-viz" style="margin-top:4px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};">
+    <div class="occ-card-header" style="padding:8px 14px 6px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="badge ${tipoCls}" style="font-size:9px">${esc(p.tipo)}</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;">${esc(p.nome)}</span>
+        ${p.oficial_ligacao_nome?`<span style="font-size:10px;color:var(--muted)">OL: ${esc(p.oficial_ligacao_nome)}</span>`:''}
+      </div>
+    </div>
+    <div style="padding:6px 14px 10px 16px;">
+      ${fsbfEmrBlock(pt,true)}
+      ${fsbfResourceChips(pt)}
+      ${others?`<div class="viz-tip-grid" style="margin-top:6px;">${others}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function occCardHtmlGestorFSBF(o){
+  const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
+  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
+  const mainTeams=activeT.filter(t=>!t.postoComandoId);
+  const postos=db.postos.filter(p=>p.ocorrencia_id===o.id);
+  const others=tipologiaBreakdownNonFSBF(mainTeams);
+  return `<div>
+    <div class="occ-card occ-card-viz">
+      <div class="occ-card-header">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div class="occ-card-id">Cód. ${esc(o.ref||'—')} · ${fmtDate(o.inicio)}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent2);">⏱ ${elapsedStr(o.inicio)}</div>
+        </div>
+        <div class="occ-card-name">${esc(o.nome)}</div>
+        <div class="occ-card-meta">
+          <span class="badge badge-active pulse">● ATIVA</span>
+          ${o.subregiao?`<span class="badge badge-y" style="font-size:9px">${esc(o.subregiao)}</span>`:''}
+          ${o.concelho?`<span class="badge badge-info">${esc(o.concelho)}</span>`:''}
+        </div>
+      </div>
+      <div style="padding:10px 16px 12px 20px;">
+        ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
+        ${fsbfEmrBlock(mainTeams)}
+        ${fsbfResourceChips(mainTeams)}
+        ${others?`<div class="viz-tip-grid" style="margin-top:6px;">${others}</div>`:''}
+      </div>
+    </div>
+    ${postos.map(postoCardHtmlGestorFSBF).join('')}
+  </div>`;
+}
+
 function postoCardHtmlGestorSF(p){
   const pt=db.teams.filter(t=>t.postoComandoId===p.id&&t.estado!=='desmobilizado');
   const tipoCls=p.tipo==='PCF'?'badge-info':'badge-warn';
@@ -2802,7 +2907,7 @@ function renderOcorrencias(){
   const grid=document.getElementById('occ-grid');
   const isAdmin = currentRole==='admin';
   // OfLigacao "nacional" (sem sub-região fixa) vê e organiza tal como o admin
-  const groupBySubregiao = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || (currentRole==='ofligacao' && !currentSubregiao);
+  const groupBySubregiao = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || (currentRole==='ofligacao' && !currentSubregiao);
 
   // Admin / OfLigacao nacional: populate sub-região filter and apply
   if(groupBySubregiao){
@@ -2824,7 +2929,8 @@ function renderOcorrencias(){
   }
 
   const cardFn = currentRole==='visualizador' ? occCardHtmlViz
-    : currentRole==='gestor_sf' ? occCardHtmlGestorSF
+    : currentRole==='gestor_sf'   ? occCardHtmlGestorSF
+    : currentRole==='gestor_fsbf' ? occCardHtmlGestorFSBF
     : occCardHtml;
 
   // OfLigacao com sub-região fixa, ou filtrado: lista plana
@@ -2877,6 +2983,17 @@ function updateStats(){
     document.getElementById('sf-s-esf-opn').textContent=esfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
     document.getElementById('sf-s-bsf-meios').textContent=bsfT.length;
     document.getElementById('sf-s-bsf-opn').textContent=bsfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  }
+  const fsbfRow=document.getElementById('fsbf-stats-row');
+  if(fsbfRow&&fsbfRow.style.display!=='none'){
+    const fsbfT=activeTeams.filter(t=>t.fsbfBsbfId&&!t.fsbfEmrId);
+    const emrT =activeTeams.filter(t=>!!t.fsbfEmrId);
+    document.getElementById('fsbf-s-fsbf-op').textContent=fsbfT.filter(t=>t.estado==='operacao').length;
+    document.getElementById('fsbf-s-fsbf-rest').textContent=fsbfT.filter(t=>t.estado==='descanso').length;
+    document.getElementById('fsbf-s-fsbf-meios').textContent=fsbfT.length;
+    document.getElementById('fsbf-s-fsbf-opn').textContent=fsbfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('fsbf-s-emr-meios').textContent=emrT.length;
+    document.getElementById('fsbf-s-emr-opn').textContent=emrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
   }
 }
 
@@ -5619,7 +5736,7 @@ updateClock();
 // Auto-refresh time bars every 60 seconds
 setInterval(()=>{
   if(document.getElementById('page-detalhe').classList.contains('active')) renderTeams();
-  if(['visualizador','gestor_sf'].includes(currentRole)&&document.getElementById('page-ocorrencias').classList.contains('active')) renderOcorrencias();
+  if(['visualizador','gestor_sf','gestor_fsbf'].includes(currentRole)&&document.getElementById('page-ocorrencias').classList.contains('active')) renderOcorrencias();
 },60000);
 
 // ══════════════════════════════════════════════════════════════════
