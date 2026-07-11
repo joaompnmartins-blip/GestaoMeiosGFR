@@ -2249,7 +2249,6 @@ function applyRoleUI(){
   const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
-  const isICNF = currentRole==='gestor_icnf' || isAdmin;
   const sfStatsRow = document.getElementById('sf-stats-row');
   if(sfStatsRow) sfStatsRow.style.display = (currentRole==='gestor_sf'||isICNF) ? '' : 'none';
   const fsbfStatsRow = document.getElementById('fsbf-stats-row');
