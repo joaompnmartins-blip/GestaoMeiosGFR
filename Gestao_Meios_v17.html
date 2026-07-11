@@ -6317,7 +6317,12 @@ async function renderSFBrigadas(){
       <td class="mono" style="text-align:center">
         <button class="btn btn-ghost btn-xs" onclick="toggleBrigadaMembros('${c.id}')" title="Ver membros">${membros.length} ▾</button>
       </td>
-      <td>${prontidaoBadge(c.prontidao_derivada)}</td>
+      <td>${(()=>{
+        const anyEmUso = membros.some(m=>m.em_uso);
+        if(c.prontidao_derivada==='inoperacional'&&anyEmUso)
+          return `<span class="badge badge-r" title="Membro em serviço numa ocorrência">INOP. · Em serviço</span>`;
+        return prontidaoBadge(c.prontidao_derivada);
+      })()}</td>
       <td style="display:flex;gap:4px;white-space:nowrap;">
         ${canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openBrigadaProntidaoModal('${c.id}')" title="Alternar prontidão da brigada">⚡</button>
         <button class="btn btn-ghost btn-xs" onclick="openComposicaoModal('${c.id}')">✎</button>
@@ -6331,11 +6336,12 @@ async function renderSFBrigadas(){
       const pront  = m.viatura?.prontidao || m.recurso?.prontidao || 'operacional';
       const resId  = isviat ? m.viatura.id : m.recurso?.id;
       const resType= isviat ? 'viatura' : 'recurso';
-      return `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:4px 8px;margin:2px;">
+      const emUso  = !!m.em_uso;
+      return `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;padding:4px 8px;margin:2px;${emUso?'border-color:var(--accent);':''}">
         <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;">${esc(label)}</span>
         ${tipo?`<span class="badge badge-y" style="font-size:8px">${esc(tipo)}</span>`:''}
-        ${prontidaoBadge(pront)}
-        ${canEdit&&resId?`<button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('${resType}','${resId}','${pront}')" title="Alternar prontidão">⚡</button>`:''}
+        ${emUso?`<span class="badge badge-g" style="font-size:8px">Em serviço</span>`:prontidaoBadge(pront)}
+        ${canEdit&&resId&&!emUso?`<button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('${resType}','${resId}','${pront}')" title="Alternar prontidão">⚡</button>`:''}
       </div>`;
     }).join('') : '<span style="font-size:11px;color:var(--muted)">Sem membros registados.</span>';
     const membrosRow = `<tr id="sf-mem-${c.id}" style="display:none;">
