@@ -2250,11 +2250,11 @@ function applyRoleUI(){
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   const sfStatsRow = document.getElementById('sf-stats-row');
-  if(sfStatsRow) sfStatsRow.style.display = (currentRole==='gestor_sf'||isICNF) ? '' : 'none';
+  if(sfStatsRow) sfStatsRow.style.display = (currentRole==='gestor_sf'||currentRole==='gestor_icnf') ? '' : 'none';
   const fsbfStatsRow = document.getElementById('fsbf-stats-row');
-  if(fsbfStatsRow) fsbfStatsRow.style.display = (currentRole==='gestor_fsbf'||isICNF) ? '' : 'none';
+  if(fsbfStatsRow) fsbfStatsRow.style.display = (currentRole==='gestor_fsbf'||currentRole==='gestor_icnf') ? '' : 'none';
   const egfrStatsRow = document.getElementById('egfr-stats-row');
-  if(egfrStatsRow) egfrStatsRow.style.display = isICNF ? '' : 'none';
+  if(egfrStatsRow) egfrStatsRow.style.display = currentRole==='gestor_icnf' ? '' : 'none';
   const gsfBtnNovo = document.getElementById('gsf-btn-novo');
   if(gsfBtnNovo) gsfBtnNovo.style.display = (isAdmin||currentRole==='gestor_sf') ? '' : 'none';
   // OfLigacao+ elements
