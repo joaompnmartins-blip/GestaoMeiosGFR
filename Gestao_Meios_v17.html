@@ -6055,16 +6055,9 @@ async function saveProntidao(){
   const motivo    = document.getElementById('pront-motivo').value.trim() || null;
 
   if(type === 'composicao'){
-    if(!members?.length){ toast('Sem membros para actualizar.','err'); return; }
-    const validMembers = members.filter(m=>m.viatura||m.recurso);
-    if(!validMembers.length){ toast('Sem membros para actualizar.','err'); return; }
-    const results = await Promise.all(validMembers.map(m=>{
-      const url = m.viatura?.viatura_cod
-        ? `/api/gestao/viaturas/${m.viatura.id}/prontidao`
-        : `/api/gestao/recursos/${m.recurso.id}/prontidao`;
-      return apiFetch(url, { method:'POST', body:JSON.stringify({ prontidao, motivo }) });
-    }));
-    if(results.some(r=>r.error)){ toast('Erro ao actualizar alguns membros.','err'); return; }
+    const { error } = await apiFetch(`/api/composicoes/${id}/prontidao`,
+      { method:'POST', body:JSON.stringify({ prontidao, motivo }) });
+    if(error){ toast(error.message||'Erro ao actualizar brigada.','err'); return; }
     toast('Prontidão da brigada actualizada.','ok');
     closeModal('modal-prontidao');
     renderSFBrigadas();

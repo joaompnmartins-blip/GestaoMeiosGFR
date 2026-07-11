@@ -943,6 +943,52 @@ app.delete('/api/composicoes/:id', requireAuth('visualizador'), requireModule('g
   res.json({ ok: true });
 }));
 
+// ── Prontidão de composição (todos os membros) ──────────────────
+app.post('/api/composicoes/:id/prontidao', requireAuth('visualizador'), requireModule('gestor_sf', 'ofligacao', 'ofligacao_ccon', 'admin'), wrap(async (req, res) => {
+  const { prontidao, motivo } = req.body;
+  if (!['operacional','inoperacional'].includes(prontidao))
+    return res.status(400).json({ error: 'prontidao deve ser operacional ou inoperacional.' });
+
+  const { rows: members } = await pool.query(
+    `SELECT cm.recurso_id, cm.viatura_id, r.prontidao AS r_pront, v.prontidao AS v_pront
+     FROM composicao_membros cm
+     LEFT JOIN recursos r ON r.id = cm.recurso_id
+     LEFT JOIN viaturas v ON v.id = cm.viatura_id
+     WHERE cm.composicao_id = $1`, [req.params.id]
+  );
+  if (!members.length) return res.status(404).json({ error: 'Composição sem membros.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const m of members) {
+      if (m.recurso_id) {
+        await client.query(`
+          UPDATE recursos SET prontidao=$2, prontidao_motivo=$3,
+            prontidao_by=$4, prontidao_at=now(), updated_at=now()
+          WHERE id=$1`, [m.recurso_id, prontidao, motivo||null, req.user.id]);
+        await client.query(`
+          INSERT INTO recursos_prontidao_eventos (recurso_id, de, para, motivo, user_id)
+          VALUES ($1,$2,$3,$4,$5)`,
+          [m.recurso_id, m.r_pront, prontidao, motivo||null, req.user.id]);
+      }
+      if (m.viatura_id) {
+        await client.query(`
+          UPDATE viaturas SET prontidao=$2, prontidao_motivo=$3,
+            prontidao_by=$4, prontidao_at=now(), updated_at=now()
+          WHERE id=$1`, [m.viatura_id, prontidao, motivo||null, req.user.id]);
+      }
+    }
+    await client.query('COMMIT');
+  } catch(e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+  res.json({ ok: true, updated: members.length });
+}));
+
 // §5.4 — Instanciar composição numa ocorrência
 app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { composicao_id, estado = 'previsto', ...camposDespacho } = req.body;
