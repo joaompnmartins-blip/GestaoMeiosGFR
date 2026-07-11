@@ -919,7 +919,7 @@ app.post('/api/composicoes', requireAuth('ofligacao'), wrap(async (req, res) => 
 }));
 
 // §5.3b — Editar composição
-app.patch('/api/composicoes/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+app.patch('/api/composicoes/:id', requireAuth('visualizador'), requireModule('gestor_sf', 'ofligacao', 'ofligacao_ccon'), wrap(async (req, res) => {
   const b = req.body;
   const ALLOWED = ['codigo','subregiao','concelho','notas','ativo'];
   const sets = [], vals = [req.params.id];
@@ -935,7 +935,7 @@ app.patch('/api/composicoes/:id', requireAuth('ofligacao'), wrap(async (req, res
 }));
 
 // §5.3c — Eliminar (desactivar) composição
-app.delete('/api/composicoes/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
+app.delete('/api/composicoes/:id', requireAuth('visualizador'), requireModule('gestor_sf', 'ofligacao', 'ofligacao_ccon'), wrap(async (req, res) => {
   const { rowCount } = await pool.query(
     `UPDATE composicoes SET ativo=false WHERE id=$1`, [req.params.id]
   );

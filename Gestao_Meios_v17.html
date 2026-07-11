@@ -6298,7 +6298,7 @@ async function renderSFBrigadas(){
   if(!brigadas.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem brigadas.</div></div></td></tr>'; return; }
   tbody.innerHTML = brigadas.map(c=>{
     const membros = Array.isArray(c.membros) ? c.membros : [];
-    const canEdit = ['admin','ofligacao'].includes(currentRole);
+    const canEdit = ['admin','ofligacao','gestor_sf'].includes(currentRole);
     return `<tr>
       <td><strong>${esc(c.codigo)}</strong></td>
       <td><span class="badge badge-y">${esc(c.tipo||'—')}</span></td>
