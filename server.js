@@ -1358,7 +1358,7 @@ app.get('/api/gestao/radios', requireAuth('visualizador'), ALL_GESTORES, wrap(as
 
 app.patch('/api/gestao/radios/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   const b = req.body;
-  const ALLOWED = ['recurso_id','viatura_id','alias','indicativo','estado','subregiao','ativo'];
+  const ALLOWED = ['recurso_id','viatura_id','alias','indicativo','estado','subregiao','entidade','ativo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }

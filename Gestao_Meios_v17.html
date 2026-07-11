@@ -7581,6 +7581,8 @@ async function deleteViatura(id, cod){
 
 // ── Tab 3: Rádios ─────────────────────────────────────────────────
 
+let _radioCache = {};
+
 async function renderICNFRadios(){
   const q  = (document.getElementById('gicnf-rd-q')?.value||'').toLowerCase();
   const ft = document.getElementById('gicnf-rd-tipo')?.value||'';
@@ -7591,6 +7593,7 @@ async function renderICNFRadios(){
   const { data, error } = await apiFetch('/api/gestao/radios?'+params);
   if(error){ toast('Erro ao carregar rádios.','err'); return; }
   let rows = data || [];
+  rows.forEach(r=>{ _radioCache[r.id]=r; });
   if(q) rows = rows.filter(r=>(r.ddi+' '+(r.alias||'')).toLowerCase().includes(q));
   document.getElementById('gicnf-rd-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gicnf-rd-tbody');
@@ -7602,30 +7605,58 @@ async function renderICNFRadios(){
     <td style="font-size:11px">${r.recurso_codigo?`<span class="badge badge-ok">${esc(r.recurso_codigo)}</span>`:'—'}</td>
     <td style="font-size:11px">${r.viatura_cod?`<span class="badge badge-info">${esc(r.viatura_cod)}</span>`:'—'}</td>
     <td style="display:flex;gap:4px;">
+      <button class="btn btn-ghost btn-xs" onclick="openEditRadioModal('${r.id}')">✎</button>
       <button class="btn btn-danger btn-xs" onclick="deleteRadio('${r.id}','${esc(r.ddi)}')">✕</button>
     </td>
   </tr>`).join('');
 }
 
+function _radioModalFields(r){
+  document.getElementById('nr-id').value        = r?.id || '';
+  document.getElementById('nr-ddi').value       = r?.ddi || '';
+  document.getElementById('nr-ddi').readOnly    = !!r;
+  document.getElementById('nr-tipo').value      = r?.tipo || 'Portatil';
+  document.getElementById('nr-tipo').disabled   = !!r;
+  document.getElementById('nr-alias').value     = r?.alias || '';
+  document.getElementById('nr-indicativo').value= r?.indicativo || '';
+  document.getElementById('nr-entidade').value  = r?.entidade || '';
+  document.getElementById('nr-subregiao').value = r?.subregiao || '';
+  const isEdit = !!r;
+  document.getElementById('nr-modal-title').textContent = isEdit ? `Editar Rádio ${r.ddi}` : 'Novo Rádio';
+  document.getElementById('nr-save-btn').textContent    = isEdit ? 'Guardar' : 'Criar';
+}
+
 function openNewRadioModal(){
-  ['ddi','alias','indicativo','entidade','subregiao'].forEach(f=>{ document.getElementById('nr-'+f).value=''; });
-  document.getElementById('nr-tipo').value='Portatil';
+  _radioModalFields(null);
+  openModal('modal-new-radio');
+}
+
+function openEditRadioModal(id){
+  const r = _radioCache[id];
+  if(!r){ toast('Rádio não encontrado.','err'); return; }
+  _radioModalFields(r);
   openModal('modal-new-radio');
 }
 
 async function saveNewRadio(){
+  const id  = document.getElementById('nr-id').value;
+  const isEdit = !!id;
   const body = {
-    ddi:        document.getElementById('nr-ddi').value.trim(),
-    tipo:       document.getElementById('nr-tipo').value,
     alias:      document.getElementById('nr-alias').value.trim()||null,
     indicativo: document.getElementById('nr-indicativo').value.trim()||null,
     entidade:   document.getElementById('nr-entidade').value.trim()||null,
     subregiao:  document.getElementById('nr-subregiao').value.trim()||null,
   };
-  if(!body.ddi){ toast('DDI obrigatório.','err'); return; }
-  const { error } = await apiFetch('/api/gestao/radios', { method:'POST', body:JSON.stringify(body) });
+  if(!isEdit){
+    body.ddi  = document.getElementById('nr-ddi').value.trim();
+    body.tipo = document.getElementById('nr-tipo').value;
+    if(!body.ddi){ toast('DDI obrigatório.','err'); return; }
+  }
+  const url    = isEdit ? `/api/gestao/radios/${id}` : '/api/gestao/radios';
+  const method = isEdit ? 'PATCH' : 'POST';
+  const { error } = await apiFetch(url, { method, body:JSON.stringify(body) });
   if(error){ toast(error.message,'err'); return; }
-  toast('Rádio criado.','ok');
+  toast(isEdit ? 'Rádio actualizado.' : 'Rádio criado.','ok');
   closeModal('modal-new-radio');
   renderICNFRadios();
 }
@@ -8311,7 +8342,8 @@ async function mergeSaveConfirm(){
 <!-- Modal: novo rádio -->
 <div class="modal-overlay" id="modal-new-radio" onclick="if(event.target===this)closeModal('modal-new-radio')">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">Novo Rádio</div><button class="modal-close" onclick="closeModal('modal-new-radio')">✕</button></div>
+    <input type="hidden" id="nr-id"/>
+    <div class="modal-header"><div class="modal-title" id="nr-modal-title">Novo Rádio</div><button class="modal-close" onclick="closeModal('modal-new-radio')">✕</button></div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-field">
@@ -8345,7 +8377,7 @@ async function mergeSaveConfirm(){
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-new-radio')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveNewRadio()">Criar</button>
+      <button class="btn btn-primary" id="nr-save-btn" onclick="saveNewRadio()">Criar</button>
     </div>
   </div>
 </div>
