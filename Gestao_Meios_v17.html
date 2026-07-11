@@ -7821,7 +7821,7 @@ async function renderICNFEgfr(){
       return (a.equipa||'').localeCompare(b.equipa||'');
     });
 
-  const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
+  const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon' || currentRole==='gestor_icnf';
 
   const viatOpts = viaturas.map(v=>`<option value="${v.id}">${esc(v.matricula)}${v.designacao?' – '+esc(v.designacao):''}</option>`).join('');
 
@@ -7915,8 +7915,8 @@ async function editEgfrEntry(id, nome, capSup){
 
 function egfrSwitchMode(mode){
   if(mode==='editor'){
-    const isCCON = currentRole==='admin'||currentRole==='ofligacao_ccon';
-    if(!isCCON){ toast('Edição restrita a gestores CCON.','err'); return; }
+    const isCCON = currentRole==='admin'||currentRole==='ofligacao_ccon'||currentRole==='gestor_icnf';
+    if(!isCCON){ toast('Edição restrita a gestores CCON ou ICNF.','err'); return; }
   }
   _egfrMode = mode;
   const cards  = document.getElementById('gicnf-egfr-cards');
