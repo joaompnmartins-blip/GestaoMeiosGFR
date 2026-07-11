@@ -480,9 +480,13 @@
     /* ═══ ROLE BADGE IN TOPBAR ═══ */
     .role-badge{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;padding:3px 8px;border-radius:2px;text-transform:uppercase;}
     .role-admin{background:rgba(66,154,189,.14);color:var(--icnf-blue-light);border:1px solid rgba(66,154,189,.35);}
+    .role-ofligacao-ccon{background:rgba(140,150,28,.22);color:var(--icnf-green-lime);border:1px solid rgba(140,150,28,.55);}
     .role-ofligacao{background:rgba(140,150,28,.12);color:var(--icnf-green-lime);border:1px solid rgba(140,150,28,.3);}
     .role-operacional{background:rgba(90,184,214,.1);color:var(--accent3);border:1px solid rgba(90,184,214,.25);}
     .role-visualizador{background:rgba(89,99,0,.15);color:var(--muted);border:1px solid var(--border);}
+    .role-gestor-sf{background:rgba(140,150,28,.14);color:#a3b220;border:1px solid rgba(140,150,28,.45);}
+    .role-gestor-fsbf{background:rgba(180,83,9,.14);color:#d97706;border:1px solid rgba(180,83,9,.45);}
+    .role-gestor-icnf{background:rgba(29,78,216,.14);color:#60a5fa;border:1px solid rgba(29,78,216,.45);}
     /* ═══ USER MANAGEMENT PAGE ═══ */
     .user-role-sel{padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;}
 
@@ -895,11 +899,15 @@
           </table>
         </div>
         <div style="margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:16px 20px;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Níveis de acesso</div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Perfis Hierárquicos</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:16px;">
             <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
               <span class="role-badge role-admin" style="display:inline-block;margin-bottom:6px;">admin</span>
               <div style="font-size:11px;color:var(--muted);line-height:1.6;">Acesso total. Gere utilizadores, apaga ocorrências, exporta dados.</div>
+            </div>
+            <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
+              <span class="role-badge role-ofligacao-ccon" style="display:inline-block;margin-bottom:6px;">ofligacao_ccon</span>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Oficial de ligação com acesso a escalas EGFR e meios nacionais CCON.</div>
             </div>
             <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
               <span class="role-badge role-ofligacao" style="display:inline-block;margin-bottom:6px;">ofligacao</span>
@@ -912,6 +920,21 @@
             <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
               <span class="role-badge role-visualizador" style="display:inline-block;margin-bottom:6px;">visualizador</span>
               <div style="font-size:11px;color:var(--muted);line-height:1.6;">Só leitura. Não pode fazer alterações.</div>
+            </div>
+          </div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Perfis de Módulo</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;">
+            <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
+              <span class="role-badge role-gestor-sf" style="display:inline-block;margin-bottom:6px;">gestor_sf</span>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Gestão de recursos SF e brigadas BSF. Vista de ocorrências SF/BSF.</div>
+            </div>
+            <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
+              <span class="role-badge role-gestor-fsbf" style="display:inline-block;margin-bottom:6px;">gestor_fsbf</span>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Vista de ocorrências com estatísticas e detalhe FSBF/EMR.</div>
+            </div>
+            <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
+              <span class="role-badge role-gestor-icnf" style="display:inline-block;margin-bottom:6px;">gestor_icnf</span>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Vista global SF/BSF + FSBF/EMR + EGFR. Editar rádios e escalas EGFR.</div>
             </div>
           </div>
         </div>
@@ -2216,7 +2239,7 @@ async function completeLogin(authData){
   if(su) su.textContent = currentNome.split(' ')[0].toUpperCase();
   const rb = document.getElementById('role-badge');
   rb.textContent = currentRole;
-  rb.className = 'role-badge role-' + currentRole;
+  rb.className = 'role-badge role-' + currentRole.replace(/_/g,'-');
   rb.style.display = '';
   document.getElementById('btn-logout').style.display = '';
   applyRoleUI();
@@ -5863,7 +5886,7 @@ async function renderUsers(){
   const { data: users, error } = await apiFetch('/api/utilizadores');
   if(error){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Erro ao carregar utilizadores.</div></td></tr>'; return; }
 
-  const roleCls={admin:'role-admin',ofligacao:'role-ofligacao',operacional:'role-operacional',visualizador:'role-visualizador'};
+  const roleCls={admin:'role-admin',ofligacao_ccon:'role-ofligacao-ccon',ofligacao:'role-ofligacao',gestor_sf:'role-gestor-sf',gestor_fsbf:'role-gestor-fsbf',gestor_icnf:'role-gestor-icnf',operacional:'role-operacional',visualizador:'role-visualizador'};
 
   const html = (users||[]).map(u=>`<tr>
     <td><strong>${esc(u.nome)}</strong></td>
