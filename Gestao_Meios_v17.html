@@ -179,6 +179,11 @@
     .occ-card-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;}
     .occ-card-meta{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
     .occ-card-body{padding:12px 16px 12px 20px;display:flex;justify-content:space-between;align-items:center;}
+    .occ-card-viz{cursor:default;}
+    .occ-card-viz:hover{transform:none;border-color:var(--border);}
+    .viz-tip-grid{display:flex;flex-wrap:wrap;gap:5px;}
+    .viz-tip-item{font-size:10px;padding:2px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;white-space:nowrap;color:var(--muted);}
+    .viz-tip-item strong{font-size:10px;color:var(--text);}
     .occ-teams-count{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--accent3);}
     .occ-teams-label{font-size:11px;color:var(--muted);margin-top:1px;}
 
@@ -2541,6 +2546,85 @@ function postoCardHtml(p){
   </div>`;
 }
 
+function categorizeMeio(t){
+  if(t.egfrEquipa)                 return 'EGFR';
+  if(t.fsbfBsbfId||t.fsbfEmrId)   return 'FSBF';
+  if(t.tipo==='BSF')               return 'BSF';
+  if(t.tipo==='SF')                return 'ESF';
+  if(t.tipo==='VN')                return 'VN';
+  return 'Outros';
+}
+
+function elapsedStr(inicio){
+  if(!inicio) return '—';
+  const ms=Date.now()-new Date(inicio).getTime();
+  const h=Math.floor(ms/3600000);
+  const m=Math.floor((ms%3600000)/60000);
+  return `${h}h ${String(m).padStart(2,'0')}m`;
+}
+
+function tipologiaBreakdown(teams){
+  const cats=['EGFR','FSBF','BSF','ESF','VN','Outros'];
+  const counts={};
+  cats.forEach(c=>counts[c]={meios:0,ops:0});
+  teams.forEach(t=>{
+    const c=categorizeMeio(t);
+    counts[c].meios++;
+    counts[c].ops+=parseInt(t.operacionais)||0;
+  });
+  return cats.filter(c=>counts[c].meios>0)
+    .map(c=>`<span class="viz-tip-item"><strong>${c}</strong> ${counts[c].meios}m · ${counts[c].ops} op.</span>`)
+    .join('');
+}
+
+function postoCardHtmlViz(p){
+  const pt=db.teams.filter(t=>t.postoComandoId===p.id&&t.estado!=='desmobilizado');
+  const totalOps=pt.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const tipoCls=p.tipo==='PCF'?'badge-info':'badge-warn';
+  return `<div class="occ-card occ-card-viz" style="margin-top:4px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};">
+    <div class="occ-card-header" style="padding:8px 14px 6px 16px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="badge ${tipoCls}" style="font-size:9px">${esc(p.tipo)}</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;">${esc(p.nome)}</span>
+        ${p.oficial_ligacao_nome?`<span style="font-size:10px;color:var(--muted)">OL: ${esc(p.oficial_ligacao_nome)}</span>`:''}
+        <span style="font-size:10px;color:var(--muted);margin-left:auto;">${pt.length} meio${pt.length!==1?'s':''} · ${totalOps} op.</span>
+      </div>
+    </div>
+    ${pt.length?`<div style="padding:4px 14px 8px 16px;"><div class="viz-tip-grid">${tipologiaBreakdown(pt)}</div></div>`:''}
+  </div>`;
+}
+
+function occCardHtmlViz(o){
+  const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
+  const activeT=teams.filter(t=>t.estado!=='desmobilizado');
+  const mainTeams=activeT.filter(t=>!t.postoComandoId);
+  const mainOps=mainTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const postos=db.postos.filter(p=>p.ocorrencia_id===o.id);
+  return `<div>
+    <div class="occ-card occ-card-viz">
+      <div class="occ-card-header">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div class="occ-card-id">Cód. ${esc(o.ref||'—')} · ${fmtDate(o.inicio)}</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent2);">⏱ ${elapsedStr(o.inicio)}</div>
+        </div>
+        <div class="occ-card-name">${esc(o.nome)}</div>
+        <div class="occ-card-meta">
+          <span class="badge badge-active pulse">● ATIVA</span>
+          ${o.subregiao?`<span class="badge badge-y" style="font-size:9px">${esc(o.subregiao)}</span>`:''}
+          ${o.concelho?`<span class="badge badge-info">${esc(o.concelho)}</span>`:''}
+        </div>
+      </div>
+      <div style="padding:10px 16px 12px 20px;">
+        ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
+        <div style="font-size:11px;font-weight:600;margin-bottom:6px;color:var(--muted);">PCO Principal: <span style="color:var(--text)">${mainTeams.length} meio${mainTeams.length!==1?'s':''} · ${mainOps} op.</span>${postos.length?` &nbsp;|&nbsp; Total geral: <span style="color:var(--text)">${activeT.length} meios · ${totalOps} op.</span>`:''}</div>
+        <div class="viz-tip-grid">${tipologiaBreakdown(mainTeams)||'<span style="font-size:10px;color:var(--muted)">Sem meios ativos no PCO</span>'}</div>
+      </div>
+    </div>
+    ${postos.map(postoCardHtmlViz).join('')}
+  </div>`;
+}
+
 function occCardHtml(o){
   const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado');
@@ -2610,9 +2694,11 @@ function renderOcorrencias(){
     return;
   }
 
+  const cardFn = currentRole==='visualizador' ? occCardHtmlViz : occCardHtml;
+
   // OfLigacao com sub-região fixa, ou filtrado: lista plana
   if(!groupBySubregiao || occSubregiaoFilter){
-    grid.innerHTML='<div class="occ-grid">' + list.map(occCardHtml).join('') + '</div>';
+    grid.innerHTML='<div class="occ-grid">' + list.map(cardFn).join('') + '</div>';
     return;
   }
 
@@ -2636,7 +2722,7 @@ function renderOcorrencias(){
           <span class="sector-stat" style="color:var(--accent2)">● ${occs.length} ativ${occs.length===1?'a':'as'}</span>
         </div>
       </div>
-      <div class="occ-grid">${occs.map(occCardHtml).join('')}</div>
+      <div class="occ-grid">${occs.map(cardFn).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -5382,6 +5468,7 @@ updateClock();
 // Auto-refresh time bars every 60 seconds
 setInterval(()=>{
   if(document.getElementById('page-detalhe').classList.contains('active')) renderTeams();
+  if(currentRole==='visualizador'&&document.getElementById('page-ocorrencias').classList.contains('active')) renderOcorrencias();
 },60000);
 
 // ══════════════════════════════════════════════════════════════════
