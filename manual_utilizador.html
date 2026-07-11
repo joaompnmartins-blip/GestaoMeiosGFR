@@ -333,10 +333,13 @@
       white-space: nowrap;
       display: inline-block;
     }
-    .role-admin       { background:rgba(66,154,189,.14);  color:var(--icnf-blue-light); border:1px solid rgba(66,154,189,.35); }
-    .role-ofligacao      { background:rgba(140,150,28,.12);  color:var(--accent);           border:1px solid rgba(140,150,28,.3); }
-    .role-operacional { background:rgba(90,184,214,.10);  color:var(--accent3);          border:1px solid rgba(90,184,214,.25); }
-    .role-visualizador{ background:rgba(89,99,0,.15);     color:var(--muted);            border:1px solid var(--border); }
+    .role-admin        { background:rgba(66,154,189,.14);  color:var(--icnf-blue-light); border:1px solid rgba(66,154,189,.35); }
+    .role-ofligacao    { background:rgba(140,150,28,.12);  color:var(--accent);           border:1px solid rgba(140,150,28,.3); }
+    .role-operacional  { background:rgba(90,184,214,.10);  color:var(--accent3);          border:1px solid rgba(90,184,214,.25); }
+    .role-visualizador { background:rgba(89,99,0,.15);     color:var(--muted);            border:1px solid var(--border); }
+    .role-gestor-sf    { background:rgba(140,150,28,.14);  color:#8c961c;                 border:1px solid rgba(140,150,28,.4); }
+    .role-gestor-fsbf  { background:rgba(180,83,9,.14);    color:#b45309;                 border:1px solid rgba(180,83,9,.4); }
+    .role-gestor-icnf  { background:rgba(29,78,216,.14);   color:#3b82f6;                 border:1px solid rgba(29,78,216,.4); }
 
     /* ── STATE BADGES ── */
     .badge {
@@ -534,8 +537,8 @@
     </div>
     <div class="cover-bar"></div>
     <div class="cover-meta">
-      <strong>Versão</strong> 17 &nbsp;·&nbsp;
-      <strong>Audiência</strong> Operacionais, OfLigacao e Administradores &nbsp;·&nbsp;
+      <strong>Versão</strong> 17 — beta 1 &nbsp;·&nbsp;
+      <strong>Audiência</strong> Operacionais, OfLigacao, Módulos e Administradores &nbsp;·&nbsp;
       <strong>Sistema</strong> GFR / ICNF<br>
       <strong>Idioma</strong> Português (Portugal)
     </div>
@@ -573,6 +576,22 @@
       <li><a class="toc-item" href="#sec-utilizadores"><span class="toc-num">06</span><span class="toc-label">Gestão de Utilizadores</span></a></li>
       <li><a class="toc-item" href="#sec-offline"><span class="toc-num">07</span><span class="toc-label">Modo Offline e Sincronização</span></a></li>
       <li><a class="toc-item" href="#sec-export"><span class="toc-num">08</span><span class="toc-label">Exportação de Relatórios</span></a></li>
+      <li><a class="toc-item" href="#sec-gestor-sf"><span class="toc-num">09</span><span class="toc-label">Módulo Gestor SF</span></a></li>
+      <li class="toc-sub">
+        <a class="toc-item" href="#sec-gsf-occ"><span class="toc-num">9.1</span><span class="toc-label">Vista de Ocorrências SF</span></a>
+        <a class="toc-item" href="#sec-gsf-recursos"><span class="toc-num">9.2</span><span class="toc-label">Gestão de Recursos SF</span></a>
+        <a class="toc-item" href="#sec-gsf-brigadas"><span class="toc-num">9.3</span><span class="toc-label">Brigadas BSF e Prontidão</span></a>
+      </li>
+      <li><a class="toc-item" href="#sec-gestor-fsbf"><span class="toc-num">10</span><span class="toc-label">Módulo Gestor FSBF</span></a></li>
+      <li class="toc-sub">
+        <a class="toc-item" href="#sec-gfsbf-occ"><span class="toc-num">10.1</span><span class="toc-label">Vista de Ocorrências FSBF/EMR</span></a>
+      </li>
+      <li><a class="toc-item" href="#sec-gestor-icnf"><span class="toc-num">11</span><span class="toc-label">Módulo Gestor ICNF</span></a></li>
+      <li class="toc-sub">
+        <a class="toc-item" href="#sec-gicnf-occ"><span class="toc-num">11.1</span><span class="toc-label">Vista de Ocorrências ICNF</span></a>
+        <a class="toc-item" href="#sec-gicnf-radios"><span class="toc-num">11.2</span><span class="toc-label">Gestão de Rádios ICNF</span></a>
+        <a class="toc-item" href="#sec-gicnf-egfr"><span class="toc-num">11.3</span><span class="toc-label">Escalas EGFR</span></a>
+      </li>
     </ul>
   </div>
 
@@ -624,7 +643,9 @@
 
     <div class="subsection" id="sec-roles">
       <div class="subsection-title">1.2 — Perfis e Permissões</div>
-      <p>Existem quatro perfis de utilizador, com acumulação de permissões da esquerda para a direita:</p>
+      <p>Existem dois tipos de perfis: <strong>perfis hierárquicos</strong> (acumulam permissões) e <strong>perfis de módulo</strong> (acesso especializado a um módulo operacional específico).</p>
+
+      <p style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Perfis Hierárquicos</p>
       <table class="role-table">
         <thead>
           <tr>
@@ -656,6 +677,36 @@
           </tr>
         </tbody>
       </table>
+
+      <p style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px;">Perfis de Módulo</p>
+      <p>Os perfis de módulo concedem acesso a uma vista operacional especializada na página <strong>Ocorrências</strong> e a funcionalidades de gestão do respetivo módulo. São atribuídos independentemente da hierarquia principal.</p>
+      <table class="role-table">
+        <thead>
+          <tr>
+            <th>Perfil</th>
+            <th>Módulo</th>
+            <th>Capacidades específicas</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="role-badge role-gestor-sf">gestor_sf</span></td>
+            <td>Sapadores Florestais (SF / BSF)</td>
+            <td>Vista de ocorrências com estatísticas e chips ESF/BSF; criar, editar e eliminar recursos SF; gerir prontidão de brigadas BSF e seus membros.</td>
+          </tr>
+          <tr>
+            <td><span class="role-badge role-gestor-fsbf">gestor_fsbf</span></td>
+            <td>FSBF / EMR</td>
+            <td>Vista de ocorrências com estatísticas e blocos FSBF/EMR; consulta detalhada de meios FSBF e EMR por posto/ocorrência.</td>
+          </tr>
+          <tr>
+            <td><span class="role-badge role-gestor-icnf">gestor_icnf</span></td>
+            <td>ICNF (vista global)</td>
+            <td>Vista de ocorrências completa (SF/BSF + FSBF/EMR + EGFR); editar escalas EGFR; criar e editar rádios ICNF.</td>
+          </tr>
+        </tbody>
+      </table>
+
       <div class="info-box">
         <div class="info-box-title">Sub-região (OfLigacao)</div>
         Um OfLigacao com sub-região atribuída vê e gere apenas as ocorrências da sua sub-região. Um OfLigacao <strong>sem</strong> sub-região atribuída ("nacional") vê todas as ocorrências, com o mesmo filtro e agrupamento por sub-região disponível ao Administrador.
@@ -1239,10 +1290,251 @@
   </div>
 
 
+  <!-- ══════════════════════════════════════
+       9. MÓDULO GESTOR SF
+  ══════════════════════════════════════ -->
+  <div class="section" id="sec-gestor-sf">
+    <div class="section-num">09 — Módulo Gestor SF</div>
+    <div class="section-title">Módulo <span>Gestor SF</span></div>
+    <p>
+      O perfil <span class="role-badge role-gestor-sf">gestor_sf</span> é destinado ao pessoal que gere as equipas de Sapadores Florestais (ESF) e Brigadas de Sapadores de Bombeiros Florestais (BSF). Disponibiliza uma vista de ocorrências especializada, a gestão directa de recursos SF e o controlo de prontidão das brigadas BSF.
+    </p>
+
+    <div class="subsection" id="sec-gsf-occ">
+      <div class="subsection-title">9.1 — Vista de Ocorrências SF</div>
+      <p>A página <strong>Ocorrências</strong> para o perfil <span class="role-badge role-gestor-sf">gestor_sf</span> apresenta, além da linha de estatísticas globais, uma <strong>linha de estatísticas SF/BSF</strong> específica:</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Estatísticas SF</div>
+          <p style="font-size:13px;"><strong>SF em op.</strong> — equipas ESF em operação; <strong>SF descanso</strong> — em descanso; <strong>SF meios ativos</strong> — total em trânsito/op./descanso; <strong>SF operacionais</strong> — total de operacionais SF mobilizados.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Estatísticas BSF</div>
+          <p style="font-size:13px;"><strong>BSF meios ativos</strong> — brigadas BSF em trânsito/op./descanso; <strong>BSF operacionais</strong> — total de operacionais BSF mobilizados.</p>
+        </div>
+      </div>
+      <p style="margin-top:16px;">Os cartões de ocorrência apresentam:</p>
+      <ul style="margin:10px 0 10px 20px;font-size:13px;line-height:2;">
+        <li><strong>Breakdown por tipologia</strong> — contagem de meios por categoria (ESF, BSF, EGFR, VN, Outros)</li>
+        <li><strong>Chips de recursos ESF/BSF</strong> — identificação visual dos códigos de equipa/meio ativos, a verde (ESF) e a âmbar (BSF)</li>
+      </ul>
+      <div class="info-box ok">
+        <div class="info-box-title">Agrupamento por sub-região</div>
+        A vista agrupa as ocorrências por sub-região, à semelhança da vista de Administrador.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gsf-recursos">
+      <div class="subsection-title">9.2 — Gestão de Recursos SF</div>
+      <p>Na página <strong>Gestão SF</strong> (barra lateral), o separador <strong>Recursos</strong> lista todos os recursos do tipo SF. O perfil <span class="role-badge role-gestor-sf">gestor_sf</span> (e <span class="role-badge role-admin">admin</span>) pode:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Criar um novo recurso SF</strong>
+            <p>Clicar em <kbd>+ Novo</kbd> no cabeçalho da tabela de recursos. Preencher o formulário com código, tipo, prontidão e dados associados. Só são apresentados tipos compatíveis com SF.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Editar um recurso existente</strong>
+            <p>Na linha do recurso, clicar em <kbd>✎</kbd>. O formulário é aberto com os dados actuais. Após editar, clicar em <kbd>Guardar</kbd>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <strong>Eliminar um recurso</strong>
+            <p>Na linha do recurso, clicar em <kbd>🗑</kbd>. É pedida confirmação antes da eliminação definitiva.</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Atenção</div>
+        A eliminação de um recurso SF é permanente e não pode ser desfeita. Recursos com histórico de mobilizações não devem ser eliminados — altere a prontidão para <em>inoperacional</em> em vez disso.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gsf-brigadas">
+      <div class="subsection-title">9.3 — Brigadas BSF e Prontidão</div>
+      <p>O separador <strong>Brigadas</strong> (página Gestão SF) lista as brigadas BSF. Cada brigada mostra a sua prontidão derivada e pode ser expandida para ver os membros.</p>
+
+      <p><strong>Prontidão da brigada (nível brigada)</strong></p>
+      <p>O botão <kbd>⚡</kbd> junto ao nome da brigada abre o modal de prontidão da brigada. Ao confirmar, a prontidão é aplicada a todos os recursos e viaturas membros da brigada de uma só vez.</p>
+      <div class="info-box">
+        <div class="info-box-title">Prontidão derivada</div>
+        A brigada mostra <strong>INOP</strong> se qualquer membro estiver inoperacional <em>ou</em> se tiver membros actualmente em serviço numa ocorrência (<em>Em serviço</em>). Nesse caso, o badge indica <strong>INOP. · Em serviço</strong> e o ⚡ da brigada não permite alteração — a prontidão só pode ser reposta quando o membro regressar da ocorrência.
+      </div>
+
+      <p style="margin-top:16px;"><strong>Expansão de membros</strong></p>
+      <p>Clicar na linha da brigada expande a lista de membros. Cada membro apresenta:</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Informação do membro</div>
+          <p style="font-size:13px;">Código/matrícula do recurso ou viatura, badge de tipo (ex.: <code>ABSC</code>) e estado de prontidão actual.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Acções</div>
+          <p style="font-size:13px;">Se o membro <strong>não</strong> estiver em serviço, o botão <kbd>⚡</kbd> individual permite alterar a sua prontidão de forma independente. Se estiver em serviço, é apresentado o badge <span style="background:rgba(29,78,216,.12);color:#3b82f6;border:1px solid rgba(29,78,216,.3);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 6px;border-radius:2px;">Em serviço</span> e o ⚡ individual fica indisponível.</p>
+        </div>
+      </div>
+      <div class="info-box ok">
+        <div class="info-box-title">Modal de prontidão</div>
+        O modal de prontidão (brigada ou membro individual) pré-selecciona automaticamente o estado <strong>oposto</strong> ao actual, facilitando o toggle rápido sem necessidade de alterar a selecção.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       10. MÓDULO GESTOR FSBF
+  ══════════════════════════════════════ -->
+  <div class="section" id="sec-gestor-fsbf">
+    <div class="section-num">10 — Módulo Gestor FSBF</div>
+    <div class="section-title">Módulo <span>Gestor FSBF</span></div>
+    <p>
+      O perfil <span class="role-badge role-gestor-fsbf">gestor_fsbf</span> é destinado ao pessoal que acompanha as Forças de Sapadores de Bombeiros Florestais (FSBF / BSBF) e as Equipas de Manutenção Rural (EMR). Disponibiliza uma vista de ocorrências especializada com estatísticas e detalhe FSBF/EMR.
+    </p>
+
+    <div class="subsection" id="sec-gfsbf-occ">
+      <div class="subsection-title">10.1 — Vista de Ocorrências FSBF/EMR</div>
+      <p>A página <strong>Ocorrências</strong> apresenta, além da linha de estatísticas globais, uma <strong>linha de estatísticas FSBF/EMR</strong>:</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Estatísticas FSBF</div>
+          <p style="font-size:13px;"><strong>FSBF em op.</strong> — meios FSBF em operação; <strong>FSBF descanso</strong> — em descanso; <strong>FSBF meios ativos</strong> — total em trânsito/op./descanso; <strong>FSBF operacionais</strong> — total de operacionais FSBF mobilizados.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Estatísticas EMR</div>
+          <p style="font-size:13px;"><strong>EMR meios ativos</strong> — equipas EMR em trânsito/op./descanso; <strong>EMR operacionais</strong> — total de operacionais EMR mobilizados.</p>
+        </div>
+      </div>
+      <p style="margin-top:16px;">Os cartões de ocorrência apresentam dois blocos distintos:</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title" style="color:#b45309;">Bloco FSBF</div>
+          <p style="font-size:13px;">Contagem de meios FSBF (em operação / descanso / total ativos / operacionais) e chips com os códigos de equipa FSBF activos (a âmbar).</p>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color:#b91c1c;">Bloco EMR</div>
+          <p style="font-size:13px;">Contagem de meios EMR (ativos / operacionais) e chips com os códigos de equipa EMR activos (a vermelho).</p>
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Distinção FSBF vs EMR</div>
+        Um meio é classificado como <strong>EMR</strong> quando tem o campo <em>EMR ID</em> preenchido. Caso contrário, com <em>FSBF/BSBF ID</em> preenchido, é classificado como <strong>FSBF</strong>.
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       11. MÓDULO GESTOR ICNF
+  ══════════════════════════════════════ -->
+  <div class="section" id="sec-gestor-icnf">
+    <div class="section-num">11 — Módulo Gestor ICNF</div>
+    <div class="section-title">Módulo <span>Gestor ICNF</span></div>
+    <p>
+      O perfil <span class="role-badge role-gestor-icnf">gestor_icnf</span> agrega as capacidades dos módulos SF e FSBF e acrescenta a gestão dos meios EGFR. É a vista de maior abrangência entre os perfis de módulo, integrando estatísticas e cartões de todas as tipologias.
+    </p>
+
+    <div class="subsection" id="sec-gicnf-occ">
+      <div class="subsection-title">11.1 — Vista de Ocorrências ICNF</div>
+      <p>A página <strong>Ocorrências</strong> apresenta quatro linhas de estatísticas:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">—</div>
+          <div class="step-body">
+            <strong>Linha global</strong>
+            <p>Meios em trânsito, em operação, em descanso, desmobilizados e total de operacionais (igual à vista de Administrador).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">—</div>
+          <div class="step-body">
+            <strong>Linha SF/BSF</strong>
+            <p>Estatísticas detalhadas de equipas ESF e brigadas BSF (ver secção 9.1).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">—</div>
+          <div class="step-body">
+            <strong>Linha FSBF/EMR</strong>
+            <p>Estatísticas detalhadas de meios FSBF e EMR (ver secção 10.1).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">—</div>
+          <div class="step-body">
+            <strong>Linha EGFR</strong>
+            <p><strong>EGFR em op.</strong> — equipas EGFR em operação; <strong>EGFR descanso</strong> — em descanso; <strong>EGFR meios ativos</strong> — total em trânsito/op./descanso; <strong>EGFR operacionais</strong> — total de operacionais EGFR mobilizados.</p>
+          </div>
+        </div>
+      </div>
+      <p>Os cartões de ocorrência apresentam os três blocos em simultâneo (SF/BSF, FSBF/EMR e EGFR) com os respectivos chips de identificação de recursos.</p>
+      <div class="info-box ok">
+        <div class="info-box-title">Vista completa</div>
+        A vista do gestor_icnf é a mais abrangente de todos os perfis: combina tudo o que os módulos gestor_sf e gestor_fsbf mostram, acrescentando o bloco EGFR. Os chips de recursos são apresentados a verde (ESF), âmbar (BSF/FSBF), vermelho (EMR) e azul (EGFR).
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gicnf-radios">
+      <div class="subsection-title">11.2 — Gestão de Rádios ICNF</div>
+      <p>Na página <strong>ICNF</strong> (barra lateral), o separador <strong>Rádios</strong> lista todos os rádios registados. O perfil <span class="role-badge role-gestor-icnf">gestor_icnf</span> (e <span class="role-badge role-admin">admin</span>) pode criar e editar rádios:</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Criar novo rádio</strong>
+            <p>Clicar em <kbd>+ Novo Rádio</kbd> no cabeçalho da tabela. Preencher DDI, tipo, alias, indicativo, estado, sub-região e entidade. Clicar em <kbd>Criar</kbd>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Editar rádio existente</strong>
+            <p>Na linha do rádio, clicar em <kbd>✎</kbd>. O formulário é aberto com os dados actuais. Os campos DDI e tipo ficam em modo leitura (não editáveis após criação). Após editar os restantes campos, clicar em <kbd>Guardar</kbd>.</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Campos editáveis vs. fixos</div>
+        O <strong>DDI</strong> e o <strong>Tipo</strong> de rádio são definidos na criação e não podem ser alterados posteriormente. Para corrigir estes campos, é necessário eliminar e recriar o rádio (operação de <span class="role-badge role-admin">admin</span>).
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gicnf-egfr">
+      <div class="subsection-title">11.3 — Escalas EGFR</div>
+      <p>Na página <strong>ICNF</strong>, o separador <strong>EGFR</strong> permite visualizar e editar as escalas de operacionais e viaturas EGFR. O perfil <span class="role-badge role-gestor-icnf">gestor_icnf</span> tem as mesmas permissões de edição que o perfil <span class="role-badge role-ofligacao">ofligacao_ccon</span>.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Vista das escalas</strong>
+            <p>Por predefinição, a vista mostra as escalas em modo de leitura. O botão <kbd>✎</kbd> junto a cada linha permite editar individualmente, ou o botão <kbd>Editor</kbd> (separador) abre o editor completo em modo tabela.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Editar uma escala</strong>
+            <p>No modo editor, ajustar os valores pretendidos e confirmar. As alterações são guardadas imediatamente na base de dados e reflectidas na vista de estatísticas EGFR.</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Restrição de acesso</div>
+        A edição de escalas EGFR está restrita aos perfis <span class="role-badge role-ofligacao" style="font-size:8px;">ofligacao_ccon</span>, <span class="role-badge role-gestor-icnf" style="font-size:8px;">gestor_icnf</span> e <span class="role-badge role-admin" style="font-size:8px;">admin</span>. Outros perfis podem visualizar as escalas mas não as editar.
+      </div>
+    </div>
+  </div>
+
+
   <!-- ══════ RODAPÉ ══════ -->
   <div class="footer">
     <div class="footer-logo">Gestão<span>Meios</span></div>
-    <div>ICNF · Gestão de Fogos Rurais · Manual do Utilizador v17</div>
+    <div>ICNF · Gestão de Fogos Rurais · Manual do Utilizador v17 beta 1</div>
     <div>Documento editável — abrir em qualquer editor de texto ou browser</div>
   </div>
 
