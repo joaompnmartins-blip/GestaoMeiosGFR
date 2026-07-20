@@ -1295,7 +1295,7 @@ app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(
     LEFT JOIN recursos r ON r.id = v.recurso_id
     LEFT JOIN recurso_tipos rt ON rt.codigo = r.tipo
     LEFT JOIN fontes f ON f.id = rt.fonte_id
-    WHERE ($1::text    IS NULL OR f.codigo     = $1)
+    WHERE ($1::text    IS NULL OR f.codigo = $1 OR v.megfr = $1)
       AND ($2::uuid    IS NULL OR v.recurso_id = $2)
       AND ($3::text    IS NULL OR v.classe     = $3)
       AND ($4::boolean IS NULL OR v.ativo      = $4)
