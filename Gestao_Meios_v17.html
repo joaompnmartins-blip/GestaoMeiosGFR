@@ -569,7 +569,7 @@
       <div class="nav-item auth-admin" data-page="pedidos" onclick="navTo('pedidos',this)" style="display:none;">
         <span class="nav-icon">◧</span><span>Pedidos</span>
       </div>
-      <div class="nav-item" data-page="arquivo" onclick="navTo('arquivo',this)">
+      <div class="nav-item" id="nav-arquivo" data-page="arquivo" onclick="navTo('arquivo',this)">
         <span class="nav-icon">◫</span><span>Arquivo</span>
       </div>
       <div class="nav-sep"></div>
@@ -2264,10 +2264,11 @@ function applyRoleUI(){
   document.querySelectorAll('.auth-gestor-sf').forEach(el=>el.style.display=isSF?'':'none');
   document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
   document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
-  // ofligacao regional: sem acesso a Meios (catálogo) e Arquivo
+  // ofligacao e perfis de módulo: sem acesso a Meios (catálogo) e Arquivo
+  const hideNavPages = ['ofligacao','gestor_sf','gestor_fsbf','gestor_icnf'].includes(currentRole);
   ['equipas','arquivo'].forEach(p=>{
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
-    if(navEl) navEl.style.display = currentRole==='ofligacao' ? 'none' : '';
+    if(navEl) navEl.style.display = hideNavPages ? 'none' : '';
   });
   // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
   const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
@@ -2556,8 +2557,12 @@ function navTo(page,el){
     if(c.title!==null) document.getElementById('topbar-title').textContent=c.title;
     if(c.sub!==null) document.getElementById('topbar-sub').textContent=c.sub;
     const btn=document.getElementById('btnNew');
-    if(c.btn){btn.textContent=c.btn;btn.setAttribute('onclick',c.btnFn);btn.style.display='';}
-    else btn.style.display='none';
+    if(c.btn){
+      btn.textContent=c.btn;btn.setAttribute('onclick',c.btnFn);
+      const needsOflig=btn.classList.contains('auth-ofligacao');
+      const canShow=!needsOflig||['admin','ofligacao','ofligacao_ccon'].includes(currentRole);
+      btn.style.display=canShow?'':'none';
+    } else btn.style.display='none';
   }
   if(page==='ocorrencias') renderOcorrencias();
   if(page==='arquivo') renderArquivo();
