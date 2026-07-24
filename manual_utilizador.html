@@ -339,6 +339,7 @@
     .role-visualizador { background:rgba(89,99,0,.15);     color:var(--muted);            border:1px solid var(--border); }
     .role-gestor-sf    { background:rgba(140,150,28,.14);  color:#8c961c;                 border:1px solid rgba(140,150,28,.4); }
     .role-gestor-fsbf  { background:rgba(180,83,9,.14);    color:#b45309;                 border:1px solid rgba(180,83,9,.4); }
+    .role-chefe-grupo-fsbf { background:rgba(120,53,15,.18); color:#b45309;               border:1px solid rgba(120,53,15,.5); }
     .role-gestor-icnf  { background:rgba(29,78,216,.14);   color:#3b82f6;                 border:1px solid rgba(29,78,216,.4); }
 
     /* ── STATE BADGES ── */
@@ -582,9 +583,12 @@
         <a class="toc-item" href="#sec-gsf-recursos"><span class="toc-num">9.2</span><span class="toc-label">Gestão de Recursos SF</span></a>
         <a class="toc-item" href="#sec-gsf-brigadas"><span class="toc-num">9.3</span><span class="toc-label">Brigadas BSF e Prontidão</span></a>
       </li>
-      <li><a class="toc-item" href="#sec-gestor-fsbf"><span class="toc-num">10</span><span class="toc-label">Módulo Gestor FSBF</span></a></li>
+      <li><a class="toc-item" href="#sec-gestor-fsbf"><span class="toc-num">10</span><span class="toc-label">Módulo Gestor / Chefe Grupo FSBF</span></a></li>
       <li class="toc-sub">
         <a class="toc-item" href="#sec-gfsbf-occ"><span class="toc-num">10.1</span><span class="toc-label">Vista de Ocorrências FSBF/EMR</span></a>
+        <a class="toc-item" href="#sec-gfsbf-carta"><span class="toc-num">10.2</span><span class="toc-label">Carta de Meios</span></a>
+        <a class="toc-item" href="#sec-gfsbf-viaturas"><span class="toc-num">10.3</span><span class="toc-label">Gestão de Viaturas FSBF</span></a>
+        <a class="toc-item" href="#sec-gfsbf-operacionais"><span class="toc-num">10.4</span><span class="toc-label">Operacionais FSBF</span></a>
       </li>
       <li><a class="toc-item" href="#sec-gestor-icnf"><span class="toc-num">11</span><span class="toc-label">Módulo Gestor ICNF</span></a></li>
       <li class="toc-sub">
@@ -697,7 +701,12 @@
           <tr>
             <td><span class="role-badge role-gestor-fsbf">gestor_fsbf</span></td>
             <td>FSBF / EMR</td>
-            <td>Vista de ocorrências com estatísticas e blocos FSBF/EMR; consulta detalhada de meios FSBF e EMR por posto/ocorrência.</td>
+            <td>Vista de ocorrências com estatísticas FSBF/EMR; gerir viaturas FSBF, lista de operacionais e carta de meios diária.</td>
+          </tr>
+          <tr>
+            <td><span class="role-badge role-chefe-grupo-fsbf">chefe_grupo_fsbf</span></td>
+            <td>FSBF / EMR (leitura + carta)</td>
+            <td>Igual ao gestor_fsbf mas sem permissão para editar viaturas ou operacionais. Pode consultar a lista de viaturas e operacionais, e preencher a carta de meios diária.</td>
           </tr>
           <tr>
             <td><span class="role-badge role-gestor-icnf">gestor_icnf</span></td>
@@ -1391,11 +1400,21 @@
        10. MÓDULO GESTOR FSBF
   ══════════════════════════════════════ -->
   <div class="section" id="sec-gestor-fsbf">
-    <div class="section-num">10 — Módulo Gestor FSBF</div>
-    <div class="section-title">Módulo <span>Gestor FSBF</span></div>
+    <div class="section-num">10 — Módulo Gestor / Chefe Grupo FSBF</div>
+    <div class="section-title">Módulo <span>Gestor / Chefe Grupo FSBF</span></div>
     <p>
-      O perfil <span class="role-badge role-gestor-fsbf">gestor_fsbf</span> é destinado ao pessoal que acompanha as Forças de Sapadores de Bombeiros Florestais (FSBF / BSBF) e as Equipas de Manutenção Rural (EMR). Disponibiliza uma vista de ocorrências especializada com estatísticas e detalhe FSBF/EMR.
+      Estes perfis destinam-se ao pessoal que acompanha as Forças de Sapadores de Bombeiros Florestais (FSBF / BSBF) e as Equipas de Manutenção Rural (EMR). Ambos acedem à página <strong>Gestão FSBF</strong> e a uma vista de ocorrências especializada.
     </p>
+    <div class="two-col" style="margin-top:12px;">
+      <div class="card">
+        <div class="card-title"><span class="role-badge role-gestor-fsbf">gestor_fsbf</span></div>
+        <p style="font-size:13px;margin-top:8px;">Acesso completo: vista de ocorrências FSBF/EMR, carta de meios, gestão de viaturas FSBF (criar, editar, eliminar, prontidão, dispositivo) e lista de operacionais.</p>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="role-badge role-chefe-grupo-fsbf">chefe_grupo_fsbf</span></div>
+        <p style="font-size:13px;margin-top:8px;">Igual ao gestor_fsbf mas <strong>sem permissão de edição de viaturas nem de operacionais</strong>. Pode consultar ambas as listas e preencher a carta de meios diária.</p>
+      </div>
+    </div>
 
     <div class="subsection" id="sec-gfsbf-occ">
       <div class="subsection-title">10.1 — Vista de Ocorrências FSBF/EMR</div>
@@ -1424,6 +1443,59 @@
       <div class="info-box">
         <div class="info-box-title">Distinção FSBF vs EMR</div>
         Um meio é classificado como <strong>EMR</strong> quando tem o campo <em>EMR ID</em> preenchido. Caso contrário, com <em>FSBF/BSBF ID</em> preenchido, é classificado como <strong>FSBF</strong>.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gfsbf-carta">
+      <div class="subsection-title">10.2 — Carta de Meios <span style="font-size:12px;font-weight:400;color:var(--muted);">(gestor_fsbf e chefe_grupo_fsbf)</span></div>
+      <p>Na página <strong>Gestão FSBF</strong>, o separador <strong>Carta de Meios</strong> permite registar a composição diária das equipas FSBF e EMR. Selecione a data no topo da página (o botão <kbd>Hoje</kbd> repõe o dia atual).</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Coordenador de Dia</div>
+          <p style="font-size:13px;">Registo do coordenador e do seu veículo e guarnição. Os campos de nome e contacto são preenchidos automaticamente a partir da lista de operacionais.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">BSBF Norte / Sul / GSBF</div>
+          <p style="font-size:13px;">Tabela de viaturas por brigada: código de viatura, base, chefe de equipa, contacto, guarnição, observações. A coluna <strong>Base</strong> é selecionada a partir de uma lista predefinida de bases FSBF.</p>
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:10px;">
+        <div class="card">
+          <div class="card-title">EMR</div>
+          <p style="font-size:13px;">Cartões por máquina de manutenção rural: viatura, operador, contacto, observações e total de operacionais.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Copiar dia anterior</div>
+          <p style="font-size:13px;">O botão <kbd>📋 Copiar dia anterior</kbd> replica automaticamente todos os dados do dia anterior (coordenador, linhas BSBF e EMR) para a data selecionada, substituindo quaisquer dados já existentes.</p>
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Exportar PDF</div>
+        O botão <kbd>🖨 Exportar PDF</kbd> abre a janela de impressão do browser com a carta formatada para impressão em A4.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gfsbf-viaturas">
+      <div class="subsection-title">10.3 — Gestão de Viaturas FSBF <span style="font-size:12px;font-weight:400;color:var(--muted);">(gestor_fsbf apenas)</span></div>
+      <p>O separador <strong>Veículos</strong> lista todas as viaturas FSBF com código, matrícula, marca/modelo, classe, região e estado de prontidão. O perfil <span class="role-badge role-chefe-grupo-fsbf">chefe_grupo_fsbf</span> pode consultar esta lista mas não pode fazer alterações.</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Criar / Editar viatura</div>
+          <p style="font-size:13px;">O botão <kbd>+ Nova</kbd> e o ícone <kbd>✎</kbd> em cada linha abrem o formulário de viatura. Campos: código, matrícula, marca, modelo, classe, região, tipologia, entidade, AGF Regional e estado ativo/inativo.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Prontidão e Dispositivo</div>
+          <p style="font-size:13px;">O botão <kbd>⚡</kbd> abre o painel de prontidão (Operacional / Inoperacional e motivo). O botão <kbd>● Disp.</kbd> / <kbd>○ Disp.</kbd> marca se a viatura integra o dispositivo diário.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gfsbf-operacionais">
+      <div class="subsection-title">10.4 — Operacionais FSBF <span style="font-size:12px;font-weight:400;color:var(--muted);">(gestor_fsbf apenas)</span></div>
+      <p>O separador <strong>Operacionais</strong> apresenta a lista de sapadores florestais FSBF com número de trabalhador, nome, cargo e contacto. O perfil <span class="role-badge role-chefe-grupo-fsbf">chefe_grupo_fsbf</span> pode consultar esta lista (útil para preencher a carta de meios) mas não pode adicionar, editar ou eliminar registos.</p>
+      <div class="info-box">
+        <div class="info-box-title">Campos de nome e contacto na carta</div>
+        Ao selecionar um operacional pelo nome na carta de meios (coordenador ou chefe de equipa), o campo de contacto é preenchido automaticamente com o número registado na lista de operacionais.
       </div>
     </div>
   </div>
