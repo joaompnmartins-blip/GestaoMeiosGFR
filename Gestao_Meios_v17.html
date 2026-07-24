@@ -1012,6 +1012,7 @@
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;">
             <input type="date" class="form-input" id="fsbf-data" onchange="renderFsbfCarta()" style="font-size:12px;padding:5px 8px;"/>
             <button class="btn btn-ghost btn-xs" onclick="document.getElementById('fsbf-data').value=new Date().toISOString().slice(0,10);renderFsbfCarta()">Hoje</button>
+            <button class="btn btn-ghost btn-xs" onclick="copiarDiaAnteriorCarta()" title="Replicar dados do dia anterior para a data seleccionada">📋 Copiar dia anterior</button>
             <button class="btn btn-ghost btn-xs" onclick="printFsbfCarta()" title="Exportar PDF">🖨 Exportar PDF</button>
           </div>
           <div id="fsbf-carta-body"></div>
@@ -6885,6 +6886,23 @@ async function renderGestaoFSBF(){
       ${['admin','ofligacao'].includes(currentRole)?`<button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}','FSBF')">✕</button>`:''}
     </td>
   </tr>`).join('');
+}
+
+// ── Copiar Carta do dia anterior ──────────────────────────────────
+async function copiarDiaAnteriorCarta(){
+  const toEl = document.getElementById('fsbf-data');
+  if(!toEl.value){ toast('Seleccione primeiro a data de destino.','err'); return; }
+  const to   = toEl.value;
+  const from = new Date(new Date(to).getTime() + 24*60*60*1000); // +1 day to fix UTC offset
+  // compute previous calendar day
+  const prev = new Date(to);
+  prev.setDate(prev.getDate()-1);
+  const fromStr = prev.toISOString().slice(0,10);
+  if(!confirm(`Copiar carta de ${fromStr} para ${to}?\n\nOs dados existentes em ${to} serão substituídos.`)) return;
+  const { error } = await apiFetch('/api/fsbf/carta/copy', { method:'POST', body:JSON.stringify({ from:fromStr, to }) });
+  if(error){ toast(error.message||'Erro ao copiar carta.','err'); return; }
+  toast(`Carta de ${fromStr} copiada para ${to}.`,'ok');
+  await renderFsbfCarta();
 }
 
 // ── Carta de Meios ────────────────────────────────────────────────

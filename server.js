@@ -1770,6 +1770,69 @@ app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
   res.json(carta);
 }));
 
+// ── POST /api/fsbf/carta/copy — replicate a day's carta to another day ──
+app.post('/api/fsbf/carta/copy', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { from, to } = req.body;
+  if (!from || !to) return res.status(400).json({ error: 'from e to são obrigatórios.' });
+  if (from === to)  return res.status(400).json({ error: 'from e to devem ser datas diferentes.' });
+
+  const [cartaRes, bsbfRes, emrRes] = await Promise.all([
+    pool.query(`SELECT * FROM fsbf_carta WHERE data=$1`, [from]),
+    pool.query(`SELECT * FROM fsbf_bsbf_equipa WHERE data=$1 ORDER BY brigada, ordem, created_at`, [from]),
+    pool.query(`SELECT * FROM fsbf_emr_equipa   WHERE data=$1 ORDER BY ordem, created_at`, [from]),
+  ]);
+
+  const carta = cartaRes.rows[0];
+  const bsbf  = bsbfRes.rows;
+  const emr   = emrRes.rows;
+
+  if (!carta && !bsbf.length && !emr.length)
+    return res.status(404).json({ error: `Sem dados registados para ${from}.` });
+
+  // Replace target day
+  await pool.query(`DELETE FROM fsbf_bsbf_equipa WHERE data=$1`, [to]);
+  await pool.query(`DELETE FROM fsbf_emr_equipa   WHERE data=$1`, [to]);
+
+  if (carta) {
+    await pool.query(`
+      INSERT INTO fsbf_carta
+        (data,coord_nome,coord_contacto,chefe_nome,chefe_contacto,chefe_guarnicao,
+         chefe_veiculo_id,chefe_veiculo_texto,notas_outros_meios,updated_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      ON CONFLICT (data) DO UPDATE SET
+        coord_nome=$2,coord_contacto=$3,chefe_nome=$4,chefe_contacto=$5,
+        chefe_guarnicao=$6,chefe_veiculo_id=$7,chefe_veiculo_texto=$8,
+        notas_outros_meios=$9,updated_by=$10,updated_at=now()
+    `, [to, carta.coord_nome||null, carta.coord_contacto||null,
+        carta.chefe_nome||null, carta.chefe_contacto||null, carta.chefe_guarnicao||null,
+        carta.chefe_veiculo_id||null, carta.chefe_veiculo_texto||null,
+        carta.notas_outros_meios||null, req.user.id]);
+  }
+
+  for (const e of bsbf) {
+    await pool.query(`
+      INSERT INTO fsbf_bsbf_equipa
+        (data,brigada,base,veiculo_id,guarnicao,chefe_nome,contacto,observacoes,ordem,created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    `, [to, e.brigada, e.base||null, e.veiculo_id||null, e.guarnicao||null,
+        e.chefe_nome||null, e.contacto||null, e.observacoes||null, e.ordem, req.user.id]);
+  }
+
+  for (const e of emr) {
+    await pool.query(`
+      INSERT INTO fsbf_emr_equipa
+        (data,base,mr_viatura_id,vaop_viatura_id,vpiloto_viatura_id,vlci_viatura_id,
+         chefe_nome,contacto,total_op,observacoes,ordem,created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+    `, [to, e.base||null, e.mr_viatura_id||null, e.vaop_viatura_id||null,
+        e.vpiloto_viatura_id||null, e.vlci_viatura_id||null,
+        e.chefe_nome||null, e.contacto||null, e.total_op||null, e.observacoes||null,
+        e.ordem, req.user.id]);
+  }
+
+  res.json({ ok: true, copied: { carta: !!carta, bsbf: bsbf.length, emr: emr.length } });
+}));
+
 // ── BSBF entries CRUD ──────────────────────────────────────────
 app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
