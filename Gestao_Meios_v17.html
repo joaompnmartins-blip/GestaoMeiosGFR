@@ -6818,15 +6818,16 @@ async function renderFSBFOperacionais(){
   document.getElementById('gfsbf-op-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-op-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
+  const canEditOp = currentRole==='admin' || currentRole==='gestor_fsbf';
   tbody.innerHTML = rows.map(r=>`<tr>
     <td class="mono" style="font-size:12px;color:var(--muted)">${r.n_trab||'—'}</td>
     <td><strong>${esc(r.nome)}</strong></td>
     <td style="font-size:12px">${esc(r.cargo||'—')}</td>
     <td class="mono" style="font-size:12px">${esc(r.contacto||'—')}</td>
-    <td style="display:flex;gap:4px;white-space:nowrap;">
-      <button class="btn btn-ghost btn-xs auth-ofligacao" onclick="openEditFsbfOp(${JSON.stringify(r).replace(/"/g,'&quot;')})">✎</button>
-      <button class="btn btn-danger btn-xs auth-ofligacao" onclick="deleteFsbfOp('${r.id}','${esc(r.nome)}')">✕</button>
-    </td>
+    <td style="display:flex;gap:4px;white-space:nowrap;">${canEditOp ? `
+      <button class="btn btn-ghost btn-xs" onclick="openEditFsbfOp(${JSON.stringify(r).replace(/"/g,'&quot;')})">✎</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteFsbfOp('${r.id}','${esc(r.nome)}')">✕</button>
+    ` : ''}</td>
   </tr>`).join('');
 }
 
