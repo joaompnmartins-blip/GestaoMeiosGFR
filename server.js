@@ -21,7 +21,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'Gestao_Meios_v17.h
 
 // ─── Role ordering ────────────────────────────────────────────────
 const ROLE_ORDER   = ['visualizador', 'operacional', 'ofligacao', 'ofligacao_ccon', 'admin'];
-const MODULE_ROLES = ['gestor_sf', 'gestor_fsbf', 'gestor_icnf'];
+const MODULE_ROLES = ['gestor_sf', 'gestor_fsbf', 'gestor_icnf', 'chefe_grupo_fsbf'];
 
 function requireAuth(minRole = 'visualizador') {
   return (req, res, next) => {
@@ -1115,7 +1115,7 @@ app.get('/api/oln/servico', requireAuth('visualizador'), wrap(async (req, res) =
 //  MÓDULOS DE GESTÃO — helpers
 // ══════════════════════════════════════════════════════════════════
 
-const ROLE_FONTE = { gestor_sf: 'SF', gestor_fsbf: 'FSBF', gestor_icnf: 'ICNF' };
+const ROLE_FONTE = { gestor_sf: 'SF', gestor_fsbf: 'FSBF', gestor_icnf: 'ICNF', chefe_grupo_fsbf: 'FSBF' };
 
 // Garante que o gestor só altera recursos/viaturas da sua fonte
 async function assertFonteAccess(client, recursoId, userRole) {
@@ -1137,7 +1137,8 @@ async function assertFonteAccess(client, recursoId, userRole) {
 //  MÓDULOS DE GESTÃO — RECURSOS
 // ══════════════════════════════════════════════════════════════════
 
-const ALL_GESTORES = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf');
+const ALL_GESTORES      = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf');
+const ALL_GESTORES_READ = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf', 'chefe_grupo_fsbf');
 
 app.get('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   const { tipo, subregiao, ativo, fonte } = req.query;
@@ -1278,7 +1279,7 @@ app.post('/api/gestao/viaturas/:id/prontidao', requireAuth('visualizador'), ALL_
 //  MÓDULOS DE GESTÃO — VIATURAS
 // ══════════════════════════════════════════════════════════════════
 
-app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES_READ, wrap(async (req, res) => {
   const { recurso_id, classe, megfr, ativo, disponivel } = req.query;
   const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
   const dispFilter = disponivel === undefined ? null : disponivel === 'true';
@@ -1653,7 +1654,7 @@ app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => 
 //  CARTA DE MEIOS FSBF
 // ══════════════════════════════════════════════════════════════════
 
-const FSBF_GESTORES = requireModule('gestor_fsbf');
+const FSBF_GESTORES = requireModule('gestor_fsbf', 'chefe_grupo_fsbf');
 
 // ── GET /api/fsbf/disponivel?data= — ofligacao_ccon only ───────
 app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, res) => {
@@ -1926,7 +1927,7 @@ app.get('/api/fsbf/operacionais', requireAuth('visualizador'), wrap(async (_req,
   res.json(rows);
 }));
 
-app.post('/api/fsbf/operacionais', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+app.post('/api/fsbf/operacionais', requireAuth('visualizador'), requireModule('gestor_fsbf'), wrap(async (req, res) => {
   const { nome, n_trab, cargo, contacto } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome obrigatório.' });
   const { rows: [row] } = await pool.query(
@@ -1936,7 +1937,7 @@ app.post('/api/fsbf/operacionais', requireAuth('visualizador'), FSBF_GESTORES, w
   res.status(201).json(row);
 }));
 
-app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), requireModule('gestor_fsbf'), wrap(async (req, res) => {
   const ALLOWED = ['nome','n_trab','cargo','contacto','ativo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
@@ -1951,7 +1952,7 @@ app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTOR
   res.json(row);
 }));
 
-app.delete('/api/fsbf/operacionais/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+app.delete('/api/fsbf/operacionais/:id', requireAuth('visualizador'), requireModule('gestor_fsbf'), wrap(async (req, res) => {
   await pool.query(`UPDATE operacionais_fsbf SET ativo=false WHERE id=$1`, [req.params.id]);
   res.json({ ok: true });
 }));

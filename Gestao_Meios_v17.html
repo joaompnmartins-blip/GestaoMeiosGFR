@@ -487,6 +487,7 @@
     .role-gestor-sf{background:rgba(140,150,28,.14);color:#a3b220;border:1px solid rgba(140,150,28,.45);}
     .role-gestor-fsbf{background:rgba(180,83,9,.14);color:#d97706;border:1px solid rgba(180,83,9,.45);}
     .role-gestor-icnf{background:rgba(29,78,216,.14);color:#60a5fa;border:1px solid rgba(29,78,216,.45);}
+    .role-chefe-grupo-fsbf{background:rgba(120,53,15,.18);color:#f59e0b;border:1px solid rgba(120,53,15,.5);}
     /* ═══ USER MANAGEMENT PAGE ═══ */
     .user-role-sel{padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;color:var(--text);font-size:11px;font-family:'Barlow',sans-serif;}
 
@@ -930,7 +931,11 @@
             </div>
             <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
               <span class="role-badge role-gestor-fsbf" style="display:inline-block;margin-bottom:6px;">gestor_fsbf</span>
-              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Vista de ocorrências com estatísticas e detalhe FSBF/EMR.</div>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Vista de ocorrências com estatísticas e detalhe FSBF/EMR. Gere viaturas, operacionais e carta de meios.</div>
+            </div>
+            <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
+              <span class="role-badge role-chefe-grupo-fsbf" style="display:inline-block;margin-bottom:6px;">chefe_grupo_fsbf</span>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6;">Como gestor_fsbf mas sem editar viaturas ou operacionais. Pode apenas preencher a carta de meios.</div>
             </div>
             <div style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:2px;">
               <span class="role-badge role-gestor-icnf" style="display:inline-block;margin-bottom:6px;">gestor_icnf</span>
@@ -1031,7 +1036,7 @@
                 <option value="">Todas</option>
                 <option value="true">Disponíveis</option>
               </select>
-              <button class="btn btn-primary btn-sm" onclick="openNewViaturaModal('FSBF')">+ Nova</button>
+              <button id="gfsbf-v-btn-nova" class="btn btn-primary btn-sm" onclick="openNewViaturaModal('FSBF')">+ Nova</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -1671,6 +1676,7 @@
           <option value="ofligacao_ccon">OfLigacao CCON — nacional, EGFR/EMR</option>
           <option value="gestor_sf">Gestor SF — módulo Sapadores Florestais</option>
           <option value="gestor_fsbf">Gestor FSBF — módulo Bombeiros</option>
+          <option value="chefe_grupo_fsbf">Chefe Grupo FSBF — carta de meios (sem editar viaturas/op.)</option>
           <option value="gestor_icnf">Gestor ICNF — módulo ICNF + OLN</option>
           <option value="admin">Admin — acesso total</option>
         </select>
@@ -2259,29 +2265,31 @@ function applyRoleUI(){
   document.querySelectorAll('.auth-ccon').forEach(el=>el.style.display=isCCON?'':'none');
   // Module gestor nav items
   const isSF   = isAdmin || currentRole==='gestor_sf';
-  const isFSBF = isAdmin || currentRole==='gestor_fsbf';
+  const isFSBF = isAdmin || currentRole==='gestor_fsbf' || currentRole==='chefe_grupo_fsbf';
   const isICNF = isAdmin || currentRole==='gestor_icnf';
   document.querySelectorAll('.auth-gestor-sf').forEach(el=>el.style.display=isSF?'':'none');
   document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
   document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
   // ofligacao e perfis de módulo: sem acesso a Meios (catálogo) e Arquivo
-  const hideNavPages = ['ofligacao','gestor_sf','gestor_fsbf','gestor_icnf'].includes(currentRole);
+  const hideNavPages = ['ofligacao','gestor_sf','gestor_fsbf','gestor_icnf','chefe_grupo_fsbf'].includes(currentRole);
   ['equipas','arquivo'].forEach(p=>{
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
     if(navEl) navEl.style.display = hideNavPages ? 'none' : '';
   });
   // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
-  const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
+  const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || currentRole==='chefe_grupo_fsbf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
   const srFilter = document.getElementById('filter-subregiao');
   if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
   const sfStatsRow = document.getElementById('sf-stats-row');
   if(sfStatsRow) sfStatsRow.style.display = (currentRole==='gestor_sf'||currentRole==='gestor_icnf') ? '' : 'none';
   const fsbfStatsRow = document.getElementById('fsbf-stats-row');
-  if(fsbfStatsRow) fsbfStatsRow.style.display = (currentRole==='gestor_fsbf'||currentRole==='gestor_icnf') ? '' : 'none';
+  if(fsbfStatsRow) fsbfStatsRow.style.display = (currentRole==='gestor_fsbf'||currentRole==='chefe_grupo_fsbf'||currentRole==='gestor_icnf') ? '' : 'none';
   const egfrStatsRow = document.getElementById('egfr-stats-row');
   if(egfrStatsRow) egfrStatsRow.style.display = currentRole==='gestor_icnf' ? '' : 'none';
   const gsfBtnNovo = document.getElementById('gsf-btn-novo');
   if(gsfBtnNovo) gsfBtnNovo.style.display = (isAdmin||currentRole==='gestor_sf') ? '' : 'none';
+  const gfsbfBtnNova = document.getElementById('gfsbf-v-btn-nova');
+  if(gfsbfBtnNova) gfsbfBtnNova.style.display = (isAdmin||currentRole==='gestor_fsbf') ? '' : 'none';
   // OfLigacao+ elements
   document.querySelectorAll('.auth-ofligacao').forEach(el=>el.style.display=isOfLigacao?'':'none');
   // Operacional+ elements
@@ -2532,10 +2540,11 @@ function addEventLog(t, msg){
 let currentOccId=null, currentPostoId=null, currentView='sector';
 
 function navTo(page,el){
-  const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':'gestor_fsbf','gestao-icnf':'gestor_icnf'};
+  const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':['gestor_fsbf','chefe_grupo_fsbf'],'gestao-icnf':'gestor_icnf'};
   if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
   if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação regionais.','err'); return; }
-  if(MODULE_PAGES[page] && currentRole!=='admin' && currentRole!==MODULE_PAGES[page]){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
+  const _allowedMod = MODULE_PAGES[page];
+  if(_allowedMod && currentRole!=='admin' && ![].concat(_allowedMod).includes(currentRole)){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -3037,7 +3046,7 @@ function renderOcorrencias(){
   const grid=document.getElementById('occ-grid');
   const isAdmin = currentRole==='admin';
   // OfLigacao "nacional" (sem sub-região fixa) vê e organiza tal como o admin
-  const groupBySubregiao = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || (currentRole==='ofligacao' && !currentSubregiao);
+  const groupBySubregiao = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || currentRole==='chefe_grupo_fsbf' || (currentRole==='ofligacao' && !currentSubregiao);
 
   // Admin / OfLigacao nacional: populate sub-região filter and apply
   if(groupBySubregiao){
@@ -3059,9 +3068,9 @@ function renderOcorrencias(){
   }
 
   const cardFn = currentRole==='visualizador' ? occCardHtmlViz
-    : currentRole==='gestor_sf'   ? occCardHtmlGestorSF
-    : currentRole==='gestor_fsbf' ? occCardHtmlGestorFSBF
-    : currentRole==='gestor_icnf' ? occCardHtmlGestorICNF
+    : currentRole==='gestor_sf'         ? occCardHtmlGestorSF
+    : (currentRole==='gestor_fsbf'||currentRole==='chefe_grupo_fsbf') ? occCardHtmlGestorFSBF
+    : currentRole==='gestor_icnf'       ? occCardHtmlGestorICNF
     : occCardHtml;
 
   // OfLigacao com sub-região fixa, ou filtrado: lista plana
@@ -5875,7 +5884,7 @@ updateClock();
 // Auto-refresh time bars every 60 seconds
 setInterval(()=>{
   if(document.getElementById('page-detalhe').classList.contains('active')) renderTeams();
-  if(['visualizador','gestor_sf','gestor_fsbf','gestor_icnf'].includes(currentRole)&&document.getElementById('page-ocorrencias').classList.contains('active')) renderOcorrencias();
+  if(['visualizador','gestor_sf','gestor_fsbf','gestor_icnf','chefe_grupo_fsbf'].includes(currentRole)&&document.getElementById('page-ocorrencias').classList.contains('active')) renderOcorrencias();
 },60000);
 
 // ══════════════════════════════════════════════════════════════════
@@ -5892,7 +5901,7 @@ async function renderUsers(){
   const { data: users, error } = await apiFetch('/api/utilizadores');
   if(error){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Erro ao carregar utilizadores.</div></td></tr>'; return; }
 
-  const roleCls={admin:'role-admin',ofligacao_ccon:'role-ofligacao-ccon',ofligacao:'role-ofligacao',gestor_sf:'role-gestor-sf',gestor_fsbf:'role-gestor-fsbf',gestor_icnf:'role-gestor-icnf',operacional:'role-operacional',visualizador:'role-visualizador'};
+  const roleCls={admin:'role-admin',ofligacao_ccon:'role-ofligacao-ccon',ofligacao:'role-ofligacao',gestor_sf:'role-gestor-sf',gestor_fsbf:'role-gestor-fsbf',chefe_grupo_fsbf:'role-chefe-grupo-fsbf',gestor_icnf:'role-gestor-icnf',operacional:'role-operacional',visualizador:'role-visualizador'};
 
   const html = (users||[]).map(u=>`<tr>
     <td><strong>${esc(u.nome)}</strong></td>
@@ -5902,7 +5911,7 @@ async function renderUsers(){
     <td>${u.ativo?'<span class="badge badge-ok">Ativo</span>':'<span class="badge badge-closed">Inativo</span>'}</td>
     <td><div style="display:flex;gap:6px;flex-wrap:wrap;">
       <select class="user-role-sel" onchange="changeUserRole('${u.id}',this.value)">
-        ${['admin','ofligacao_ccon','ofligacao','gestor_sf','gestor_fsbf','gestor_icnf','operacional','visualizador'].map(r=>`<option value="${r}"${r===u.role?' selected':''}>${r}</option>`).join('')}
+        ${['admin','ofligacao_ccon','ofligacao','gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf','operacional','visualizador'].map(r=>`<option value="${r}"${r===u.role?' selected':''}>${r}</option>`).join('')}
       </select>
       <select class="user-role-sel" style="max-width:130px;" onchange="changeUserSubregiao('${u.id}',this.value)" title="Sub-região">
         <option value="">— Sub-região —</option>
@@ -6768,6 +6777,7 @@ async function renderFSBFViaturas(){
   document.getElementById('gfsbf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-v-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
+  const canEditV = currentRole==='admin' || currentRole==='gestor_fsbf';
   tbody.innerHTML = rows.map(v=>`<tr>
     <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
     <td class="mono">${esc(v.matricula||'—')}</td>
@@ -6776,15 +6786,19 @@ async function renderFSBFViaturas(){
     <td style="font-size:11px">${esc(v.agfr||'—')}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${v.em_uso ? `<span style="font-size:11px;color:var(--warn);font-weight:600;">Em ocorrência</span>` : prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
-    <td>${v.dispositivo
-      ? `<button class="btn btn-xs" style="background:color-mix(in srgb,var(--accent3) 15%,transparent);color:var(--accent3);border:1px solid var(--accent3);min-width:62px;font-size:11px;" onclick="toggleFsbfDispositivo('${v.id}',true)">● Disp.</button>`
-      : `<button class="btn btn-ghost btn-xs" style="min-width:62px;font-size:11px;color:var(--muted);" onclick="toggleFsbfDispositivo('${v.id}',false)">○ Disp.</button>`
+    <td>${canEditV
+      ? (v.dispositivo
+        ? `<button class="btn btn-xs" style="background:color-mix(in srgb,var(--accent3) 15%,transparent);color:var(--accent3);border:1px solid var(--accent3);min-width:62px;font-size:11px;" onclick="toggleFsbfDispositivo('${v.id}',true)">● Disp.</button>`
+        : `<button class="btn btn-ghost btn-xs" style="min-width:62px;font-size:11px;color:var(--muted);" onclick="toggleFsbfDispositivo('${v.id}',false)">○ Disp.</button>`)
+      : (v.dispositivo
+        ? `<span style="font-size:11px;color:var(--accent3);min-width:62px;display:inline-block;">● Disp.</span>`
+        : `<span style="font-size:11px;color:var(--muted);min-width:62px;display:inline-block;">○ Disp.</span>`)
     }</td>
-    <td style="display:flex;gap:4px;white-space:nowrap;">
+    <td style="display:flex;gap:4px;white-space:nowrap;">${canEditV ? `
       <button class="btn btn-ghost btn-xs" onclick="openEditViaturaModal(${JSON.stringify(v).replace(/"/g,'&quot;')})">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
       <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
-    </td>
+    ` : ''}</td>
   </tr>`).join('');
 }
 
@@ -7023,7 +7037,7 @@ async function renderFsbfCarta(){
   if(!dataEl.value) dataEl.value = new Date().toISOString().slice(0,10);
   const data = dataEl.value;
   const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
-  const isFSBF = currentRole==='admin' || currentRole==='gestor_fsbf';
+  const isFSBF = currentRole==='admin' || currentRole==='gestor_fsbf' || currentRole==='chefe_grupo_fsbf';
 
   const [cartaRes, viatRes, opRes] = await Promise.all([
     apiFetch(`/api/fsbf/carta?data=${data}`),
