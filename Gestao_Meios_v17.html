@@ -7080,7 +7080,7 @@ async function renderFsbfCarta(){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
             <select class="form-select" id="fsbf-coord-nome" onchange="fsbfAutoContacto(this,'fsbf-coord-cont')" style="font-size:12px;width:200px;">
-              ${fsbfOpOpts(carta.coord_nome)}
+              ${fsbfOpOpts(carta.coord_nome,'Chefe de Grupo')}
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-coord-cont" value="${esc(carta.coord_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
