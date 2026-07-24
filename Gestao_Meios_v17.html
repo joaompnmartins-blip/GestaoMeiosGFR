@@ -6918,7 +6918,10 @@ function fsbfBsbfRow(row, allViat, isCarta){
   const savedViat = allViat.find(v => v.id === row.veiculo_id);
   const savedMat = savedViat?.matricula || row.matricula || '';
   return `<tr id="fsbf-bsbf-row-${id}">
-    <td><input class="form-input" style="width:100px;font-size:12px;" id="fsbf-b-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></td>
+    <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-base-${id}">
+      <option value="">— Base —</option>
+      ${['Arganil','Cabeceiras de Basto','Guarda','Macedo de Cavaleiros','Marinha Grande','Olhão','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'].map(b=>`<option value="${b}"${row.base===b?' selected':''}>${b}</option>`).join('')}
+    </select></td>
     <td>
       <select class="form-select" style="font-size:12px;" id="fsbf-b-viat-${id}" onchange="fsbfBsbfMatricula('${id}')">
         ${vOpts}
