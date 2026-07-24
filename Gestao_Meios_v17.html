@@ -6927,9 +6927,12 @@ async function copiarDiaAnteriorCarta(){
 
 // ── Carta de Meios ────────────────────────────────────────────────
 
-function fsbfOpOpts(selectedNome){
+function fsbfOpOpts(selectedNome, cargo=null){
+  const list = cargo
+    ? _fsbfOperacionaisCache.filter(o => o.cargo === cargo)
+    : _fsbfOperacionaisCache;
   return '<option value="">— operacional —</option>' +
-    _fsbfOperacionaisCache.map(o=>
+    list.map(o=>
       `<option value="${esc(o.nome)}"${o.nome===selectedNome?' selected':''}>${esc(o.nome)}</option>`
     ).join('');
 }
@@ -7090,7 +7093,7 @@ async function renderFsbfCarta(){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
             <select class="form-select" id="fsbf-chefe-nome" onchange="fsbfAutoContacto(this,'fsbf-chefe-cont')" style="font-size:12px;width:190px;">
-              ${fsbfOpOpts(carta.chefe_nome)}
+              ${fsbfOpOpts(carta.chefe_nome,'Chefe de Grupo')}
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Veículo (texto)</label>
             <input class="form-input" id="fsbf-chefe-viat-txt" value="${esc(carta.chefe_veiculo_texto||'')}" placeholder="ex: VM87" style="font-size:12px;width:80px;"/></div>
