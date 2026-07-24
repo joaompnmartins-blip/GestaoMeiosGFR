@@ -7055,9 +7055,10 @@ async function renderFsbfCarta(){
   _fsbfViatCache = allViat;
   _fsbfOperacionaisCache = opRes.data || [];
 
-  const norte = bsbf.filter(r=>r.brigada==='Norte');
-  const sul   = bsbf.filter(r=>r.brigada==='Sul');
-  const gsbf  = bsbf.filter(r=>r.brigada==='GSBF');
+  const norte  = bsbf.filter(r=>r.brigada==='Norte');
+  const sul    = bsbf.filter(r=>r.brigada==='Sul');
+  const gsbf   = bsbf.filter(r=>r.brigada==='GSBF');
+  const outros = bsbf.filter(r=>r.brigada==='Outros');
   const emrCards = emr.map(r=>fsbfEmrCard(r, allViat)).join('') ||
     '<p style="color:var(--muted);font-size:13px;">Sem máquinas registadas.</p>';
 
@@ -7109,6 +7110,7 @@ async function renderFsbfCarta(){
     ${fsbfBrigadaSection('BSBF Norte','Norte',norte,allViat,data)}
     ${fsbfBrigadaSection('BSBF Sul','Sul',sul,allViat,data)}
     ${fsbfBrigadaSection('GSBF','GSBF',gsbf,allViat,data)}
+    ${fsbfBrigadaSection('Outros Meios','Outros',outros,allViat,data)}
 
     <div style="margin-bottom:20px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
@@ -7116,12 +7118,6 @@ async function renderFsbfCarta(){
         <button class="btn btn-xs btn-ghost" onclick="addFsbfEmr('${data}')">+ Adicionar</button>
       </div>
       <div id="fsbf-emr-container">${emrCards}</div>
-    </div>
-
-    <div style="margin-bottom:20px;background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Outros Meios</div>
-      <textarea class="form-input" id="fsbf-outros" rows="3" style="width:100%;font-size:12px;resize:vertical;">${esc(carta.notas_outros_meios||'')}</textarea>
-      <button class="btn btn-xs btn-primary" style="margin-top:6px;" onclick="saveFsbfHeader('${data}')">💾 Guardar</button>
     </div>
 
     <div style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;">
@@ -7139,7 +7135,6 @@ function _fsbfHeaderBody(data){
     chefe_guarnicao:    parseInt(document.getElementById('fsbf-chefe-guar')?.value)||null,
     chefe_veiculo_id:   document.getElementById('fsbf-chefe-viat-id')?.value||null,
     chefe_veiculo_texto:document.getElementById('fsbf-chefe-viat-txt')?.value.trim()||null,
-    notas_outros_meios: document.getElementById('fsbf-outros')?.value.trim()||null,
   };
 }
 
@@ -7184,7 +7179,8 @@ async function saveFsbfBsbf(id){
 }
 
 async function deleteFsbfBsbf(id, brigada){
-  if(!confirm(`Remover esta linha da BSBF ${brigada}?`)) return;
+  const label = brigada === 'Outros' ? 'Outros Meios' : `BSBF ${brigada}`;
+  if(!confirm(`Remover esta linha de ${label}?`)) return;
   const data = document.getElementById('fsbf-data')?.value;
   if(data) await saveFsbfHeaderSilent(data);
   const { error } = await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'DELETE' });
@@ -7428,9 +7424,10 @@ async function printFsbfCarta(){
     contacto: r.contacto||'', observacoes: r.observacoes||''
   });
 
-  const norte = bsbf.filter(r=>r.brigada==='Norte').map(mapBsbf);
-  const sul   = bsbf.filter(r=>r.brigada==='Sul').map(mapBsbf);
-  const gsbfRows = bsbf.filter(r=>r.brigada==='GSBF').map(mapGsbf);
+  const norte      = bsbf.filter(r=>r.brigada==='Norte').map(mapBsbf);
+  const sul        = bsbf.filter(r=>r.brigada==='Sul').map(mapBsbf);
+  const gsbfRows   = bsbf.filter(r=>r.brigada==='GSBF').map(mapGsbf);
+  const outrosRows = bsbf.filter(r=>r.brigada==='Outros').map(mapBsbf);
   const totalMeios = bsbf.length + emr.length + (carta.chefe_nome?1:0);
   const totalOp    = bsbf.reduce((s,r)=>s+(r.guarnicao||0),0)
                    + emr.reduce((s,r)=>s+(r.total_op||0),0)
@@ -7454,7 +7451,7 @@ async function printFsbfCarta(){
       contacto: r.contacto||'', vlci: r.vlci_cod||'',
       total_op: r.total_op??'', observacoes: r.observacoes||''
     })),
-    outros_meios: [],
+    outros_meios: outrosRows,
     totais: { meios: totalMeios, operacionais: totalOp }
   };
 
