@@ -2351,6 +2351,12 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Expand brigada CHECK on fsbf_bsbf_equipa to include 'Outros'
+    `DO $$ BEGIN
+       ALTER TABLE fsbf_bsbf_equipa DROP CONSTRAINT IF EXISTS fsbf_bsbf_equipa_brigada_check;
+       ALTER TABLE fsbf_bsbf_equipa ADD CONSTRAINT fsbf_bsbf_equipa_brigada_check
+         CHECK (brigada IN ('Norte','Sul','GSBF','Outros'));
+     EXCEPTION WHEN OTHERS THEN NULL; END $$`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

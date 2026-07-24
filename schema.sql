@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS fsbf_carta (
 CREATE TABLE IF NOT EXISTS fsbf_bsbf_equipa (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     data        DATE        NOT NULL,
-    brigada     TEXT        NOT NULL CHECK (brigada IN ('Norte','Sul','GSBF')),
+    brigada     TEXT        NOT NULL CHECK (brigada IN ('Norte','Sul','GSBF','Outros')),
     base        TEXT,
     veiculo_id  UUID        REFERENCES viaturas(id) ON DELETE SET NULL,
     guarnicao   INT,
