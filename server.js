@@ -2344,6 +2344,13 @@ async function runMigrations() {
        created_at              TIMESTAMPTZ DEFAULT now()
      )`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS recurso_adicional_id UUID REFERENCES recursos_adicionais(id) ON DELETE SET NULL`,
+    // Expand role CHECK to include chefe_grupo_fsbf (drop + recreate — safe on existing DBs)
+    `DO $$ BEGIN
+       ALTER TABLE utilizadores DROP CONSTRAINT IF EXISTS utilizadores_role_check;
+       ALTER TABLE utilizadores ADD CONSTRAINT utilizadores_role_check
+         CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
+                         'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
+     EXCEPTION WHEN OTHERS THEN NULL; END $$`,
   ];
   for (const sql of preSchemaAlters) {
     await pool.query(sql);

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS utilizadores (
                                     'visualizador',
                                     'gestor_sf',
                                     'gestor_fsbf',
+                                    'chefe_grupo_fsbf',
                                     'gestor_icnf'
                                 )),
     subregiao     TEXT,
