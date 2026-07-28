@@ -6953,6 +6953,15 @@ function fsbfViatOpts(viaturas, classes, selectedId){
     list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)}</option>`).join('');
 }
 
+const FSBF_BASES = ['Arganil','Cabeceiras de Basto','Guarda','Macedo de Cavaleiros','Marinha Grande','Olhão','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'];
+
+function fsbfBaseOpts(selected){
+  // Keep any legacy free-text base as an option so it isn't silently blanked on save
+  const list = (selected && !FSBF_BASES.includes(selected)) ? [...FSBF_BASES, selected] : FSBF_BASES;
+  return '<option value="">— Base —</option>' +
+    list.map(b=>`<option value="${esc(b)}"${selected===b?' selected':''}>${esc(b)}</option>`).join('');
+}
+
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
   const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM','MU'], row.veiculo_id);
@@ -6960,8 +6969,7 @@ function fsbfBsbfRow(row, allViat, isCarta){
   const savedMat = savedViat?.matricula || row.matricula || '';
   return `<tr id="fsbf-bsbf-row-${id}">
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-base-${id}">
-      <option value="">— Base —</option>
-      ${['Arganil','Cabeceiras de Basto','Guarda','Macedo de Cavaleiros','Marinha Grande','Olhão','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'].map(b=>`<option value="${b}"${row.base===b?' selected':''}>${b}</option>`).join('')}
+      ${fsbfBaseOpts(row.base)}
     </select></td>
     <td>
       <select class="form-select" style="font-size:12px;" id="fsbf-b-viat-${id}" onchange="fsbfBsbfMatricula('${id}')">
@@ -6990,7 +6998,7 @@ function fsbfEmrCard(row, allViat){
   return `<div id="fsbf-emr-card-${id}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:8px;">
       <div><label style="font-size:11px;color:var(--muted);">Base</label>
-        <input class="form-input" style="font-size:12px;" id="fsbf-e-base-${id}" value="${esc(row.base||'')}" placeholder="Base"/></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-base-${id}">${fsbfBaseOpts(row.base)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">MR</label>
         <select class="form-select" style="font-size:12px;" id="fsbf-e-mr-${id}" onchange="fsbfEmrMat('${id}','mr')">${mrOpts}</select>
         <div class="mono" id="fsbf-e-mr-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.mr_viatura_id))}</div></div>
