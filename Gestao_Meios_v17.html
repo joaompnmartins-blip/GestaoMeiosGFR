@@ -1036,6 +1036,11 @@
                 <option value="">Todas</option>
                 <option value="true">Disponíveis</option>
               </select>
+              <select class="form-select" id="gfsbf-v-disposit" onchange="renderFSBFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Dispositivo…</option>
+                <option value="true">No dispositivo</option>
+                <option value="false">Fora do dispositivo</option>
+              </select>
               <button id="gfsbf-v-btn-nova" class="btn btn-primary btn-sm" onclick="openNewViaturaModal('FSBF')">+ Nova</button>
             </div>
           </div>
@@ -6757,6 +6762,7 @@ async function renderFsbfPage(){
 async function renderFSBFViaturas(){
   const q   = (document.getElementById('gfsbf-v-q')?.value||'').toLowerCase();
   const fd  = document.getElementById('gfsbf-v-dispon')?.value||'';
+  const fds = document.getElementById('gfsbf-v-disposit')?.value||'';
   const fcl = document.getElementById('gfsbf-v-classe')?.value||'';
   const params = new URLSearchParams({ megfr: 'FSBF' });
   if(fd) params.set('disponivel', fd);
@@ -6774,6 +6780,7 @@ async function renderFSBFViaturas(){
 
   if(q)   rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
   if(fcl) rows = rows.filter(v=>v.classe===fcl);
+  if(fds) rows = rows.filter(v=>String(!!v.dispositivo)===fds);
   document.getElementById('gfsbf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-v-tbody');
   if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
