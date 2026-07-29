@@ -3345,6 +3345,12 @@ function _refreshOccPostos(occId, isClosed){
   }).catch(() => {});
 }
 
+// db.postos is a global cache spanning every active occurrence — always scope
+// it to the open occurrence before rendering anything on the detail page.
+function occPostos(){
+  return db.postos.filter(p=>p.ocorrencia_id===currentOccId);
+}
+
 function openDetalhe(id){
   currentOccId=id;
   currentPostoId=null;
@@ -3935,7 +3941,8 @@ function renderSectorView(teams, isClosed){
   }
 
   // When postos exist, group by posto then by sector within each posto
-  if(db.postos.length){
+  const postos = occPostos();
+  if(postos.length){
     // PCO Principal (no posto_comando_id)
     const mainAtivos = ativos.filter(t=>!t.postoComandoId);
     if(mainAtivos.length){
@@ -3945,7 +3952,7 @@ function renderSectorView(teams, isClosed){
       html+=renderSectorGroups(mainAtivos,isClosed);
     }
     // Each posto
-    db.postos.forEach(p=>{
+    postos.forEach(p=>{
       const postoAtivos = ativos.filter(t=>t.postoComandoId===p.id);
       const tipoBadgeColor = p.tipo==='PCF' ? 'var(--accent3)' : 'var(--warn)';
       html+=`<div style="margin-top:8px;margin-bottom:4px;padding:6px 0 2px;border-top:2px solid ${tipoBadgeColor};">
@@ -4097,7 +4104,7 @@ function teamCardHtml(t, isClosed, _teams){
       ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
       ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
       ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
-      ${_canAct&&db.postos.length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
+      ${_canAct&&occPostos().length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
       ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('obs','${t.id}')">📝 Evento</button>`:''}
       <button class="btn btn-ghost btn-card" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">Ficha Meio</button>
       ${_canEdit?`<button class="btn btn-ghost btn-card" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
@@ -4311,7 +4318,7 @@ function quickAction(type, teamId){
         <label class="form-label">Mover para</label>
         <select class="form-select" id="qa-posto-dest">
           <option value="">PCO Principal</option>
-          ${db.postos.map(p=>`<option value="${p.id}"${t.postoComandoId===p.id?' selected':''}>${esc(p.nome)} (${p.tipo})</option>`).join('')}
+          ${occPostos().map(p=>`<option value="${p.id}"${t.postoComandoId===p.id?' selected':''}>${esc(p.nome)} (${p.tipo})</option>`).join('')}
         </select>
       </div>`;
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
@@ -5559,12 +5566,13 @@ async function loadTimeline(){
 function renderTLPostoFilters(){
   const row = document.getElementById('tl-posto-filters');
   if(!row) return;
-  if(!db.postos.length){ row.style.display='none'; return; }
+  const postos = occPostos();
+  if(!postos.length){ row.style.display='none'; return; }
   row.style.display='';
   const btns = [
     `<button class="tl-cat-btn${_tlPostoFilter===null?' active':''}" onclick="setTLPostoFilter(null)" style="font-size:10px;">Todos os PCO</button>`,
     `<button class="tl-cat-btn${_tlPostoFilter==='main'?' active':''}" onclick="setTLPostoFilter('main')" style="font-size:10px;">PCO Principal</button>`,
-    ...db.postos.map(p=>`<button class="tl-cat-btn${_tlPostoFilter===p.id?' active':''}" onclick="setTLPostoFilter('${p.id}')" style="font-size:10px;">${esc(p.tipo)}: ${esc(p.nome)}</button>`)
+    ...postos.map(p=>`<button class="tl-cat-btn${_tlPostoFilter===p.id?' active':''}" onclick="setTLPostoFilter('${p.id}')" style="font-size:10px;">${esc(p.tipo)}: ${esc(p.nome)}</button>`)
   ];
   row.innerHTML = `<div style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:4px;border-bottom:1px solid var(--border);">${btns.join('')}</div>`;
 }
@@ -5594,7 +5602,7 @@ function setTLFilter(cat){
 function getFilteredTLEntries(){
   let entries = _tlFilter === 'all' ? _tlData : _tlData.filter(e => e.categoria === _tlFilter);
   // PCO filter: only applied when postos exist
-  if(_tlPostoFilter !== null && db.postos.length){
+  if(_tlPostoFilter !== null && occPostos().length){
     if(_tlPostoFilter === 'main'){
       entries = entries.filter(e => !e.posto_comando_id);
     } else {
