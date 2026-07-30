@@ -7445,8 +7445,10 @@ async function buildFsbfCartaData(data){
     guarnicao: r.guarnicao??'', chefe_equipa: r.chefe_nome||'',
     contacto: r.contacto||'', observacoes: r.observacoes||''
   });
+  // GSBF's first column is labelled "Local PP" in the document, but the UI
+  // collects it with the same Base dropdown as every other section.
   const mapGsbf = r => ({
-    local_pp: '', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
+    local_pp: r.base||'', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
     guarnicao: r.guarnicao??'', chefe_equipa: r.chefe_nome||'',
     contacto: r.contacto||'', observacoes: r.observacoes||''
   });
