@@ -1019,6 +1019,7 @@
             <button class="btn btn-ghost btn-xs" onclick="document.getElementById('fsbf-data').value=new Date().toISOString().slice(0,10);renderFsbfCarta()">Hoje</button>
             <button class="btn btn-ghost btn-xs" onclick="copiarDiaAnteriorCarta()" title="Replicar dados do dia anterior para a data seleccionada">📋 Copiar dia anterior</button>
             <button class="btn btn-ghost btn-xs" onclick="printFsbfCarta()" title="Exportar PDF">🖨 Exportar PDF</button>
+            <button class="btn btn-ghost btn-xs" onclick="exportFsbfCartaExcel()" title="Exportar Excel editável">📊 Exportar Excel</button>
           </div>
           <div id="fsbf-carta-body"></div>
         </div>
@@ -7427,12 +7428,12 @@ async function confirmDeployNacional(){
   await renderMeiosNacionaisDisponivel();
 }
 
-async function printFsbfCarta(){
-  const data = document.getElementById('fsbf-data')?.value;
-  if(!data){ toast('Selecione uma data.','warn'); return; }
+// Builds the canonical carta payload shared by the PDF and Excel exports.
+// Returns null (after toasting) when the data cannot be loaded.
+async function buildFsbfCartaData(data){
   await saveFsbfHeaderSilent(data);
   const { data: cd, error } = await apiFetch(`/api/fsbf/carta?data=${data}`);
-  if(error){ toast('Erro ao carregar dados para impressão.','err'); return; }
+  if(error){ toast('Erro ao carregar dados da carta.','err'); return null; }
 
   const carta = cd?.carta || {};
   const bsbf  = cd?.bsbf  || [];
@@ -7480,6 +7481,14 @@ async function printFsbfCarta(){
     outros_meios: outrosRows,
     totais: { meios: totalMeios, operacionais: totalOp }
   };
+  return DATA;
+}
+
+async function printFsbfCarta(){
+  const data = document.getElementById('fsbf-data')?.value;
+  if(!data){ toast('Selecione uma data.','warn'); return; }
+  const DATA = await buildFsbfCartaData(data);
+  if(!DATA) return;
 
   // Fetch the print template (served as static file by express.static)
   let tmpl;
@@ -7503,7 +7512,119 @@ async function printFsbfCarta(){
   w.focus();
 }
 
+// ── Exportação Excel da Carta de Meios ───────────────────────────
+// Emitted as an Excel-flavoured HTML workbook (.xls): keeps the PDF's
+// colours, section bands and blank fill-in rows while staying fully
+// editable, with no external library.
 
+const XL_COLS_BSBF = [
+  ['Base','base'],['Veículo','veiculo'],['Matrícula','matricula'],['Guarnição','guarnicao'],
+  ['Chefe Equipa','chefe_equipa'],['Contato','contacto'],['Observações','observacoes',3]
+];
+const XL_SECS = [
+  { key:'bsbf_norte', rotulo:'BSBF NORTE', bg:'#1F7AC4', fg:'#FFFFFF', zebra:'#DDEBF7', min:4,
+    cols: XL_COLS_BSBF },
+  { key:'bsbf_sul', rotulo:'BSBF SUL', bg:'#FF0000', fg:'#FFFFFF', zebra:'#FCE4E4', min:4,
+    cols: XL_COLS_BSBF },
+  { key:'gsbf', rotulo:'GSBF', bg:'#21A038', fg:'#FFFFFF', zebra:'#E2EFDA', min:8,
+    cols: [['Local PP','local_pp'], ...XL_COLS_BSBF.slice(1)] },
+  { key:'maquinas_de_rasto', rotulo:'Máquinas de Rasto', bg:'#ED7D31', fg:'#000000', zebra:'#EDEDED', min:9,
+    cols: [['Base','base'],['MR','mr'],['VAOP','vaop'],['Vpiloto','vpiloto'],['Chefe Equipa','chefe_equipa'],
+           ['Contato','contacto'],['VLCI','vlci'],['Total Op.','total_op'],['Observações','observacoes']] },
+  { key:'outros_meios', rotulo:'Outros Meios', bg:'#FFFF00', fg:'#000000', zebra:'#FFFDE0', min:12,
+    cols: XL_COLS_BSBF }
+];
+// Kept as text so Excel never reformats them (matrículas look like dates,
+// contactos would lose a leading zero).
+const XL_TEXT_KEYS = ['matricula','contacto'];
+const XL_LEFT_KEYS = ['base','local_pp','observacoes'];
+const XL_GRID = 9;
+
+function _xlCell(v, o){
+  o = o || {};
+  const st = ['border:1px solid #000000', `background-color:${o.bg||'#FFFFFF'}`,
+    `color:${o.fg||'#000000'}`, `text-align:${o.align||'center'}`, 'vertical-align:middle',
+    'font-family:Calibri,Arial,sans-serif', `font-size:${o.size||10}pt`];
+  if(o.bold) st.push('font-weight:bold');
+  if(o.text) st.push("mso-number-format:'\\@'");
+  const span = o.span > 1 ? ` colspan="${o.span}"` : '';
+  const val = (v === null || v === undefined) ? '' : esc(String(v));
+  return `<td${span} style="${st.join(';')}">${val}</td>`;
+}
+const _xlGap = n => `<tr><td colspan="${n||XL_GRID}" style="border:none;"></td></tr>`;
+const _xlPad = n => n > 0 ? `<td colspan="${n}" style="border:none;"></td>` : '';
+
+function fsbfCartaExcelHtml(D){
+  const G = XL_GRID;
+  const hdr = (v, span, bg, fg) => _xlCell(v, { bold:true, span, bg: bg||'#21A038', fg: fg||'#FFFFFF' });
+  const rows = [];
+
+  rows.push(`<tr>${_xlCell('Carta de Meios FSBF',{bold:true,span:G,bg:'#21A038',fg:'#FFFFFF',size:18})}</tr>`);
+  rows.push(_xlGap());
+
+  const cd = D.coordenador_de_dia;
+  rows.push(`<tr>${hdr('Coordenador de Dia',2)}${hdr('Contacto')}${_xlPad(G-3)}</tr>`);
+  rows.push(`<tr>${_xlCell(cd.nome,{span:2,align:'left'})}${_xlCell(cd.contacto,{text:true})}${_xlPad(G-3)}</tr>`);
+  rows.push(_xlGap());
+
+  const cg = D.chefe_de_grupo;
+  rows.push(`<tr>${hdr('Chefe de Grupo')}${hdr('Veículo')}${hdr('Matrícula')}${hdr('Guarnição')}${hdr('Contato')}`
+    + `${hdr('OPTEL',1,'#FFE699','#000000')}${hdr('Contacto')}${hdr('Data',1,'#000000','#FFFFFF')}${_xlPad(G-8)}</tr>`);
+  rows.push(`<tr>${_xlCell(cg.nome,{align:'left'})}${_xlCell(cg.veiculo)}${_xlCell(cg.matricula,{text:true})}`
+    + `${_xlCell(cg.guarnicao)}${_xlCell(cg.contacto,{text:true})}${_xlCell(cg.optel)}`
+    + `${_xlCell(cg.contacto_optel,{text:true})}${_xlCell(cg.data,{text:true})}${_xlPad(G-8)}</tr>`);
+  rows.push(_xlGap());
+
+  XL_SECS.forEach(sec => {
+    const list = D[sec.key] || [];
+    const n = Math.max(list.length, sec.min);
+    rows.push(`<tr>${_xlCell(sec.rotulo,{bold:true,span:2,bg:sec.bg,fg:sec.fg})}${_xlPad(G-2)}</tr>`);
+    rows.push('<tr>' + sec.cols.map(c =>
+      _xlCell(c[0], { bold:true, span:c[2]||1, bg:sec.bg, fg:sec.fg })).join('') + '</tr>');
+    for(let i = 0; i < n; i++){
+      const r  = list[i] || {};
+      const bg = (i % 2 === 1) ? sec.zebra : '#FFFFFF';
+      rows.push('<tr>' + sec.cols.map(c => _xlCell(r[c[1]], {
+        bg, span: c[2]||1,
+        text:  XL_TEXT_KEYS.includes(c[1]),
+        align: XL_LEFT_KEYS.includes(c[1]) ? 'left' : 'center'
+      })).join('') + '</tr>');
+    }
+    rows.push(_xlGap());
+  });
+
+  const tot = (rot, v) => `<tr>${_xlCell(rot,{bold:true,span:2,bg:'#21A038',fg:'#FFFFFF',align:'left'})}`
+    + `${_xlCell(v,{bold:true,bg:'#000000',fg:'#FFFFFF'})}${_xlPad(G-3)}</tr>`;
+  rows.push(tot('Total de Meios:', D.totais.meios));
+  rows.push(tot('Total de Operacionais:', D.totais.operacionais));
+
+  const widths = [190,90,105,80,165,110,95,70,150];
+  return `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Carta de Meios</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body><table border="0" cellspacing="0" cellpadding="0">
+<colgroup>${widths.map(w=>`<col width="${w}">`).join('')}</colgroup>
+${rows.join('\n')}
+</table></body></html>`;
+}
+
+async function exportFsbfCartaExcel(){
+  const data = document.getElementById('fsbf-data')?.value;
+  if(!data){ toast('Selecione uma data.','warn'); return; }
+  const DATA = await buildFsbfCartaData(data);
+  if(!DATA) return;
+
+  const blob = new Blob(['﻿' + fsbfCartaExcelHtml(DATA)],
+    { type:'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Carta_Meios_FSBF_${data}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Excel exportado.','ok');
+}
 
 // ── Gestão ICNF ──────────────────────────────────────────────────
 
