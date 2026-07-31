@@ -1725,16 +1725,19 @@ async function syncChefeMembro(db, { data, bsbfId = null, emrId = null, chefeNom
   return { ok: true };
 }
 
-// Empenhamento por companhia: membros do dia + Chefe de Grupo + Coordenador de
-// Dia (ambos resolvidos por nome), contra o efetivo total de cada companhia.
+// Empenhamento por companhia. "Empenhado" = pertence a uma equipa com nº de
+// ocorrência preenchido; estar na carta sem ocorrência é prontidão, não
+// empenhamento. Percentagem sobre o efetivo total de cada companhia.
 async function companhiaStats(data) {
   const { rows } = await pool.query(`
     WITH empenhados AS (
-      SELECT operacional_id AS op FROM fsbf_equipa_membros WHERE data = $1
-      UNION
-      SELECT o.id FROM fsbf_carta c JOIN operacionais_fsbf o ON o.nome = c.chefe_nome WHERE c.data = $1
-      UNION
-      SELECT o.id FROM fsbf_carta c JOIN operacionais_fsbf o ON o.nome = c.coord_nome WHERE c.data = $1
+      SELECT m.operacional_id AS op
+      FROM fsbf_equipa_membros m
+      LEFT JOIN fsbf_bsbf_equipa b ON b.id = m.fsbf_bsbf_id
+      LEFT JOIN fsbf_emr_equipa  e ON e.id = m.fsbf_emr_id
+      WHERE m.data = $1
+        AND COALESCE(NULLIF(btrim(b.ocorrencia_num), ''),
+                     NULLIF(btrim(e.ocorrencia_num), '')) IS NOT NULL
     ),
     efetivo AS (
       SELECT companhia, count(*)::int AS total
@@ -1981,7 +1984,7 @@ app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
 
 app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
-  const ALLOWED = ['base','veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ordem'];
+  const ALLOWED = ['base','veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ocorrencia_num','ordem'];
   const sets = [], vals = [req.params.id];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
@@ -2029,7 +2032,8 @@ app.post('/api/fsbf/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap(async
 app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   const ALLOWED = ['base','mr_viatura_id','vaop_viatura_id','vpiloto_viatura_id',
-                   'vlci_viatura_id','chefe_nome','contacto','total_op','observacoes','ordem'];
+                   'vlci_viatura_id','chefe_nome','contacto','total_op','observacoes',
+                   'ocorrencia_num','ordem'];
   const sets = [], vals = [req.params.id];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
@@ -2493,6 +2497,11 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Nº da ocorrência em que a equipa está empenhada (texto livre por agora).
+    // É este campo que define "empenhado": uma equipa sem ocorrência está de
+    // prontidão, não empenhada.
+    `ALTER TABLE IF EXISTS fsbf_bsbf_equipa ADD COLUMN IF NOT EXISTS ocorrencia_num TEXT`,
+    `ALTER TABLE IF EXISTS fsbf_emr_equipa  ADD COLUMN IF NOT EXISTS ocorrencia_num TEXT`,
     // Membros de guarnição da Carta de Meios. Uma linha por operacional por
     // equipa; o chefe é materializado aqui (is_chefe) para que o índice único
     // (data, operacional_id) impeça a mesma pessoa em duas equipas no mesmo dia.

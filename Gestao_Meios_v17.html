@@ -7172,6 +7172,8 @@ function fsbfBsbfRow(row, allViat, isCarta){
     </td>
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
+    <td><input class="form-input" style="width:90px;font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
+        id="fsbf-b-ocor-${id}" value="${esc(row.ocorrencia_num||'')}" placeholder="Nº ocor." title="Equipa empenhada nesta ocorrência"/></td>
     <td><input class="form-input" style="width:120px;font-size:12px;" id="fsbf-b-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Obs"/></td>
     <td style="white-space:nowrap;">
       <button class="btn btn-xs btn-primary" onclick="saveFsbfBsbf('${id}')">💾</button>
@@ -7207,6 +7209,9 @@ function fsbfEmrCard(row, allViat){
         <select class="form-select" style="font-size:12px;" id="fsbf-e-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-e-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
+      <div><label style="font-size:11px;color:var(--muted);">Ocorrência</label>
+        <input class="form-input" style="font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
+          id="fsbf-e-ocor-${id}" value="${esc(row.ocorrencia_num||'')}" placeholder="Nº ocor." title="Equipa empenhada nesta ocorrência"/></div>
       <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
         <div style="display:flex;gap:4px;align-items:center;">
           <input class="form-input" style="font-size:12px;min-width:0;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/>
@@ -7224,7 +7229,7 @@ function fsbfEmrCard(row, allViat){
 
 function fsbfBrigadaSection(title, brigada, rows, allViat, data){
   const rowsHtml = rows.map(r=>fsbfBsbfRow(r, allViat)).join('');
-  const empty = !rows.length ? '<tr><td colspan="8" style="color:var(--muted);padding:8px 0;">Sem equipas.</td></tr>' : '';
+  const empty = !rows.length ? '<tr><td colspan="9" style="color:var(--muted);padding:8px 0;">Sem equipas.</td></tr>' : '';
   return `<div style="margin-bottom:20px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
       <span style="font-weight:600;font-size:13px;">${title}</span>
@@ -7232,7 +7237,7 @@ function fsbfBrigadaSection(title, brigada, rows, allViat, data){
     </div>
     <div class="table-wrap" style="overflow-x:auto;">
       <table style="font-size:12px;">
-        <thead><tr><th>Base</th><th>Código</th><th>Matrícula</th><th>Guar.</th><th>Chefe de Equipa</th><th>Contacto</th><th>Obs</th><th></th></tr></thead>
+        <thead><tr><th>Base</th><th>Código</th><th>Matrícula</th><th>Guar.</th><th>Chefe de Equipa</th><th>Contacto</th><th>Ocorrência</th><th>Obs</th><th></th></tr></thead>
         <tbody id="fsbf-bsbf-${brigada.toLowerCase()}-tbody">${rowsHtml}${empty}</tbody>
       </table>
     </div>
@@ -7365,6 +7370,7 @@ async function saveFsbfBsbfSilent(id){
     chefe_nome: document.getElementById(`fsbf-b-chefe-${id}`)?.value.trim()||null,
     contacto:   document.getElementById(`fsbf-b-cont-${id}`)?.value.trim()||null,
     observacoes:document.getElementById(`fsbf-b-obs-${id}`)?.value.trim()||null,
+    ocorrencia_num:document.getElementById(`fsbf-b-ocor-${id}`)?.value.trim()||null,
   };
   await apiFetch(`/api/fsbf/bsbf/${id}`, { method:'PATCH', body:JSON.stringify(body) });
 }
@@ -7421,6 +7427,7 @@ async function saveFsbfEmrSilent(id){
     contacto:          document.getElementById(`fsbf-e-cont-${id}`)?.value.trim()||null,
     total_op:          parseInt(document.getElementById(`fsbf-e-top-${id}`)?.value)||null,
     observacoes:       document.getElementById(`fsbf-e-obs-${id}`)?.value.trim()||null,
+    ocorrencia_num:    document.getElementById(`fsbf-e-ocor-${id}`)?.value.trim()||null,
   };
   await apiFetch(`/api/fsbf/emr/${id}`, { method:'PATCH', body:JSON.stringify(body) });
 }
