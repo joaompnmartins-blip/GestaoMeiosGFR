@@ -6762,6 +6762,8 @@ async function renderGestaoSF(){
 let _fsbfTab = 'carta';
 let _fsbfViatCache = [];
 let _fsbfOperacionaisCache = [];
+let _fsbfBsbfCache = [];
+let _fsbfEmrCache  = [];
 
 function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
@@ -7008,6 +7010,96 @@ function fsbfOpOpts(selectedNome, cargo=null){
     ).join('');
 }
 
+// ── Membros de guarnição ─────────────────────────────────────────
+// O chefe de equipa conta como membro, por isso há guarnição-1 lugares a
+// preencher. Esta informação fica só na aplicação: não entra nos ficheiros
+// exportados, que recebem apenas o agregado por companhia.
+let _fsbfMembrosCtx = null;
+
+const fsbfLugares = (row, tipo) =>
+  Math.max(0, (Number(tipo==='emr' ? row.total_op : row.guarnicao) || 0) - 1);
+
+function fsbfMembrosBtn(row, tipo){
+  const lugares = fsbfLugares(row, tipo);
+  const preench = (row.membros||[]).filter(m=>!m.is_chefe).length;
+  if(!lugares) return '';
+  const completo = preench >= lugares;
+  const cor = completo ? 'var(--accent3)' : 'var(--warn)';
+  return `<button class="btn btn-xs" title="Identificar guarnição"
+    style="background:color-mix(in srgb,${cor} 14%,transparent);color:${cor};border:1px solid ${cor};font-size:10px;padding:2px 6px;"
+    onclick="openFsbfMembros('${row.id}','${tipo}')">👥 ${preench}/${lugares}</button>`;
+}
+
+function openFsbfMembros(id, tipo){
+  const row = (tipo==='emr' ? _fsbfEmrCache : _fsbfBsbfCache).find(r=>r.id===id);
+  if(!row) return;
+  const lugares = fsbfLugares(row, tipo);
+  const membros = (row.membros||[]).filter(m=>!m.is_chefe)
+                    .sort((a,b)=>(a.ordem??0)-(b.ordem??0));
+  const chefe   = (row.membros||[]).find(m=>m.is_chefe);
+  _fsbfMembrosCtx = { id, tipo, row, lugares };
+
+  const label = tipo==='emr'
+    ? `Máquina de Rasto — ${esc(row.mr_cod||row.base||'')}`
+    : `${esc(row.brigada==='Outros'?'Outros Meios':row.brigada)} — ${esc(row.viatura_cod||row.base||'')}`;
+  document.getElementById('fsbf-mem-title').textContent = 'Guarnição';
+  document.getElementById('fsbf-mem-sub').innerHTML = label;
+
+  // Chefe: ocupa sempre o primeiro lugar e não é editável aqui
+  const chefeNome = row.chefe_nome || '';
+  document.getElementById('fsbf-mem-chefe').innerHTML = chefeNome
+    ? `<span style="font-weight:600;">${esc(chefeNome)}</span>
+       <span style="color:var(--muted);font-size:11px;">· chefe de equipa${
+         chefe ? ` · ${esc(chefe.companhia||'sem companhia')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>`
+    : `<span style="color:var(--warn);">Sem chefe de equipa definido — defina-o na linha para ocupar o 1.º lugar.</span>`;
+
+  const rows = [];
+  for(let i=0;i<lugares;i++){
+    const m = membros[i];
+    rows.push(`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <span style="font-size:11px;color:var(--muted);width:18px;">${i+2}.</span>
+      <select class="form-select fsbf-mem-sel" style="flex:1;font-size:12px;" data-i="${i}">
+        ${fsbfMembroOpts(m?m.operacional_id:'', row.base)}
+      </select>
+    </div>`);
+  }
+  document.getElementById('fsbf-mem-slots').innerHTML =
+    rows.join('') || '<p style="color:var(--muted);font-size:12px;">Guarnição de 1 — só o chefe de equipa.</p>';
+  document.getElementById('fsbf-mem-base-only').checked = true;
+  openModal('modal-fsbf-membros');
+}
+
+function fsbfMembroOpts(selectedId, base){
+  const soBase = document.getElementById('fsbf-mem-base-only')?.checked !== false;
+  let list = _fsbfOperacionaisCache;
+  if(soBase && base) list = list.filter(o=>o.base===base || o.id===selectedId);
+  return '<option value="">— por identificar —</option>' +
+    list.map(o=>`<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)}${
+      o.companhia?` · ${esc(o.companhia)}`:''}</option>`).join('');
+}
+
+function fsbfMembrosToggleBase(){
+  if(!_fsbfMembrosCtx) return;
+  document.querySelectorAll('.fsbf-mem-sel').forEach(sel=>{
+    const cur = sel.value;
+    sel.innerHTML = fsbfMembroOpts(cur, _fsbfMembrosCtx.row.base);
+  });
+}
+
+async function saveFsbfMembros(){
+  if(!_fsbfMembrosCtx) return;
+  const { id, tipo } = _fsbfMembrosCtx;
+  const ids = [...document.querySelectorAll('.fsbf-mem-sel')].map(s=>s.value).filter(Boolean);
+  if(new Set(ids).size !== ids.length){ toast('Operacional repetido na mesma guarnição.','err'); return; }
+  const body = { data: document.getElementById('fsbf-data').value, operacional_ids: ids };
+  body[tipo==='emr' ? 'fsbf_emr_id' : 'fsbf_bsbf_id'] = id;
+  const { error } = await apiFetch('/api/fsbf/membros',{method:'PUT',body:JSON.stringify(body)});
+  if(error){ toast(error.message,'err'); return; }
+  toast('Guarnição actualizada.','ok');
+  closeModal('modal-fsbf-membros');
+  renderFsbfCarta();
+}
+
 function fsbfAutoContacto(selectEl, contactElId){
   const nome = selectEl.value;
   const op = _fsbfOperacionaisCache.find(o => o.nome === nome);
@@ -7074,7 +7166,10 @@ function fsbfBsbfRow(row, allViat, isCarta){
       </select>
     </td>
     <td><input class="form-input mono" style="width:100px;font-size:12px;" id="fsbf-b-mat-${id}" value="${esc(savedMat)}" placeholder="—" readonly/></td>
-    <td><input class="form-input" style="width:50px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/></td>
+    <td style="white-space:nowrap;">
+      <input class="form-input" style="width:46px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/>
+      ${fsbfMembrosBtn(row,'bsbf')}
+    </td>
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
     <td><input class="form-input" style="width:120px;font-size:12px;" id="fsbf-b-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Obs"/></td>
@@ -7113,7 +7208,10 @@ function fsbfEmrCard(row, allViat){
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
       <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
-        <input class="form-input" style="font-size:12px;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/></div>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <input class="form-input" style="font-size:12px;min-width:0;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/>
+          ${fsbfMembrosBtn(row,'emr')}
+        </div></div>
       <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--muted);">Obs</label>
         <input class="form-input" style="font-size:12px;width:100%;" id="fsbf-e-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Observações"/></div>
     </div>
@@ -7162,6 +7260,8 @@ async function renderFsbfCarta(){
   const allViat = viatRes.data            || [];
   _fsbfViatCache = allViat;
   _fsbfOperacionaisCache = opRes.data || [];
+  _fsbfBsbfCache = bsbf;
+  _fsbfEmrCache  = emr;
 
   const norte  = bsbf.filter(r=>r.brigada==='Norte');
   const sul    = bsbf.filter(r=>r.brigada==='Sul');
@@ -7562,7 +7662,9 @@ async function buildFsbfCartaData(data){
       total_op: r.total_op??'', observacoes: r.observacoes||''
     })),
     outros_meios: outrosRows,
-    totais: { meios: totalMeios, operacionais: totalOp }
+    // Só o agregado por companhia é exportado — nunca os nomes das guarnições.
+    totais: { meios: totalMeios, operacionais: totalOp,
+              por_companhia: cd?.companhias || [] }
   };
   return DATA;
 }
@@ -7680,6 +7782,21 @@ function fsbfCartaExcelHtml(D){
     + `${_xlCell(v,{bold:true,bg:'#000000',fg:'#FFFFFF'})}${_xlPad(G-3)}</tr>`;
   rows.push(tot('Total de Meios:', D.totais.meios));
   rows.push(tot('Total de Operacionais:', D.totais.operacionais));
+
+  const comp = D.totais.por_companhia || [];
+  if(comp.length){
+    rows.push(_xlGap());
+    rows.push('<tr>' + _xlCell('Operacionais por Companhia',{bold:true,span:4,bg:'#21A038',fg:'#FFFFFF',align:'left'})
+      + _xlPad(G-4) + '</tr>');
+    rows.push('<tr>' + ['Companhia','Empenhados','Efetivo','%']
+      .map(h=>_xlCell(h,{bold:true,bg:'#21A038',fg:'#FFFFFF'})).join('') + _xlPad(G-4) + '</tr>');
+    comp.forEach((c,i)=>{
+      const bg = (i%2===1) ? '#E2EFDA' : '#FFFFFF';
+      rows.push('<tr>' + _xlCell(c.companhia,{bg,align:'left'}) + _xlCell(c.n,{bg})
+        + _xlCell(c.efetivo,{bg}) + _xlCell(`${String(c.pct).replace('.',',')}%`,{bg})
+        + _xlPad(G-4) + '</tr>');
+    });
+  }
 
   const widths = [190,90,105,80,165,110,95,70,150];
   return `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8">
@@ -8920,6 +9037,38 @@ async function mergeSaveConfirm(){
 </div>
 
 <!-- Modal: operacional FSBF -->
+<div class="modal-overlay" id="modal-fsbf-membros" onclick="if(event.target===this)closeModal('modal-fsbf-membros')">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="fsbf-mem-title">Guarnição</div>
+        <div id="fsbf-mem-sub" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-fsbf-membros')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;padding:8px 10px;
+                  background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:6px;">
+        <span style="font-size:11px;color:var(--muted);width:18px;">1.</span>
+        <div id="fsbf-mem-chefe" style="font-size:12px;"></div>
+      </div>
+      <div id="fsbf-mem-slots"></div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);margin-top:10px;">
+        <input type="checkbox" id="fsbf-mem-base-only" checked onchange="fsbfMembrosToggleBase()"/>
+        Mostrar apenas operacionais da base da equipa
+      </label>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px;">
+        Os nomes ficam apenas na aplicação. Os ficheiros exportados mostram só o
+        total de operacionais por companhia.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-fsbf-membros')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFsbfMembros()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-fsbf-op" onclick="if(event.target===this)closeModal('modal-fsbf-op')">
   <div class="modal" style="max-width:400px">
     <div class="modal-header">

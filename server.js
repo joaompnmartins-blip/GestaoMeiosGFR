@@ -1700,11 +1700,103 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
   res.json({ data, bsbf: bsbfRes.rows.map(addDeployed), emr: emrRes.rows.map(addDeployed) });
 }));
 
+// ── Membros de guarnição ───────────────────────────────────────
+
+// Reflecte o chefe_nome de uma equipa numa linha de membro (is_chefe).
+// chefe_nome é texto livre; operacionais_fsbf.nome tem índice único, por isso
+// a resolução por nome é fiável — um nome que não resolva fica simplesmente
+// sem linha e aparece como não identificado nas estatísticas.
+async function syncChefeMembro(db, { data, bsbfId = null, emrId = null, chefeNome }) {
+  const col = bsbfId ? 'fsbf_bsbf_id' : 'fsbf_emr_id';
+  const id  = bsbfId || emrId;
+  await db.query(`DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND is_chefe`, [id]);
+  if (!chefeNome) return { ok: true };
+  const { rows: [op] } = await db.query(
+    `SELECT id, nome FROM operacionais_fsbf WHERE nome = $1 AND ativo`, [chefeNome]);
+  if (!op) return { ok: true, unresolved: chefeNome };
+  try {
+    await db.query(
+      `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, is_chefe, ordem)
+       VALUES ($1,$2,$3,true,-1)`, [data, id, op.id]);
+  } catch (e) {
+    if (e.code === '23505') return { ok: false, conflito: op.nome };
+    throw e;
+  }
+  return { ok: true };
+}
+
+// Empenhamento por companhia: membros do dia + Chefe de Grupo + Coordenador de
+// Dia (ambos resolvidos por nome), contra o efetivo total de cada companhia.
+async function companhiaStats(data) {
+  const { rows } = await pool.query(`
+    WITH empenhados AS (
+      SELECT operacional_id AS op FROM fsbf_equipa_membros WHERE data = $1
+      UNION
+      SELECT o.id FROM fsbf_carta c JOIN operacionais_fsbf o ON o.nome = c.chefe_nome WHERE c.data = $1
+      UNION
+      SELECT o.id FROM fsbf_carta c JOIN operacionais_fsbf o ON o.nome = c.coord_nome WHERE c.data = $1
+    ),
+    efetivo AS (
+      SELECT companhia, count(*)::int AS total
+      FROM operacionais_fsbf WHERE ativo AND companhia IS NOT NULL GROUP BY companhia
+    ),
+    destacados AS (
+      SELECT o.companhia, count(*)::int AS n
+      FROM empenhados e JOIN operacionais_fsbf o ON o.id = e.op
+      WHERE o.companhia IS NOT NULL GROUP BY o.companhia
+    )
+    SELECT ef.companhia, COALESCE(d.n,0) AS n, ef.total AS efetivo
+    FROM efetivo ef LEFT JOIN destacados d ON d.companhia = ef.companhia
+    ORDER BY CASE ef.companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' THEN 3 ELSE 4 END
+  `, [data]);
+  return rows.map(r => ({
+    companhia: r.companhia, n: r.n, efetivo: r.efetivo,
+    pct: r.efetivo ? Math.round((r.n / r.efetivo) * 1000) / 10 : 0,
+  }));
+}
+
+// Substitui os membros não-chefe de uma equipa (operação atómica).
+app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [] } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  if (!!fsbf_bsbf_id === !!fsbf_emr_id)
+    return res.status(400).json({ error: 'Indique exactamente uma equipa.' });
+  const col = fsbf_bsbf_id ? 'fsbf_bsbf_id' : 'fsbf_emr_id';
+  const id  = fsbf_bsbf_id || fsbf_emr_id;
+  const ids = [...new Set(operacional_ids.filter(Boolean))];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND NOT is_chefe`, [id]);
+    for (let i = 0; i < ids.length; i++) {
+      await client.query(
+        `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, ordem, created_by)
+         VALUES ($1,$2,$3,$4,$5)`, [data, id, ids[i], i, req.user.id]);
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    if (e.code === '23505') {
+      const { rows: [o] } = await pool.query(
+        `SELECT m.operacional_id, o.nome FROM fsbf_equipa_membros m
+         JOIN operacionais_fsbf o ON o.id = m.operacional_id
+         WHERE m.data=$1 AND m.operacional_id = ANY($2::uuid[]) AND m.${col} IS DISTINCT FROM $3
+         LIMIT 1`, [data, ids, id]);
+      return res.status(409).json({
+        error: o ? `${o.nome} já está noutra guarnição neste dia.`
+                 : 'Operacional já atribuído a outra guarnição neste dia.' });
+    }
+    throw e;
+  } finally { client.release(); }
+  res.json({ ok: true, membros: ids.length });
+}));
+
 // ── GET /api/fsbf/carta?data= ──────────────────────────────────
 app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const data = req.query.data || new Date().toISOString().slice(0, 10);
 
-  const [cartaRes, bsbfRes, emrRes] = await Promise.all([
+  const [cartaRes, bsbfRes, emrRes, membrosRes] = await Promise.all([
     pool.query(`
       SELECT c.*, v.viatura_cod AS chefe_veiculo_cod, v.matricula AS chefe_veiculo_matricula
       FROM fsbf_carta c
@@ -1732,13 +1824,25 @@ app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
       WHERE e.data = $1
       ORDER BY e.ordem, e.created_at
     `, [data]),
+    pool.query(`
+      SELECT m.id, m.fsbf_bsbf_id, m.fsbf_emr_id, m.operacional_id, m.is_chefe, m.ordem,
+             o.nome, o.companhia, o.base
+      FROM fsbf_equipa_membros m
+      JOIN operacionais_fsbf o ON o.id = m.operacional_id
+      WHERE m.data = $1
+      ORDER BY m.ordem, o.nome
+    `, [data]),
   ]);
+
+  const membros = membrosRes.rows;
+  const forCrew = (key, id) => membros.filter(m => m[key] === id);
 
   res.json({
     data,
     carta: cartaRes.rows[0] || null,
-    bsbf:  bsbfRes.rows,
-    emr:   emrRes.rows,
+    bsbf:  bsbfRes.rows.map(r => ({ ...r, membros: forCrew('fsbf_bsbf_id', r.id) })),
+    emr:   emrRes.rows.map(r => ({ ...r, membros: forCrew('fsbf_emr_id',  r.id) })),
+    companhias: await companhiaStats(data),
   });
 }));
 
@@ -1810,28 +1914,52 @@ app.post('/api/fsbf/carta/copy', requireAuth('visualizador'), FSBF_GESTORES, wra
         carta.notas_outros_meios||null, req.user.id]);
   }
 
+  // Guarda o mapa antigo→novo id: as linhas são recriadas com ids novos e os
+  // membros de guarnição têm de ser reapontados (o DELETE acima já removeu os
+  // membros do dia de destino por CASCADE).
+  const idMap = { bsbf: {}, emr: {} };
+
   for (const e of bsbf) {
-    await pool.query(`
+    const { rows: [n] } = await pool.query(`
       INSERT INTO fsbf_bsbf_equipa
         (data,brigada,base,veiculo_id,guarnicao,chefe_nome,contacto,observacoes,ordem,created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id
     `, [to, e.brigada, e.base||null, e.veiculo_id||null, e.guarnicao||null,
         e.chefe_nome||null, e.contacto||null, e.observacoes||null, e.ordem, req.user.id]);
+    idMap.bsbf[e.id] = n.id;
   }
 
   for (const e of emr) {
-    await pool.query(`
+    const { rows: [n] } = await pool.query(`
       INSERT INTO fsbf_emr_equipa
         (data,base,mr_viatura_id,vaop_viatura_id,vpiloto_viatura_id,vlci_viatura_id,
          chefe_nome,contacto,total_op,observacoes,ordem,created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id
     `, [to, e.base||null, e.mr_viatura_id||null, e.vaop_viatura_id||null,
         e.vpiloto_viatura_id||null, e.vlci_viatura_id||null,
         e.chefe_nome||null, e.contacto||null, e.total_op||null, e.observacoes||null,
         e.ordem, req.user.id]);
+    idMap.emr[e.id] = n.id;
   }
 
-  res.json({ ok: true, copied: { carta: !!carta, bsbf: bsbf.length, emr: emr.length } });
+  // Replicar membros de guarnição para as novas linhas
+  const { rows: membros } = await pool.query(
+    `SELECT * FROM fsbf_equipa_membros WHERE data=$1`, [from]);
+  let copiados = 0;
+  for (const m of membros) {
+    const novoB = m.fsbf_bsbf_id ? idMap.bsbf[m.fsbf_bsbf_id] : null;
+    const novoE = m.fsbf_emr_id  ? idMap.emr[m.fsbf_emr_id]   : null;
+    if (!novoB && !novoE) continue;
+    await pool.query(
+      `INSERT INTO fsbf_equipa_membros
+         (data, fsbf_bsbf_id, fsbf_emr_id, operacional_id, is_chefe, ordem, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (data, operacional_id) DO NOTHING`,
+      [to, novoB, novoE, m.operacional_id, m.is_chefe, m.ordem, req.user.id]);
+    copiados++;
+  }
+
+  res.json({ ok: true, copied: { carta: !!carta, bsbf: bsbf.length, emr: emr.length, membros: copiados } });
 }));
 
 // ── BSBF entries CRUD ──────────────────────────────────────────
@@ -1864,6 +1992,10 @@ app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap
     `UPDATE fsbf_bsbf_equipa SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals
   );
   if (!e) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  if ('chefe_nome' in b) {
+    const r = await syncChefeMembro(pool, { data: e.data, bsbfId: e.id, chefeNome: e.chefe_nome });
+    if (!r.ok) return res.status(409).json({ error: `${r.conflito} já está noutra guarnição neste dia.` });
+  }
   res.json(e);
 }));
 
@@ -1908,6 +2040,10 @@ app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(
     `UPDATE fsbf_emr_equipa SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals
   );
   if (!e) return res.status(404).json({ error: 'Entrada não encontrada.' });
+  if ('chefe_nome' in b) {
+    const r = await syncChefeMembro(pool, { data: e.data, emrId: e.id, chefeNome: e.chefe_nome });
+    if (!r.ok) return res.status(409).json({ error: `${r.conflito} já está noutra guarnição neste dia.` });
+  }
   res.json(e);
 }));
 
@@ -2357,6 +2493,39 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Membros de guarnição da Carta de Meios. Uma linha por operacional por
+    // equipa; o chefe é materializado aqui (is_chefe) para que o índice único
+    // (data, operacional_id) impeça a mesma pessoa em duas equipas no mesmo dia.
+    `CREATE TABLE IF NOT EXISTS fsbf_equipa_membros (
+        id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        data           DATE NOT NULL,
+        fsbf_bsbf_id   UUID REFERENCES fsbf_bsbf_equipa(id) ON DELETE CASCADE,
+        fsbf_emr_id    UUID REFERENCES fsbf_emr_equipa(id)  ON DELETE CASCADE,
+        operacional_id UUID NOT NULL REFERENCES operacionais_fsbf(id) ON DELETE RESTRICT,
+        is_chefe       BOOLEAN NOT NULL DEFAULT false,
+        ordem          INT DEFAULT 0,
+        created_at     TIMESTAMPTZ DEFAULT now(),
+        created_by     UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+        CHECK (num_nonnulls(fsbf_bsbf_id, fsbf_emr_id) = 1)
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS fsbf_membros_dia_op_idx  ON fsbf_equipa_membros (data, operacional_id)`,
+    `CREATE INDEX        IF NOT EXISTS fsbf_membros_bsbf_idx    ON fsbf_equipa_membros (fsbf_bsbf_id)`,
+    `CREATE INDEX        IF NOT EXISTS fsbf_membros_emr_idx     ON fsbf_equipa_membros (fsbf_emr_id)`,
+    // Materializa o chefe de cada equipa como membro. Idempotente: DO NOTHING
+    // deixa intacto quem já esteja registado, e um chefe já noutra guarnição
+    // nesse dia é ignorado em vez de violar o índice único.
+    `INSERT INTO fsbf_equipa_membros (data, fsbf_bsbf_id, operacional_id, is_chefe, ordem)
+     SELECT e.data, e.id, o.id, true, -1
+       FROM fsbf_bsbf_equipa e
+       JOIN operacionais_fsbf o ON o.nome = e.chefe_nome AND o.ativo
+      WHERE e.chefe_nome IS NOT NULL
+     ON CONFLICT (data, operacional_id) DO NOTHING`,
+    `INSERT INTO fsbf_equipa_membros (data, fsbf_emr_id, operacional_id, is_chefe, ordem)
+     SELECT e.data, e.id, o.id, true, -1
+       FROM fsbf_emr_equipa e
+       JOIN operacionais_fsbf o ON o.nome = e.chefe_nome AND o.ativo
+      WHERE e.chefe_nome IS NOT NULL
+     ON CONFLICT (data, operacional_id) DO NOTHING`,
     // Expand brigada CHECK on fsbf_bsbf_equipa to include 'Outros'
     `DO $$ BEGIN
        ALTER TABLE fsbf_bsbf_equipa DROP CONSTRAINT IF EXISTS fsbf_bsbf_equipa_brigada_check;
