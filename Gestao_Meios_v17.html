@@ -1042,12 +1042,15 @@
                 <option value="true">No dispositivo</option>
                 <option value="false">Fora do dispositivo</option>
               </select>
+              <select class="form-select" id="gfsbf-v-base" onchange="renderFSBFViaturas()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Base…</option>
+              </select>
               <button id="gfsbf-v-btn-nova" class="btn btn-primary btn-sm" onclick="openNewViaturaModal('FSBF')">+ Nova</button>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Recurso ligado</th><th>Prontidão</th><th>Dispositivo</th><th></th></tr></thead>
+              <thead><tr><th>Código</th><th>Matrícula</th><th>Marca / Modelo</th><th>Classe</th><th>Região</th><th>Base</th><th>Recurso ligado</th><th>Prontidão</th><th>Dispositivo</th><th></th></tr></thead>
               <tbody id="gfsbf-v-tbody"></tbody>
             </table>
           </div>
@@ -6773,6 +6776,7 @@ async function renderFSBFViaturas(){
   const fd  = document.getElementById('gfsbf-v-dispon')?.value||'';
   const fds = document.getElementById('gfsbf-v-disposit')?.value||'';
   const fcl = document.getElementById('gfsbf-v-classe')?.value||'';
+  const fb  = document.getElementById('gfsbf-v-base')?.value||'';
   const params = new URLSearchParams({ megfr: 'FSBF' });
   if(fd) params.set('disponivel', fd);
   const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
@@ -6786,13 +6790,23 @@ async function renderFSBFViaturas(){
     clEl.innerHTML = '<option value="">Classe…</option>' +
       classes.map(c=>`<option value="${esc(c)}"${c===cur?' selected':''}>${esc(c)}</option>`).join('');
   }
+  const bEl = document.getElementById('gfsbf-v-base');
+  if(bEl){
+    const cur = bEl.value;
+    const bases = [...new Set(rows.map(v=>v.base).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+    const semBase = rows.filter(v=>!v.base).length;
+    bEl.innerHTML = '<option value="">Base…</option>'
+      + bases.map(b=>`<option value="${esc(b)}"${b===cur?' selected':''}>${esc(b)}</option>`).join('')
+      + (semBase ? `<option value="__sem__"${cur==='__sem__'?' selected':''}>— sem base (${semBase}) —</option>` : '');
+  }
 
   if(q)   rows = rows.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
   if(fcl) rows = rows.filter(v=>v.classe===fcl);
   if(fds) rows = rows.filter(v=>String(!!v.dispositivo)===fds);
+  if(fb)  rows = rows.filter(v=> fb==='__sem__' ? !v.base : v.base===fb);
   document.getElementById('gfsbf-v-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-v-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem veículos FSBF.</div></div></td></tr>'; return; }
   const canEditV = currentRole==='admin' || currentRole==='gestor_fsbf';
   tbody.innerHTML = rows.map(v=>`<tr>
     <td><strong class="mono">${esc(v.viatura_cod)}</strong></td>
@@ -6800,6 +6814,7 @@ async function renderFSBFViaturas(){
     <td style="font-size:11px">${[v.marca,v.modelo].filter(Boolean).map(esc).join(' ') || '—'}</td>
     <td><span class="badge badge-y">${esc(v.classe||'—')}</span></td>
     <td style="font-size:11px">${esc(v.agfr||'—')}</td>
+    <td style="font-size:11px">${v.base?esc(v.base):'<span style="color:var(--muted)">—</span>'}</td>
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${v.em_uso ? `<span style="font-size:11px;color:var(--warn);font-weight:600;">Em ocorrência</span>` : prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
     <td>${canEditV
