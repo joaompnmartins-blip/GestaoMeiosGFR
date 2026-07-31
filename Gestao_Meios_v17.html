@@ -6969,7 +6969,7 @@ function fsbfViatOpts(viaturas, classes, selectedId){
     list.map(v=>`<option value="${v.id}"${v.id===selectedId?' selected':''}>${esc(v.viatura_cod)}</option>`).join('');
 }
 
-const FSBF_BASES = ['Arganil','Cabeceiras de Basto','Guarda','Macedo de Cavaleiros','Marinha Grande','Olhão','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'];
+const FSBF_BASES = ['Arganil','Cabeceiras de Basto','CNFSBF','Guarda','Lisboa','Macedo de Cavaleiros','Marinha Grande','Olhão','Ponte de Lima','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'];
 
 function fsbfBaseOpts(selected){
   // Keep any legacy free-text base as an option so it isn't silently blanked on save
