@@ -1928,17 +1928,19 @@ app.get('/api/fsbf/operacionais', requireAuth('visualizador'), wrap(async (_req,
 }));
 
 app.post('/api/fsbf/operacionais', requireAuth('visualizador'), requireModule('gestor_fsbf'), wrap(async (req, res) => {
-  const { nome, n_trab, cargo, contacto } = req.body;
+  const { nome, n_trab, cargo, contacto, base, companhia, grupo } = req.body;
   if (!nome) return res.status(400).json({ error: 'Nome obrigatório.' });
   const { rows: [row] } = await pool.query(
-    `INSERT INTO operacionais_fsbf (nome, n_trab, cargo, contacto, created_by) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [nome, n_trab||null, cargo||null, contacto||null, req.user.id]
+    `INSERT INTO operacionais_fsbf (nome, n_trab, cargo, contacto, base, companhia, grupo, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [nome, n_trab||null, cargo||null, contacto||null,
+     base||null, companhia||null, grupo||null, req.user.id]
   );
   res.status(201).json(row);
 }));
 
 app.patch('/api/fsbf/operacionais/:id', requireAuth('visualizador'), requireModule('gestor_fsbf'), wrap(async (req, res) => {
-  const ALLOWED = ['nome','n_trab','cargo','contacto','ativo'];
+  const ALLOWED = ['nome','n_trab','cargo','contacto','base','companhia','grupo','ativo'];
   const sets = [], vals = [];
   for (const k of ALLOWED) {
     if (k in req.body) { sets.push(`${k}=$${vals.length+1}`); vals.push(req.body[k]); }
@@ -2312,6 +2314,10 @@ async function runMigrations() {
         created_by UUID REFERENCES utilizadores(id) ON DELETE SET NULL
     )`,
     `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS n_trab INTEGER`,
+    // Base efetiva / Companhia / Grupo — do roster oficial SBF
+    `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS base      TEXT`,
+    `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS companhia TEXT`,
+    `ALTER TABLE IF EXISTS operacionais_fsbf ADD COLUMN IF NOT EXISTS grupo     TEXT`,
     `CREATE UNIQUE INDEX IF NOT EXISTS operacionais_fsbf_nome_idx ON operacionais_fsbf (nome)`,
     // Nullify duplicate codigo_ocorrencia before creating unique index (keep newest per code)
     `UPDATE ocorrencias SET codigo_ocorrencia = NULL

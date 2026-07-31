@@ -1061,12 +1061,21 @@
             <div class="section-title">Operacionais FSBF <span id="gfsbf-op-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <input class="form-input" id="gfsbf-op-q" placeholder="🔍 Nome / cargo…" oninput="renderFSBFOperacionais()" style="width:180px;font-size:12px;padding:5px 8px;"/>
+              <select class="form-select" id="gfsbf-op-base" onchange="renderFSBFOperacionais()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Base…</option>
+              </select>
+              <select class="form-select" id="gfsbf-op-comp" onchange="renderFSBFOperacionais()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Companhia…</option>
+              </select>
+              <select class="form-select" id="gfsbf-op-grupo" onchange="renderFSBFOperacionais()" style="font-size:12px;padding:5px 8px;">
+                <option value="">Grupo…</option>
+              </select>
               <button class="btn btn-primary btn-sm auth-ofligacao" onclick="openNewFsbfOp()">+ Novo</button>
             </div>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>N.º Trab</th><th>Nome</th><th>Cargo</th><th>Contacto</th><th></th></tr></thead>
+              <thead><tr><th>N.º Trab</th><th>Nome</th><th>Cargo</th><th>Base</th><th>Companhia</th><th>Grupo</th><th>Contacto</th><th></th></tr></thead>
               <tbody id="gfsbf-op-tbody"></tbody>
             </table>
           </div>
@@ -6845,15 +6854,37 @@ async function renderFSBFOperacionais(){
   const { data, error } = await apiFetch('/api/fsbf/operacionais');
   if(error){ toast('Erro ao carregar operacionais.','err'); return; }
   let rows = data || [];
-  if(q) rows = rows.filter(r=>(r.nome+' '+(r.cargo||'')).toLowerCase().includes(q));
+
+  // Filtros dependentes dos dados carregados (como na aba Veículos)
+  const fOf = (id, ph, key) => {
+    const el = document.getElementById(id); if(!el) return '';
+    const cur = el.value;
+    const vals = [...new Set(rows.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+    const sem = rows.filter(r=>!r[key]).length;
+    el.innerHTML = `<option value="">${ph}</option>`
+      + vals.map(v=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(v)}</option>`).join('')
+      + (sem ? `<option value="__sem__"${cur==='__sem__'?' selected':''}>— sem ${ph.replace('…','').toLowerCase()} (${sem}) —</option>` : '');
+    return cur;
+  };
+  const fb = fOf('gfsbf-op-base','Base…','base');
+  const fc = fOf('gfsbf-op-comp','Companhia…','companhia');
+  const fg = fOf('gfsbf-op-grupo','Grupo…','grupo');
+
+  if(q)  rows = rows.filter(r=>(r.nome+' '+(r.cargo||'')).toLowerCase().includes(q));
+  if(fb) rows = rows.filter(r=> fb==='__sem__' ? !r.base      : r.base===fb);
+  if(fc) rows = rows.filter(r=> fc==='__sem__' ? !r.companhia : r.companhia===fc);
+  if(fg) rows = rows.filter(r=> fg==='__sem__' ? !r.grupo     : r.grupo===fg);
   document.getElementById('gfsbf-op-count').textContent = `(${rows.length})`;
   const tbody = document.getElementById('gfsbf-op-tbody');
-  if(!rows.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
+  if(!rows.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem operacionais FSBF.</div></div></td></tr>'; return; }
   const canEditOp = currentRole==='admin' || currentRole==='gestor_fsbf';
   tbody.innerHTML = rows.map(r=>`<tr>
     <td class="mono" style="font-size:12px;color:var(--muted)">${r.n_trab||'—'}</td>
     <td><strong>${esc(r.nome)}</strong></td>
     <td style="font-size:12px">${esc(r.cargo||'—')}</td>
+    <td style="font-size:12px">${r.base?esc(r.base):'<span style="color:var(--muted)">—</span>'}</td>
+    <td style="font-size:12px">${r.companhia?esc(r.companhia):'<span style="color:var(--muted)">—</span>'}</td>
+    <td style="font-size:12px">${r.grupo?esc(r.grupo):'<span style="color:var(--muted)">—</span>'}</td>
     <td class="mono" style="font-size:12px">${esc(r.contacto||'—')}</td>
     <td style="display:flex;gap:4px;white-space:nowrap;">${canEditOp ? `
       <button class="btn btn-ghost btn-xs" onclick="openEditFsbfOp(${JSON.stringify(r).replace(/"/g,'&quot;')})">✎</button>
@@ -6865,7 +6896,9 @@ async function renderFSBFOperacionais(){
 function openNewFsbfOp(){
   document.getElementById('fsbf-op-id').value='';
   document.getElementById('fsbf-op-title').textContent='Novo Operacional FSBF';
-  ['fsbf-op-nome','fsbf-op-ntrab','fsbf-op-cargo','fsbf-op-contacto'].forEach(id=>document.getElementById(id).value='');
+  ['fsbf-op-nome','fsbf-op-ntrab','fsbf-op-cargo','fsbf-op-contacto',
+   'fsbf-op-comp','fsbf-op-grupo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fsbf-op-base').innerHTML=fsbfBaseOpts('');
   openModal('modal-fsbf-op');
 }
 
@@ -6876,6 +6909,9 @@ function openEditFsbfOp(r){
   document.getElementById('fsbf-op-ntrab').value=r.n_trab||'';
   document.getElementById('fsbf-op-cargo').value=r.cargo||'';
   document.getElementById('fsbf-op-contacto').value=r.contacto||'';
+  document.getElementById('fsbf-op-base').innerHTML=fsbfBaseOpts(r.base||'');
+  document.getElementById('fsbf-op-comp').value=r.companhia||'';
+  document.getElementById('fsbf-op-grupo').value=r.grupo||'';
   openModal('modal-fsbf-op');
 }
 
@@ -6889,6 +6925,9 @@ async function saveFsbfOp(){
     n_trab: ntrabVal ? parseInt(ntrabVal,10) : null,
     cargo:document.getElementById('fsbf-op-cargo').value.trim()||null,
     contacto:document.getElementById('fsbf-op-contacto').value.trim()||null,
+    base:document.getElementById('fsbf-op-base').value||null,
+    companhia:document.getElementById('fsbf-op-comp').value||null,
+    grupo:document.getElementById('fsbf-op-grupo').value||null,
   };
   const { error } = id
     ? await apiFetch(`/api/fsbf/operacionais/${id}`,{method:'PATCH',body:JSON.stringify(body)})
@@ -8873,6 +8912,29 @@ async function mergeSaveConfirm(){
       <div class="form-field">
         <label class="form-label">Cargo</label>
         <input class="form-input" id="fsbf-op-cargo" placeholder="ex: Chefe de Equipa"/>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Base efetiva</label>
+        <select class="form-select" id="fsbf-op-base"></select>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <div class="form-field" style="flex:1;min-width:0;">
+          <label class="form-label">Companhia</label>
+          <select class="form-select" id="fsbf-op-comp">
+            <option value="">—</option>
+            <option value="Norte">Norte</option>
+            <option value="Centro">Centro</option>
+            <option value="Sul">Sul</option>
+          </select>
+        </div>
+        <div class="form-field" style="flex:1;min-width:0;">
+          <label class="form-label">Grupo</label>
+          <select class="form-select" id="fsbf-op-grupo">
+            <option value="">—</option>
+            <option value="Interior">Interior</option>
+            <option value="Litoral">Litoral</option>
+          </select>
+        </div>
       </div>
       <div class="form-field">
         <label class="form-label">Contacto</label>
