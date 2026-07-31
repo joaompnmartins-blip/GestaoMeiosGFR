@@ -291,25 +291,26 @@ const MIN_LINHAS = { bsbf_norte: 4, bsbf_sul: 4, gsbf: 8, maquinas_de_rasto: 9, 
 /* Definição das secções: classe CSS, rótulo, colunas [cabeçalho, chave, largura mm] */
 const SECCOES = [
   { id:"bsbf_norte", classe:"sec-norte", rotulo:"BSBF NORTE", cols:[
-      ["Base","base",30,"esq"],["Veículo","veiculo",18],["Matrícula","matricula",20],
-      ["Guarnição","guarnicao",16],["Chefe Equipa","chefe_equipa",28],["Contato","contacto",22],
-      ["Observações","observacoes",null,"esq"]]},
+      ["Base","base",26,"esq"],["Veículo","veiculo",16],["Matrícula","matricula",18],
+      ["Guarnição","guarnicao",14],["Chefe Equipa","chefe_equipa",24],["Contato","contacto",20],
+      ["Ocorrência","ocorrencia",22],["Observações","observacoes",null,"esq"]]},
   { id:"bsbf_sul", classe:"sec-sul", rotulo:"BSBF SUL", cols:[
-      ["Base","base",30,"esq"],["Veículo","veiculo",18],["Matrícula","matricula",20],
-      ["Guarnição","guarnicao",16],["Chefe Equipa","chefe_equipa",28],["Contato","contacto",22],
-      ["Observações","observacoes",null,"esq"]]},
+      ["Base","base",26,"esq"],["Veículo","veiculo",16],["Matrícula","matricula",18],
+      ["Guarnição","guarnicao",14],["Chefe Equipa","chefe_equipa",24],["Contato","contacto",20],
+      ["Ocorrência","ocorrencia",22],["Observações","observacoes",null,"esq"]]},
   { id:"gsbf", classe:"sec-gsbf", rotulo:"GSBF", cols:[
-      ["Local PP","local_pp",30,"esq"],["Veículo","veiculo",18],["Matrícula","matricula",20],
-      ["Guarnição","guarnicao",16],["Chefe Equipa","chefe_equipa",28],["Contato","contacto",22],
-      ["Observações","observacoes",null,"esq"]]},
+      ["Local PP","local_pp",26,"esq"],["Veículo","veiculo",16],["Matrícula","matricula",18],
+      ["Guarnição","guarnicao",14],["Chefe Equipa","chefe_equipa",24],["Contato","contacto",20],
+      ["Ocorrência","ocorrencia",22],["Observações","observacoes",null,"esq"]]},
   { id:"maquinas_de_rasto", classe:"sec-mr", rotulo:"Máquinas de Rasto", cols:[
-      ["Base","base",28,"esq"],["MR","mr",14],["VAOP","vaop",18],["Vpiloto","vpiloto",16],
-      ["Chefe Equipa","chefe_equipa",26],["Contato","contacto",20],["VLCI","vlci",16],
-      ["Total Op.","total_op",14],["Observações","observacoes",null,"esq"]]},
+      ["Base","base",22,"esq"],["MR","mr",12],["VAOP","vaop",15],["Vpiloto","vpiloto",14],
+      ["Chefe Equipa","chefe_equipa",22],["Contato","contacto",18],["VLCI","vlci",14],
+      ["Total Op.","total_op",12],["Ocorrência","ocorrencia",22],
+      ["Observações","observacoes",null,"esq"]]},
   { id:"outros_meios", classe:"sec-om", rotulo:"Outros Meios", cols:[
-      ["Base","base",30,"esq"],["Veículo","veiculo",18],["Matrícula","matricula",20],
-      ["Guarnição","guarnicao",16],["Chefe Equipa","chefe_equipa",28],["Contato","contacto",22],
-      ["Observações","observacoes",null,"esq"]]}
+      ["Base","base",26,"esq"],["Veículo","veiculo",16],["Matrícula","matricula",18],
+      ["Guarnição","guarnicao",14],["Chefe Equipa","chefe_equipa",24],["Contato","contacto",20],
+      ["Ocorrência","ocorrencia",22],["Observações","observacoes",null,"esq"]]}
 ];
 
 const esc = v => (v === null || v === undefined) ? "" :

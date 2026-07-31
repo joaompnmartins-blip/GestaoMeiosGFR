@@ -6764,6 +6764,10 @@ let _fsbfViatCache = [];
 let _fsbfOperacionaisCache = [];
 let _fsbfBsbfCache = [];
 let _fsbfEmrCache  = [];
+// Ocorrências activas do fogos.pt, para o campo Ocorrência da Carta de Meios.
+// Provisório: quando o empenhamento passar a ser feito pelo módulo de
+// Ocorrências, este campo passa a ser preenchido a partir do meio destacado.
+let _fsbfFogosCache = [];
 
 function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
@@ -7010,6 +7014,21 @@ function fsbfOpOpts(selectedNome, cargo=null){
     ).join('');
 }
 
+// Nº da ocorrência em que a equipa está empenhada. Enquanto o empenhamento não
+// vier do módulo de Ocorrências, as opções vêm das ocorrências activas do
+// fogos.pt (o id é o nº SADO). Um valor já gravado é sempre mantido como opção,
+// para que uma ocorrência entretanto extinta não desapareça da carta.
+function fsbfOcorrenciaOpts(selected){
+  const sel = (selected||'').trim();
+  const opts = _fsbfFogosCache.map(f=>({
+    v: String(f.id||f.sadoId||''),
+    t: `${f.id||f.sadoId} · ${f.concelho||f.district||'—'}${f.natureza?' · '+f.natureza:''}`
+  })).filter(o=>o.v);
+  if(sel && !opts.some(o=>o.v===sel)) opts.unshift({ v: sel, t: `${sel} · (fora das activas)` });
+  return '<option value="">— sem ocorrência —</option>' +
+    opts.map(o=>`<option value="${esc(o.v)}"${o.v===sel?' selected':''}>${esc(o.t)}</option>`).join('');
+}
+
 // ── Membros de guarnição ─────────────────────────────────────────
 // O chefe de equipa conta como membro, por isso há guarnição-1 lugares a
 // preencher. Esta informação fica só na aplicação: não entra nos ficheiros
@@ -7172,8 +7191,8 @@ function fsbfBsbfRow(row, allViat, isCarta){
     </td>
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
-    <td><input class="form-input" style="width:90px;font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
-        id="fsbf-b-ocor-${id}" value="${esc(row.ocorrencia_num||'')}" placeholder="Nº ocor." title="Equipa empenhada nesta ocorrência"/></td>
+    <td><select class="form-select" style="width:150px;font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
+        id="fsbf-b-ocor-${id}" title="Equipa empenhada nesta ocorrência">${fsbfOcorrenciaOpts(row.ocorrencia_num)}</select></td>
     <td><input class="form-input" style="width:120px;font-size:12px;" id="fsbf-b-obs-${id}" value="${esc(row.observacoes||'')}" placeholder="Obs"/></td>
     <td style="white-space:nowrap;">
       <button class="btn btn-xs btn-primary" onclick="saveFsbfBsbf('${id}')">💾</button>
@@ -7210,8 +7229,8 @@ function fsbfEmrCard(row, allViat){
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
       <div><label style="font-size:11px;color:var(--muted);">Ocorrência</label>
-        <input class="form-input" style="font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
-          id="fsbf-e-ocor-${id}" value="${esc(row.ocorrencia_num||'')}" placeholder="Nº ocor." title="Equipa empenhada nesta ocorrência"/></div>
+        <select class="form-select" style="font-size:12px;width:100%;${row.ocorrencia_num?'border-color:var(--warn);':''}"
+          id="fsbf-e-ocor-${id}" title="Equipa empenhada nesta ocorrência">${fsbfOcorrenciaOpts(row.ocorrencia_num)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
         <div style="display:flex;gap:4px;align-items:center;">
           <input class="form-input" style="font-size:12px;min-width:0;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/>
@@ -7251,10 +7270,11 @@ async function renderFsbfCarta(){
   const isCCON = currentRole==='admin' || currentRole==='ofligacao_ccon';
   const isFSBF = currentRole==='admin' || currentRole==='gestor_fsbf' || currentRole==='chefe_grupo_fsbf';
 
-  const [cartaRes, viatRes, opRes] = await Promise.all([
+  const [cartaRes, viatRes, opRes, fogosRes] = await Promise.all([
     apiFetch(`/api/fsbf/carta?data=${data}`),
     apiFetch('/api/gestao/viaturas?megfr=FSBF&ativo=true'),
     apiFetch('/api/fsbf/operacionais'),
+    apiFetch('/api/fogos/active'),   // falha em silêncio: o campo degrada para o valor actual
   ]);
 
   if(cartaRes.error){ toast('Erro ao carregar Carta de Meios.','err'); return; }
@@ -7267,6 +7287,7 @@ async function renderFsbfCarta(){
   _fsbfOperacionaisCache = opRes.data || [];
   _fsbfBsbfCache = bsbf;
   _fsbfEmrCache  = emr;
+  _fsbfFogosCache = (fogosRes.data?.success ? fogosRes.data.data : null) || [];
 
   const norte  = bsbf.filter(r=>r.brigada==='Norte');
   const sul    = bsbf.filter(r=>r.brigada==='Sul');
@@ -7631,14 +7652,16 @@ async function buildFsbfCartaData(data){
   const mapBsbf = r => ({
     base: r.base||'', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
     guarnicao: r.guarnicao??'', chefe_equipa: r.chefe_nome||'',
-    contacto: r.contacto||'', observacoes: r.observacoes||''
+    contacto: r.contacto||'', ocorrencia: r.ocorrencia_num||'',
+    observacoes: r.observacoes||''
   });
   // GSBF's first column is labelled "Local PP" in the document, but the UI
   // collects it with the same Base dropdown as every other section.
   const mapGsbf = r => ({
     local_pp: r.base||'', veiculo: r.viatura_cod||'', matricula: r.matricula||'',
     guarnicao: r.guarnicao??'', chefe_equipa: r.chefe_nome||'',
-    contacto: r.contacto||'', observacoes: r.observacoes||''
+    contacto: r.contacto||'', ocorrencia: r.ocorrencia_num||'',
+    observacoes: r.observacoes||''
   });
 
   const norte      = bsbf.filter(r=>r.brigada==='Norte').map(mapBsbf);
@@ -7666,7 +7689,8 @@ async function buildFsbfCartaData(data){
       base: r.base||'', mr: r.mr_cod||'', vaop: r.vaop_cod||'',
       vpiloto: r.vpil_cod||'', chefe_equipa: r.chefe_nome||'',
       contacto: r.contacto||'', vlci: r.vlci_cod||'',
-      total_op: r.total_op??'', observacoes: r.observacoes||''
+      total_op: r.total_op??'', ocorrencia: r.ocorrencia_num||'',
+      observacoes: r.observacoes||''
     })),
     outros_meios: outrosRows,
     // Só o agregado por companhia é exportado — nunca os nomes das guarnições.
@@ -7711,7 +7735,8 @@ async function printFsbfCarta(){
 
 const XL_COLS_BSBF = [
   ['Base','base'],['Veículo','veiculo'],['Matrícula','matricula'],['Guarnição','guarnicao'],
-  ['Chefe Equipa','chefe_equipa'],['Contato','contacto'],['Observações','observacoes',3]
+  ['Chefe Equipa','chefe_equipa'],['Contato','contacto'],['Ocorrência','ocorrencia'],
+  ['Observações','observacoes',3]
 ];
 const XL_SECS = [
   { key:'bsbf_norte', rotulo:'BSBF NORTE', bg:'#1F7AC4', fg:'#FFFFFF', zebra:'#DDEBF7', min:4,
@@ -7722,15 +7747,16 @@ const XL_SECS = [
     cols: [['Local PP','local_pp'], ...XL_COLS_BSBF.slice(1)] },
   { key:'maquinas_de_rasto', rotulo:'Máquinas de Rasto', bg:'#ED7D31', fg:'#000000', zebra:'#EDEDED', min:9,
     cols: [['Base','base'],['MR','mr'],['VAOP','vaop'],['Vpiloto','vpiloto'],['Chefe Equipa','chefe_equipa'],
-           ['Contato','contacto'],['VLCI','vlci'],['Total Op.','total_op'],['Observações','observacoes']] },
+           ['Contato','contacto'],['VLCI','vlci'],['Total Op.','total_op'],['Ocorrência','ocorrencia'],
+           ['Observações','observacoes']] },
   { key:'outros_meios', rotulo:'Outros Meios', bg:'#FFFF00', fg:'#000000', zebra:'#FFFDE0', min:12,
     cols: XL_COLS_BSBF }
 ];
 // Kept as text so Excel never reformats them (matrículas look like dates,
 // contactos would lose a leading zero).
-const XL_TEXT_KEYS = ['matricula','contacto'];
+const XL_TEXT_KEYS = ['matricula','contacto','ocorrencia'];
 const XL_LEFT_KEYS = ['base','local_pp','observacoes'];
-const XL_GRID = 9;
+const XL_GRID = 10;
 
 function _xlCell(v, o){
   o = o || {};
@@ -7805,7 +7831,7 @@ function fsbfCartaExcelHtml(D){
     });
   }
 
-  const widths = [190,90,105,80,165,110,95,70,150];
+  const widths = [180,85,100,72,155,105,110,68,80,140];
   return `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8">
 <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
 <x:Name>Carta de Meios</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
