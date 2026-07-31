@@ -6791,6 +6791,7 @@ async function renderFSBFViaturas(){
   const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
   if(error){ toast('Erro ao carregar veículos.','err'); return; }
   let rows = data || [];
+  noteViatBases(rows);
 
   const clEl = document.getElementById('gfsbf-v-classe');
   if(clEl){
@@ -7024,6 +7025,32 @@ function fsbfViatOpts(viaturas, classes, selectedId){
 }
 
 const FSBF_BASES = ['Arganil','Cabeceiras de Basto','CNFSBF','Guarda','Lisboa','Macedo de Cavaleiros','Marinha Grande','Olhão','Ponte de Lima','Portalegre','Proença-a-Nova','Santarém','Vila Pouca de Aguiar','Viseu'];
+
+// Bases já usadas por cada MEGFR, recolhidas ao renderizar as listas de
+// viaturas. FSBF tem lista canónica (FSBF_BASES); os restantes módulos usam
+// vocabulário aberto (ESF tem ~185 bases), por isso a lista é observada.
+const _viatBases = {};
+function noteViatBases(rows){
+  (rows||[]).forEach(v=>{
+    if(!v.megfr || !v.base) return;
+    (_viatBases[v.megfr] = _viatBases[v.megfr] || new Set()).add(v.base);
+  });
+}
+function viatBaseOpts(selected, megfr){
+  const sel = selected || '';
+  let list = megfr==='FSBF'
+    ? [...FSBF_BASES]
+    : [...(_viatBases[megfr] || [])];
+  if(!list.length) list = [...new Set(Object.values(_viatBases).flatMap(s=>[...s]))];
+  if(sel && !list.includes(sel)) list.push(sel);           // preserva valor actual
+  list.sort((a,b)=>a.localeCompare(b,'pt'));
+  return `<option value="">— sem base —</option>` +
+    list.map(b=>`<option value="${esc(b)}"${b===sel?' selected':''}>${esc(b)}</option>`).join('');
+}
+function refreshViatBaseOpts(){
+  const el = document.getElementById('nv-base'); if(!el) return;
+  el.innerHTML = viatBaseOpts(el.value, document.getElementById('nv-megfr')?.value||'');
+}
 
 function fsbfBaseOpts(selected){
   // Keep any legacy free-text base as an option so it isn't silently blanked on save
@@ -7842,6 +7869,7 @@ async function renderICNFViaturas(){
   const { data, error } = await apiFetch('/api/gestao/viaturas?'+params);
   if(error){ toast('Erro ao carregar viaturas.','err'); return; }
   let rows = data || [];
+  noteViatBases(rows);
 
   // Populate classe dropdown from loaded data
   const clEl = document.getElementById('gicnf-v-classe');
@@ -7882,11 +7910,12 @@ function openNewViaturaModal(prefillMegfr){
   document.getElementById('nv-save-btn').textContent = 'Criar';
   document.getElementById('nv-cod-field').style.display = '';
   document.getElementById('nv-ddi-field').style.display = '';
-  ['cod','matricula','classe','tipologia','marca','modelo','entidade','base','ddi'].forEach(f=>{
+  ['cod','matricula','classe','tipologia','marca','modelo','entidade','ddi'].forEach(f=>{
     document.getElementById('nv-'+f).value='';
   });
   document.getElementById('nv-megfr').value = prefillMegfr||'';
   document.getElementById('nv-regiao').value = '';
+  document.getElementById('nv-base').innerHTML = viatBaseOpts('', prefillMegfr||'');
   openModal('modal-new-viatura');
 }
 
@@ -7904,7 +7933,7 @@ function openEditViaturaModal(v){
   document.getElementById('nv-modelo').value    = v.modelo||'';
   document.getElementById('nv-tipologia').value = v.tipologia||'';
   document.getElementById('nv-entidade').value  = v.entidade||'';
-  document.getElementById('nv-base').value      = v.base||'';
+  document.getElementById('nv-base').innerHTML  = viatBaseOpts(v.base||'', v.megfr||'');
   document.getElementById('nv-regiao').value    = v.agfr||'';
   openModal('modal-new-viatura');
 }
@@ -8658,7 +8687,7 @@ async function mergeSaveConfirm(){
         </div>
         <div class="form-field">
           <label class="form-label">Tipologia (MEGFR)</label>
-          <select class="form-select" id="nv-megfr">
+          <select class="form-select" id="nv-megfr" onchange="refreshViatBaseOpts()">
             <option value="">—</option>
             <option value="BSF">BSF</option>
             <option value="CNAF">CNAF</option>
@@ -8686,7 +8715,7 @@ async function mergeSaveConfirm(){
         </div>
         <div class="form-field">
           <label class="form-label">Base</label>
-          <input class="form-input" id="nv-base" placeholder="Localização da base"/>
+          <select class="form-select" id="nv-base"></select>
         </div>
         <div class="form-field">
           <label class="form-label">Região</label>
