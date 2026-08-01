@@ -1034,6 +1034,7 @@
             <button class="btn btn-ghost btn-xs" onclick="constituirGruata()" title="Copiar as linhas GSBF da Carta de Meios deste dia">⚙ Constituir / Repopular</button>
             <button class="btn btn-ghost btn-xs" onclick="printGruata()" title="Exportar PDF">🖨 Exportar PDF</button>
             <button class="btn btn-ghost btn-xs" onclick="exportGruataExcel()" title="Exportar Excel">📊 Exportar Excel</button>
+            <button class="btn btn-danger btn-xs" onclick="eliminarGruata()" title="Eliminar a Gruata deste dia">✕ Eliminar</button>
           </div>
           <div id="gruata-body"></div>
         </div>
@@ -7027,6 +7028,17 @@ async function saveGruataEmr(){
   const { error } = await apiFetch('/api/fsbf/gruata/emr',{method:'PUT',body:JSON.stringify({data,emr_id})});
   if(error){ toast(error.message,'err'); return; }
   toast(emr_id?'EMR integrada na Gruata.':'EMR removida.','ok');
+  renderFsbfGruata();
+}
+
+async function eliminarGruata(){
+  const data = document.getElementById('gruata-data').value;
+  if(!data) return;
+  if(!confirm(`Eliminar a Gruata de ${data.split('-').reverse().join('/')}?\n\n`
+    + 'A ocorrência deixa de constar nas equipas GSBF e a EMR recupera a base anterior.')) return;
+  const { error } = await apiFetch(`/api/fsbf/gruata?data=${data}`,{method:'DELETE'});
+  if(error){ toast(error.message,'err'); return; }
+  toast('Gruata eliminada.','info');
   renderFsbfGruata();
 }
 

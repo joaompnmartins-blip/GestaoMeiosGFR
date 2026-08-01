@@ -1881,7 +1881,15 @@ app.put('/api/fsbf/gruata/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap
   const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
   if (!g) return res.status(404).json({ error: 'Gruata ainda não constituída.' });
 
+  // Trocar ou retirar a EMR devolve a base anterior à EMR que sai
+  if (g.emr_id && g.emr_id !== emr_id) {
+    await pool.query(
+      `UPDATE fsbf_emr_equipa SET base=$2, updated_at=now() WHERE id=$1`,
+      [g.emr_id, g.emr_base_anterior ?? null]);
+  }
+
   let snap = gruataEmrSnapshot(null);
+  let baseAnterior = null;
   if (emr_id) {
     const { rows: [e] } = await pool.query(`
       SELECT e.*, mr.viatura_cod AS mr_cod,
@@ -1894,6 +1902,8 @@ app.put('/api/fsbf/gruata/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap
       WHERE e.id=$1`, [emr_id]);
     if (!e) return res.status(404).json({ error: 'EMR não encontrada.' });
     snap = gruataEmrSnapshot(e);
+    // Guardar a base original antes de a substituir, para poder ser reposta
+    baseAnterior = (g.emr_id === emr_id) ? (g.emr_base_anterior ?? null) : (e.base ?? null);
     // A EMR integrada na Gruata passa a ter GSBF01 como base na carta
     await pool.query(
       `UPDATE fsbf_emr_equipa SET base='GSBF01', ocorrencia_num=COALESCE($2, ocorrencia_num), updated_at=now()
@@ -1901,8 +1911,9 @@ app.put('/api/fsbf/gruata/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap
   }
   const K = Object.keys(snap);
   await pool.query(
-    `UPDATE fsbf_gruata SET emr_id=$2, ${K.map((k, i) => `${k}=$${i + 3}`).join(', ')}, updated_at=now()
-     WHERE id=$1`, [g.id, emr_id || null, ...K.map(k => snap[k])]);
+    `UPDATE fsbf_gruata SET emr_id=$2, emr_base_anterior=$3,
+       ${K.map((k, i) => `${k}=$${i + 4}`).join(', ')}, updated_at=now()
+     WHERE id=$1`, [g.id, emr_id || null, baseAnterior, ...K.map(k => snap[k])]);
   res.json(await loadGruata(data));
 }));
 
@@ -1918,10 +1929,43 @@ app.patch('/api/fsbf/gruata/linha/:id', requireAuth('visualizador'), FSBF_GESTOR
   res.json(l);
 }));
 
+// Eliminar a Gruata desfaz também o que ela escreveu na carta: a ocorrência
+// que desceu às equipas GSBF e a base GSBF01 da EMR. Só limpa a ocorrência
+// nas equipas que ainda têm exactamente o número da Gruata, para não apagar
+// um valor entretanto posto à mão noutra ocorrência.
 app.delete('/api/fsbf/gruata', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const data = req.query.data;
   if (!data) return res.status(400).json({ error: 'data obrigatória.' });
-  await pool.query(`DELETE FROM fsbf_gruata WHERE data=$1`, [data]);
+  const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
+  if (!g) return res.status(404).json({ error: `Sem Gruata em ${data}.` });
+
+  const { rows: [dep] } = await pool.query(
+    `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
+     WHERE m.fsbf_gruata_id=$1 AND m.estado<>'desmobilizado' LIMIT 1`, [g.id]);
+  if (dep) return res.status(409).json({
+    error: `Gruata despachada para "${dep.local_ignicao}". Desmobilize-a antes de eliminar.` });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const ocor = (g.ocorrencia_num || '').trim() || null;
+    if (ocor) {
+      await client.query(
+        `UPDATE fsbf_bsbf_equipa SET ocorrencia_num=NULL, updated_at=now()
+         WHERE ocorrencia_num=$2
+           AND id IN (SELECT fsbf_bsbf_id FROM fsbf_gruata_linha
+                      WHERE gruata_id=$1 AND fsbf_bsbf_id IS NOT NULL)`, [g.id, ocor]);
+      if (g.emr_id) await client.query(
+        `UPDATE fsbf_emr_equipa SET ocorrencia_num=NULL, updated_at=now()
+         WHERE id=$1 AND ocorrencia_num=$2`, [g.emr_id, ocor]);
+    }
+    if (g.emr_id) await client.query(
+      `UPDATE fsbf_emr_equipa SET base=$2, updated_at=now() WHERE id=$1 AND base='GSBF01'`,
+      [g.emr_id, g.emr_base_anterior ?? null]);
+    await client.query(`DELETE FROM fsbf_gruata WHERE id=$1`, [g.id]);   // linhas por CASCADE
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
   res.json({ ok: true });
 }));
 
@@ -2742,6 +2786,7 @@ async function runMigrations() {
         emr_piloto          TEXT, emr_piloto_matricula TEXT,
         emr_chefe           TEXT, emr_contacto        TEXT, emr_issi TEXT,
         emr_total_op        INT,  emr_obs             TEXT,
+        emr_base_anterior   TEXT,
         created_at          TIMESTAMPTZ DEFAULT now(),
         updated_at          TIMESTAMPTZ DEFAULT now(),
         created_by          UUID REFERENCES utilizadores(id) ON DELETE SET NULL
@@ -2755,6 +2800,7 @@ async function runMigrations() {
         issi         TEXT, guarnicao INT,  observacoes  TEXT
     )`,
     `CREATE INDEX IF NOT EXISTS fsbf_gruata_linha_idx ON fsbf_gruata_linha (gruata_id, ordem)`,
+    `ALTER TABLE IF EXISTS fsbf_gruata ADD COLUMN IF NOT EXISTS emr_base_anterior TEXT`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_gruata_id UUID REFERENCES fsbf_gruata(id) ON DELETE SET NULL`,
     // Nº da ocorrência em que a equipa está empenhada (texto livre por agora).
     // É este campo que define "empenhado": uma equipa sem ocorrência está de
