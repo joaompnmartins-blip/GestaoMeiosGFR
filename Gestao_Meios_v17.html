@@ -1006,6 +1006,7 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0;">
           <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
             <button class="icnf-tab-btn active" onclick="fsbfSwitchTab('carta',this)">Carta de Meios</button>
+            <button class="icnf-tab-btn" onclick="fsbfSwitchTab('gruata',this)">Gruata</button>
             <button class="icnf-tab-btn" onclick="fsbfSwitchTab('viaturas',this)">Veículos</button>
             <button class="icnf-tab-btn" onclick="fsbfSwitchTab('operacionais',this)">Operacionais</button>
           </div>
@@ -1025,6 +1026,18 @@
         </div>
 
         <!-- ── Tab: Recursos ── -->
+        <!-- ── Tab: Gruata ── -->
+        <div id="fsbf-tab-gruata" style="display:none;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+            <input type="date" class="form-input" id="gruata-data" style="width:150px;font-size:12px;" onchange="renderFsbfGruata()"/>
+            <button class="btn btn-ghost btn-xs" onclick="gruataHoje()">Hoje</button>
+            <button class="btn btn-ghost btn-xs" onclick="constituirGruata()" title="Copiar as linhas GSBF da Carta de Meios deste dia">⚙ Constituir / Repopular</button>
+            <button class="btn btn-ghost btn-xs" onclick="printGruata()" title="Exportar PDF">🖨 Exportar PDF</button>
+            <button class="btn btn-ghost btn-xs" onclick="exportGruataExcel()" title="Exportar Excel">📊 Exportar Excel</button>
+          </div>
+          <div id="gruata-body"></div>
+        </div>
+
         <div id="fsbf-tab-viaturas" style="display:none;">
           <div class="section-hdr">
             <div class="section-title">Veículos FSBF <span id="gfsbf-v-count" style="font-size:12px;color:var(--muted);font-weight:400;"></span></div>
@@ -6773,7 +6786,7 @@ function fsbfSwitchTab(tab, btn){
   _fsbfTab = tab;
   document.querySelectorAll('#page-gestao-fsbf .icnf-tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  ['carta','viaturas','operacionais'].forEach(t=>{
+  ['carta','gruata','viaturas','operacionais'].forEach(t=>{
     const el = document.getElementById('fsbf-tab-'+t);
     if(el) el.style.display = t===tab ? '' : 'none';
   });
@@ -6782,6 +6795,7 @@ function fsbfSwitchTab(tab, btn){
 
 async function renderFsbfPage(){
   if(_fsbfTab==='carta')         await renderFsbfCarta();
+  else if(_fsbfTab==='gruata')   await renderFsbfGruata();
   else if(_fsbfTab==='viaturas') await renderFSBFViaturas();
   else if(_fsbfTab==='operacionais') await renderFSBFOperacionais();
 }
@@ -6847,6 +6861,320 @@ async function renderFSBFViaturas(){
       <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
     ` : ''}</td>
   </tr>`).join('');
+}
+
+// ══ GRUATA ═══════════════════════════════════════════════════════
+// Instantâneo do GSBF da carta: as linhas são copiadas na constituição,
+// para que a ficha entregue não mude se a carta mudar depois.
+let _gruataCache = null;
+
+function gruataHoje(){
+  document.getElementById('gruata-data').value = new Date().toISOString().slice(0,10);
+  renderFsbfGruata();
+}
+
+async function renderFsbfGruata(){
+  const el = document.getElementById('gruata-data');
+  if(el && !el.value) el.value = document.getElementById('fsbf-data')?.value || new Date().toISOString().slice(0,10);
+  const data = el.value;
+  const box = document.getElementById('gruata-body');
+
+  const [gRes, opRes, fogosRes] = await Promise.all([
+    apiFetch(`/api/fsbf/gruata?data=${data}`),
+    apiFetch('/api/fsbf/operacionais'),
+    apiFetch('/api/fogos/active'),
+  ]);
+  if(gRes.error){ toast('Erro ao carregar Gruata.','err'); return; }
+  _fsbfOperacionaisCache = opRes.data || _fsbfOperacionaisCache;
+  _fsbfFogosCache = (fogosRes.data?.success ? fogosRes.data.data : null) || [];
+  _gruataCache = gRes.data;
+
+  const g = gRes.data.gruata, linhas = gRes.data.linhas || [], emrs = gRes.data.emrs || [];
+  if(!g){
+    box.innerHTML = `<div class="empty" style="padding:40px 0;">
+      <span class="empty-icon">◎</span>
+      <div class="empty-text">Sem Gruata para ${esc(data.split('-').reverse().join('/'))}.<br>
+      <span style="font-size:12px;color:var(--muted);">Use <b>Constituir</b> para copiar as linhas GSBF da Carta de Meios deste dia.</span></div>
+    </div>`;
+    return;
+  }
+
+  const totalGuar = linhas.reduce((s,l)=>s+(l.guarnicao||0),0);
+  const totalEf   = totalGuar + (g.emr_total_op||0);
+  const F = (id,val,ph='') => `<input class="form-input" id="${id}" value="${esc(val||'')}" placeholder="${ph}" style="font-size:12px;width:100%;" onchange="saveGruataHeader()"/>`;
+
+  box.innerHTML = `
+  <div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+    <div style="font-weight:700;font-size:14px;margin-bottom:12px;">Formatação GSBF${String(g.numero).padStart(2,'0')} FSBF</div>
+
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+      <div style="flex:1;max-width:340px;">
+        <label class="form-label" style="font-size:11px;">N.º Ocorrência</label>
+        <select class="form-select" id="gruata-ocor" style="font-size:12px;width:100%;" onchange="saveGruataHeader()">
+          ${fsbfOcorrenciaOpts(g.ocorrencia_num)}
+        </select>
+      </div>
+      <span style="font-size:11px;color:var(--muted);padding-bottom:6px;">
+        ${g.ocorrencia_num ? 'As guarnições GSBF ficam empenhadas nesta ocorrência.' : 'Sem ocorrência: força constituída mas não empenhada.'}
+      </span>
+    </div>
+
+    <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Comandante da Força</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;">
+      <div><label class="form-label" style="font-size:11px;">Nome</label>
+        <select class="form-select" id="gruata-cmdt" style="font-size:12px;width:100%;" onchange="gruataCmdtChange()">
+          ${fsbfOpOpts(g.cmdt_nome,'Chefe de Grupo')}
+        </select></div>
+      <div><label class="form-label" style="font-size:11px;">Contacto</label>${F('gruata-cmdt-cont',g.cmdt_contacto,'9xxxxxxxx')}</div>
+      <div><label class="form-label" style="font-size:11px;">Indicativo Rádio</label>${F('gruata-cmdt-ind',g.cmdt_indicativo,'Chefe Gruata Força 01')}</div>
+      <div><label class="form-label" style="font-size:11px;">ISSI do Rádio</label>${F('gruata-cmdt-issi',g.cmdt_issi,'1260611')}</div>
+      <div><label class="form-label" style="font-size:11px;">Previsão de Saída (GDH)</label>${F('gruata-saida',g.previsao_saida,'301000Jul2026')}</div>
+      <div><label class="form-label" style="font-size:11px;">Local de Destino</label>${F('gruata-destino',g.local_destino,'BAL ...')}</div>
+      <div><label class="form-label" style="font-size:11px;">Previsão de Chegada ao PP (GDH)</label>${F('gruata-chegada',g.previsao_chegada_pp,'301200Jul2026')}</div>
+    </div>
+  </div>
+
+  <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Constituição do GSBF${String(g.numero).padStart(2,'0')}</div>
+  <div class="table-wrap" style="overflow-x:auto;margin-bottom:18px;">
+    <table style="font-size:12px;">
+      <thead><tr><th>Veículo</th><th>Matrícula</th><th>Chefe Equipa</th><th>Contacto tlm</th>
+        <th>ISSI do Rádio</th><th>Guarnição</th><th>Observações</th></tr></thead>
+      <tbody>${linhas.map(l=>`<tr>
+        <td class="mono">${esc(l.veiculo||'—')}</td>
+        <td class="mono">${esc(l.matricula||'—')}</td>
+        <td>${esc(l.chefe_equipa||'—')}</td>
+        <td class="mono">${esc(l.contacto||'—')}</td>
+        <td><input class="form-input mono" style="width:100px;font-size:12px;" value="${esc(l.issi||'')}"
+             placeholder="ISSI" onchange="saveGruataLinha('${l.id}',this.value)"/></td>
+        <td style="text-align:center;">${l.guarnicao??'—'}</td>
+        <td>${esc(l.observacoes||'')}</td>
+      </tr>`).join('') || '<tr><td colspan="7" style="color:var(--muted);padding:8px;">Sem viaturas.</td></tr>'}</tbody>
+    </table>
+  </div>
+
+  <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Máquina de Rasto</div>
+  <div style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="flex:1;min-width:220px;max-width:380px;">
+        <label class="form-label" style="font-size:11px;">EMR da Carta de Meios</label>
+        <select class="form-select" id="gruata-emr" style="font-size:12px;width:100%;" onchange="saveGruataEmr()">
+          <option value="">— sem máquina de rasto —</option>
+          ${emrs.map(e=>`<option value="${e.id}"${e.id===g.emr_id?' selected':''}>${
+            esc([e.mr_cod||'MR', e.base?'· '+e.base:'', e.chefe_nome?'· '+e.chefe_nome:''].filter(Boolean).join(' '))}</option>`).join('')}
+        </select></div>
+      ${g.emr_id?`<span style="font-size:11px;color:var(--muted);padding-bottom:6px;">Base na Carta de Meios definida como <b>GSBF01</b>.</span>`:''}
+    </div>
+    ${g.emr_id?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;font-size:12px;">
+      <div><span style="font-size:11px;color:var(--muted);">Máquina de Rasto</span><div class="mono">${esc(g.emr_mr||'—')}</div></div>
+      <div><span style="font-size:11px;color:var(--muted);">VAOP</span><div class="mono">${esc(g.emr_vaop||'—')} ${esc(g.emr_vaop_matricula||'')}</div></div>
+      <div><span style="font-size:11px;color:var(--muted);">Veículo piloto</span><div class="mono">${esc(g.emr_piloto||'—')} ${esc(g.emr_piloto_matricula||'')}</div></div>
+      <div><span style="font-size:11px;color:var(--muted);">Chefe Equipa</span><div>${esc(g.emr_chefe||'—')}</div></div>
+      <div><span style="font-size:11px;color:var(--muted);">Contacto tlm</span><div class="mono">${esc(g.emr_contacto||'—')}</div></div>
+      <div><label class="form-label" style="font-size:11px;">ISSI do Rádio</label>
+        <input class="form-input mono" id="gruata-emr-issi" value="${esc(g.emr_issi||'')}" placeholder="ISSI"
+          style="font-size:12px;width:100%;" onchange="saveGruataEmrIssi()"/></div>
+      <div><span style="font-size:11px;color:var(--muted);">Total Op.</span><div>${g.emr_total_op??'—'}</div></div>
+    </div>`:''}
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    ${[['Guarnição dos veículos',totalGuar],['Operacionais MR',g.emr_total_op||0],['TOTAL DE EFETIVO',totalEf]]
+      .map(([r,v],i)=>`<div style="display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+        <div style="padding:6px 12px;font-size:12px;${i===2?'font-weight:700;':''}background:var(--bg-hover);">${r}</div>
+        <div style="padding:6px 14px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;">${v}</div></div>`).join('')}
+  </div>`;
+}
+
+function gruataCmdtChange(){
+  const nome = document.getElementById('gruata-cmdt').value;
+  const op = _fsbfOperacionaisCache.find(o=>o.nome===nome);
+  if(op?.contacto) document.getElementById('gruata-cmdt-cont').value = op.contacto;
+  saveGruataHeader();
+}
+
+async function saveGruataHeader(){
+  const data = document.getElementById('gruata-data').value;
+  const v = id => document.getElementById(id)?.value.trim()||null;
+  const { error } = await apiFetch('/api/fsbf/gruata',{method:'PUT',body:JSON.stringify({
+    data,
+    ocorrencia_num:      document.getElementById('gruata-ocor')?.value||null,
+    cmdt_nome:           document.getElementById('gruata-cmdt')?.value||null,
+    cmdt_contacto:       v('gruata-cmdt-cont'),
+    cmdt_indicativo:     v('gruata-cmdt-ind'),
+    cmdt_issi:           v('gruata-cmdt-issi'),
+    previsao_saida:      v('gruata-saida'),
+    local_destino:       v('gruata-destino'),
+    previsao_chegada_pp: v('gruata-chegada'),
+  })});
+  if(error){ toast(error.message,'err'); return; }
+  renderFsbfGruata();
+}
+
+async function saveGruataLinha(id, issi){
+  const { error } = await apiFetch(`/api/fsbf/gruata/linha/${id}`,{method:'PATCH',body:JSON.stringify({issi:issi.trim()||null})});
+  if(error) toast(error.message,'err');
+}
+
+async function saveGruataEmrIssi(){
+  const g = _gruataCache?.gruata; if(!g) return;
+  const issi = document.getElementById('gruata-emr-issi').value.trim()||null;
+  await apiFetch('/api/fsbf/gruata',{method:'PUT',body:JSON.stringify({ data:g.data, ...g, emr_issi:issi })});
+}
+
+async function saveGruataEmr(){
+  const data = document.getElementById('gruata-data').value;
+  const emr_id = document.getElementById('gruata-emr').value||null;
+  const { error } = await apiFetch('/api/fsbf/gruata/emr',{method:'PUT',body:JSON.stringify({data,emr_id})});
+  if(error){ toast(error.message,'err'); return; }
+  toast(emr_id?'EMR integrada na Gruata.':'EMR removida.','ok');
+  renderFsbfGruata();
+}
+
+async function constituirGruata(){
+  const data = document.getElementById('gruata-data').value;
+  if(!data){ toast('Selecione uma data.','warn'); return; }
+  const { error } = await apiFetch('/api/fsbf/gruata/constituir',{method:'POST',body:JSON.stringify({data})});
+  if(error){ toast(error.message,'err'); return; }
+  toast('Gruata constituída a partir do GSBF da Carta de Meios.','ok');
+  renderFsbfGruata();
+}
+
+// ── Exportação da Gruata ─────────────────────────────────────────
+// Mantém a identidade verde/creme da ficha original (Gruata_FSBF).
+function _gruataDoc(){
+  const d = _gruataCache; if(!d?.gruata){ toast('Gruata não constituída.','warn'); return null; }
+  const g = d.gruata, linhas = d.linhas||[];
+  const guar = linhas.reduce((s,l)=>s+(l.guarnicao||0),0);
+  return { g, linhas, guar, totalEf: guar + (g.emr_total_op||0),
+           num: String(g.numero).padStart(2,'0'),
+           dataFmt: (g.data||'').slice(0,10).split('-').reverse().join('/') };
+}
+
+function printGruata(){
+  const D = _gruataDoc(); if(!D) return;
+  const { g, linhas, guar, totalEf, num, dataFmt } = D;
+  const cell = (v,extra='') => `<td style="${extra}">${esc(v??'')||'&nbsp;'}</td>`;
+  const html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
+<title>Gruata Força ${num} — ${dataFmt}</title><style>
+  :root{--verde:#00B050;--creme:#FFF2CC;--branco:#fff;--linha:#595959}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Calibri,"Segoe UI",Carlito,system-ui,sans-serif;font-size:13px;color:#000;background:#888;padding:16px}
+  .folha{max-width:1120px;margin:0 auto;background:var(--creme);padding:0}
+  .faixa{padding:7px 0;font-weight:700;font-size:15px;text-align:center;border:1px solid #000}
+  .faixa--verde{background:var(--verde)}
+  .cabecalho{display:grid;grid-template-columns:19.22% 1fr;border:1px solid #000;border-top:none}
+  .etiqueta{background:var(--verde);font-weight:700;text-align:right;padding:6px 8px;margin:3px 0;border:1px solid #000;display:flex;align-items:center;justify-content:flex-end}
+  .valor{background:var(--branco);font-weight:700;text-align:center;padding:6px 8px;border-bottom:1px solid var(--linha);border-left:1px solid #000;display:flex;align-items:center;justify-content:center;min-height:34px}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;background:var(--creme);font-size:13px}
+  th,td{border:1px solid #000;padding:5px 6px;text-align:center;vertical-align:middle}
+  thead th{background:var(--verde);font-weight:700}
+  .espaco{height:14px}
+  .tot{display:flex;width:74mm;border:1px solid #000;margin-top:8px}
+  .tot .r{flex:1;background:var(--verde);font-weight:700;padding:3px 8px}
+  .tot .v{width:22mm;background:#000;color:#fff;font-weight:700;text-align:right;padding:3px 8px}
+  .acoes{max-width:1120px;margin:0 auto 8px;display:flex;gap:8px}
+  .acoes button{font:inherit;font-size:14px;padding:6px 16px;border:none;border-radius:4px;background:var(--verde);color:#fff;cursor:pointer}
+  @page{size:A4 landscape;margin:10mm}
+  @media print{body{background:#fff;padding:0}.acoes{display:none}
+    th,td,.faixa,.etiqueta,.valor,.tot .r,.tot .v{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="acoes"><button onclick="window.print()">🖨️ Imprimir / PDF</button></div>
+<div class="folha">
+  <div class="faixa faixa--verde">Formatação GSBF${num} FSBF</div>
+  <div class="cabecalho">
+    <div class="etiqueta">N.º Ocorrência:</div><div class="valor">${esc(g.ocorrencia_num||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Nome:</div><div class="valor">${esc(g.cmdt_nome||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Contacto:</div><div class="valor">${esc(g.cmdt_contacto||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Indicativo Rádio:</div><div class="valor">${esc(g.cmdt_indicativo||'')||'&nbsp;'}</div>
+    <div class="etiqueta">ISSI do Rádio:</div><div class="valor">${esc(g.cmdt_issi||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Previsão de Saída (GDH):</div><div class="valor">${esc(g.previsao_saida||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Local de Destino:</div><div class="valor">${esc(g.local_destino||'')||'&nbsp;'}</div>
+    <div class="etiqueta">Previsão de Chegada ao PP (GDH):</div><div class="valor">${esc(g.previsao_chegada_pp||'')||'&nbsp;'}</div>
+  </div>
+  <div class="faixa faixa--verde" style="border-top:none">Constituição do GSBF ${num}</div>
+  <table><colgroup><col style="width:19.17%"><col style="width:9.09%"><col style="width:12.33%">
+    <col style="width:10.58%"><col style="width:9.99%"><col style="width:7.97%"><col style="width:30.87%"></colgroup>
+    <thead><tr><th>Veículo</th><th>Matrícula</th><th>Chefe Equipa</th><th>Contacto tlm</th>
+      <th>ISSI do Rádio</th><th>Guarnição</th><th>Observações</th></tr></thead>
+    <tbody>${linhas.map(l=>`<tr>${cell(l.veiculo)}${cell(l.matricula)}${cell(l.chefe_equipa)}${cell(l.contacto)}${cell(l.issi)}${cell(l.guarnicao)}${cell(l.observacoes)}</tr>`).join('')}</tbody>
+  </table>
+  ${g.emr_mr?`<div class="espaco"></div>
+  <table><colgroup><col style="width:19.17%"><col style="width:9.09%"><col style="width:12.33%">
+    <col style="width:10.58%"><col style="width:9.99%"><col style="width:7.97%"><col style="width:30.87%"></colgroup>
+    <thead><tr><th colspan="2">Máquina de Rasto</th><th>Chefe Equipa</th><th>Contacto tlm</th>
+      <th>ISSI do Rádio</th><th>Total Op.</th><th>Observações</th></tr></thead>
+    <tbody>
+      <tr><td colspan="2">${esc(g.emr_mr)}</td>
+        <td rowspan="5">${esc(g.emr_chefe||'')}</td><td rowspan="5">${esc(g.emr_contacto||'')}</td>
+        <td rowspan="5">${esc(g.emr_issi||'')}</td><td rowspan="5">${g.emr_total_op??''}</td>
+        <td rowspan="5">TOTAL DE EFETIVO ${totalEf}</td></tr>
+      <tr><td style="background:var(--verde);font-weight:700">VAOP</td><td style="background:var(--verde);font-weight:700">Matrícula</td></tr>
+      <tr>${cell(g.emr_vaop)}${cell(g.emr_vaop_matricula)}</tr>
+      <tr><td style="background:var(--verde);font-weight:700">Veículo piloto</td><td style="background:var(--verde);font-weight:700">Matrícula</td></tr>
+      <tr>${cell(g.emr_piloto)}${cell(g.emr_piloto_matricula)}</tr>
+    </tbody></table>`:''}
+  <div class="tot"><div class="r">Guarnição dos veículos:</div><div class="v">${guar}</div></div>
+  <div class="tot"><div class="r">Operacionais Máquina de Rasto:</div><div class="v">${g.emr_total_op||0}</div></div>
+  <div class="tot"><div class="r">TOTAL DE EFETIVO:</div><div class="v">${totalEf}</div></div>
+</div></body></html>`;
+  const w = window.open('','_blank','width=1150,height=800');
+  w.document.open(); w.document.write(html); w.document.close(); w.focus();
+}
+
+function exportGruataExcel(){
+  const D = _gruataDoc(); if(!D) return;
+  const { g, linhas, guar, totalEf, num, dataFmt } = D;
+  const G = 7;
+  const C = (v,o={}) => _xlCell(v,o);
+  const pad = n => n>0 ? `<td colspan="${n}" style="border:none;"></td>` : '';
+  const hdr = (v,span=1) => C(v,{bold:true,span,bg:'#00B050',fg:'#000000'});
+  const rows = [];
+  rows.push(`<tr>${C(`Formatação GSBF${num} FSBF`,{bold:true,span:G,bg:'#00B050',size:14})}</tr>`);
+  rows.push(`<tr><td colspan="${G}" style="border:none;"></td></tr>`);
+  [['N.º Ocorrência',g.ocorrencia_num],['Nome',g.cmdt_nome],['Contacto',g.cmdt_contacto],
+   ['Indicativo Rádio',g.cmdt_indicativo],['ISSI do Rádio',g.cmdt_issi],
+   ['Previsão de Saída (GDH)',g.previsao_saida],['Local de Destino',g.local_destino],
+   ['Previsão de Chegada ao PP (GDH)',g.previsao_chegada_pp]]
+    .forEach(([k,v])=>rows.push(`<tr>${hdr(k,2)}${C(v,{span:G-2,align:'left',bg:'#FFFFFF',text:true})}</tr>`));
+  rows.push(`<tr><td colspan="${G}" style="border:none;"></td></tr>`);
+  rows.push(`<tr>${C(`Constituição do GSBF ${num}`,{bold:true,span:G,bg:'#00B050'})}</tr>`);
+  rows.push('<tr>' + ['Veículo','Matrícula','Chefe Equipa','Contacto tlm','ISSI do Rádio','Guarnição','Observações']
+    .map(h=>hdr(h)).join('') + '</tr>');
+  linhas.forEach(l=>rows.push('<tr>'
+    + C(l.veiculo,{bg:'#FFF2CC',align:'left'}) + C(l.matricula,{bg:'#FFF2CC',text:true})
+    + C(l.chefe_equipa,{bg:'#FFF2CC',align:'left'}) + C(l.contacto,{bg:'#FFF2CC',text:true})
+    + C(l.issi,{bg:'#FFF2CC',text:true}) + C(l.guarnicao,{bg:'#FFF2CC'})
+    + C(l.observacoes,{bg:'#FFF2CC',align:'left'}) + '</tr>'));
+  if(g.emr_mr){
+    rows.push(`<tr><td colspan="${G}" style="border:none;"></td></tr>`);
+    rows.push('<tr>' + hdr('Máquina de Rasto',2) + ['Chefe Equipa','Contacto tlm','ISSI do Rádio','Total Op.','Observações'].map(h=>hdr(h)).join('') + '</tr>');
+    rows.push('<tr>' + C(g.emr_mr,{bg:'#FFF2CC',span:2})
+      + C(g.emr_chefe,{bg:'#FFF2CC',align:'left'}) + C(g.emr_contacto,{bg:'#FFF2CC',text:true})
+      + C(g.emr_issi,{bg:'#FFF2CC',text:true}) + C(g.emr_total_op,{bg:'#FFF2CC'})
+      + C(`TOTAL DE EFETIVO ${totalEf}`,{bg:'#FFF2CC',align:'left'}) + '</tr>');
+    rows.push('<tr>' + hdr('VAOP') + hdr('Matrícula') + pad(G-2) + '</tr>');
+    rows.push('<tr>' + C(g.emr_vaop,{bg:'#FFF2CC'}) + C(g.emr_vaop_matricula,{bg:'#FFF2CC',text:true}) + pad(G-2) + '</tr>');
+    rows.push('<tr>' + hdr('Veículo piloto') + hdr('Matrícula') + pad(G-2) + '</tr>');
+    rows.push('<tr>' + C(g.emr_piloto,{bg:'#FFF2CC'}) + C(g.emr_piloto_matricula,{bg:'#FFF2CC',text:true}) + pad(G-2) + '</tr>');
+  }
+  rows.push(`<tr><td colspan="${G}" style="border:none;"></td></tr>`);
+  [['Guarnição dos veículos',guar],['Operacionais Máquina de Rasto',g.emr_total_op||0],['TOTAL DE EFETIVO',totalEf]]
+    .forEach(([k,v])=>rows.push(`<tr>${hdr(k,2)}${C(v,{bold:true,bg:'#000000',fg:'#FFFFFF'})}${pad(G-3)}</tr>`));
+
+  const widths=[150,110,150,110,100,80,240];
+  const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Gruata ${num}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body><table border="0" cellspacing="0" cellpadding="0">
+<colgroup>${widths.map(w=>`<col width="${w}">`).join('')}</colgroup>
+${rows.join('\n')}</table></body></html>`;
+  const blob = new Blob(['﻿'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `Gruata_FSBF_${(g.data||'').slice(0,10).replace(/-/g,'')}.xls`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Excel exportado.','ok');
 }
 
 async function toggleFsbfDispositivo(id, current){
@@ -7491,10 +7819,11 @@ async function renderMeiosNacionaisDisponivel(){
     apiFetch(`/api/egfr/hoje?data=${today}`),
   ]);
 
-  const bsbf  = fsbfRes.data?.bsbf  || [];
-  const emr   = fsbfRes.data?.emr   || [];
-  const egfr  = egfrRes.data         || [];
-  const total = bsbf.length + emr.length + egfr.length;
+  const bsbf   = fsbfRes.data?.bsbf   || [];
+  const emr    = fsbfRes.data?.emr    || [];
+  const gruata = fsbfRes.data?.gruata || null;
+  const egfr   = egfrRes.data          || [];
+  const total  = bsbf.length + emr.length + egfr.length + (gruata?1:0);
 
   if(!total){ sec.style.display='none'; return; }
 
@@ -7517,6 +7846,25 @@ async function renderMeiosNacionaisDisponivel(){
       <span style="font-size:11px;color:var(--muted);font-weight:400;">${total} equipa(s)</span>
     </summary>
     <div style="margin-top:12px;">`;
+
+  // ─── GRUATA ─────────────────────────────────────
+  // Força especial: despachada como um todo (viaturas GSBF + MR).
+  if(gruata){
+    html += `<div style="font-weight:600;font-size:12px;color:#00B050;margin-bottom:6px;">GRUATA — força especial do dia</div>
+    <table style="${tS}"><thead><tr>
+      <th style="${thS}">Força</th><th style="${thS}">Comandante</th><th style="${thS}">Contacto</th>
+      <th style="${thS}">Viaturas</th><th style="${thS}">Efetivo</th><th style="${thS}">Destino</th><th style="${thS}"></th>
+    </tr></thead><tbody><tr>
+      <td style="${tdS}"><strong>GRUATA ${String(gruata.numero).padStart(2,'0')}</strong></td>
+      <td style="${tdS}">${esc(gruata.cmdt_nome||'—')}</td>
+      <td style="${tdS}" class="mono">${esc(gruata.cmdt_contacto||'—')}</td>
+      <td style="${tdS}">${gruata.n_veiculos||0}</td>
+      <td style="${tdS}">${(gruata.n_op||0)+(gruata.emr_total_op||0)}</td>
+      <td style="${tdS}">${esc(gruata.local_destino||'—')}</td>
+      <td style="${tdS}">${gruata.deployed ? deployedBadge(gruata)
+        : deployBtn('fsbf-gruata', gruata.id, { data: today, nome:`GRUATA ${String(gruata.numero).padStart(2,'0')}` })}</td>
+    </tr></tbody></table>`;
+  }
 
   // ─── EGFR ───────────────────────────────────────
   if(egfr.length){
@@ -7598,6 +7946,7 @@ function openDeployModal(type, teamId, extra){
   document.getElementById('deploy-modal-title').textContent =
     type==='egfr'      ? `Despachar EGFR — ${extra.equipa||teamId}`
     : type==='fsbf-bsbf' ? `Despachar BSBF ${extra.brigada||teamId}`
+    : type==='fsbf-gruata' ? `Despachar ${extra.nome||'GRUATA'}`
     : 'Despachar Equipa EMR';
   document.getElementById('deploy-setor').value  = '';
   document.getElementById('deploy-missao').value = '';
@@ -7621,6 +7970,9 @@ async function confirmDeployNacional(){
     body.brigada = _deployExtra.brigada || _deployTeamId;
     body.data    = _deployExtra.data;
     url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-bsbf`;
+  } else if(_deployType === 'fsbf-gruata'){
+    body.data = _deployExtra.data;
+    url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-gruata`;
   } else {
     body.team_id = _deployTeamId;
     url = `/api/ocorrencias/${currentOccId}/deploy/fsbf-emr`;

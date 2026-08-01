@@ -1697,7 +1697,232 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
     `, [data]),
   ]);
   const addDeployed = r => ({ ...r, deployed: !!r.deployed_meio_id });
-  res.json({ data, bsbf: bsbfRes.rows.map(addDeployed), emr: emrRes.rows.map(addDeployed) });
+
+  // GRUATA do dia — meio nacional despachável como um todo
+  const { rows: [gru] } = await pool.query(`
+    SELECT g.*,
+      (SELECT count(*)::int FROM fsbf_gruata_linha l WHERE l.gruata_id = g.id) AS n_veiculos,
+      (SELECT COALESCE(sum(l.guarnicao),0)::int FROM fsbf_gruata_linha l WHERE l.gruata_id = g.id) AS n_op,
+      m.id AS deployed_meio_id, o.local_ignicao AS deployed_occ_nome
+    FROM fsbf_gruata g
+    LEFT JOIN meios m ON m.fsbf_gruata_id = g.id AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
+    LEFT JOIN ocorrencias o ON o.id = m.ocorrencia_id
+    WHERE g.data = $1`, [data]);
+
+  res.json({
+    data,
+    bsbf: bsbfRes.rows.map(addDeployed),
+    emr:  emrRes.rows.map(addDeployed),
+    gruata: gru ? addDeployed(gru) : null,
+  });
+}));
+
+// Despacha a GRUATA inteira: um meio-pai + um filho por viatura da ficha.
+app.post('/api/ocorrencias/:occId/deploy/fsbf-gruata', requireCCON, wrap(async (req, res) => {
+  const { data, setor, missao } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+
+  const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
+  if (!g) return res.status(404).json({ error: `Sem Gruata constituída para ${data}.` });
+  const { rows: linhas } = await pool.query(
+    `SELECT * FROM fsbf_gruata_linha WHERE gruata_id=$1 ORDER BY ordem`, [g.id]);
+  if (!linhas.length) return res.status(404).json({ error: 'Gruata sem viaturas.' });
+
+  const { rows: ex } = await pool.query(
+    `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
+     WHERE m.fsbf_gruata_id=$1 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`, [g.id]);
+  if (ex.length) return res.status(409).json({ error: `Gruata já despachada para "${ex[0].local_ignicao}".` });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const nome  = `GRUATA ${String(g.numero).padStart(2, '0')}`;
+  const totalOp = linhas.reduce((s, l) => s + (l.guarnicao || 0), 0) + (g.emr_total_op || 0);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [parent] } = await client.query(
+      `INSERT INTO meios (ocorrencia_id, eq, tipo, operacionais, responsavel, contacto,
+                          setor, missao, estado, data_chegada, fsbf_gruata_id, created_by)
+       VALUES ($1,$2,'GRUATA',$3,$4,$5,$6,$7,'previsto',$8,$9,$10) RETURNING *`,
+      [req.params.occId, nome, totalOp, g.cmdt_nome || null, g.cmdt_contacto || null,
+       setor || null, missao || null, today, g.id, req.user.id]);
+
+    for (const l of linhas) {
+      await client.query(
+        `INSERT INTO meios (ocorrencia_id, meio_pai_id, eq, tipo, matricula, operacionais,
+                            responsavel, contacto, setor, missao, estado, data_chegada,
+                            fsbf_bsbf_id, fsbf_gruata_id, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'previsto',$11,$12,$13,$14)`,
+        [req.params.occId, parent.id, l.veiculo || nome,
+         (l.veiculo || '').split(' ')[0] || 'VLCI', l.matricula || null, l.guarnicao || 0,
+         l.chefe_equipa || null, l.contacto || null, setor || null, missao || null,
+         today, l.fsbf_bsbf_id || null, g.id, req.user.id]);
+    }
+    if (g.emr_mr) {
+      await client.query(
+        `INSERT INTO meios (ocorrencia_id, meio_pai_id, eq, tipo, operacionais, responsavel,
+                            contacto, setor, missao, estado, data_chegada, fsbf_emr_id,
+                            fsbf_gruata_id, created_by)
+         VALUES ($1,$2,$3,'MR',$4,$5,$6,$7,$8,'previsto',$9,$10,$11,$12)`,
+        [req.params.occId, parent.id, g.emr_mr, g.emr_total_op || 0, g.emr_chefe || null,
+         g.emr_contacto || null, setor || null, missao || null, today,
+         g.emr_id || null, g.id, req.user.id]);
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ ok: true, meio: parent, filhos: linhas.length + (g.emr_mr ? 1 : 0) });
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}));
+
+// ══════════════════════════════════════════════════════════════════
+//  GRUATA — força especial constituída a partir do GSBF da carta
+// ══════════════════════════════════════════════════════════════════
+
+const gruataEmrSnapshot = e => ({
+  emr_mr: e?.mr_cod || null,
+  emr_vaop: e?.vaop_cod || null,           emr_vaop_matricula: e?.vaop_matricula || null,
+  emr_piloto: e?.vpil_cod || null,         emr_piloto_matricula: e?.vpil_matricula || null,
+  emr_chefe: e?.chefe_nome || null,        emr_contacto: e?.contacto || null,
+  emr_total_op: e?.total_op ?? null,       emr_obs: e?.observacoes || null,
+});
+
+async function loadGruata(data) {
+  const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
+  const [linhasRes, emrsRes] = await Promise.all([
+    g ? pool.query(`SELECT * FROM fsbf_gruata_linha WHERE gruata_id=$1 ORDER BY ordem`, [g.id])
+      : Promise.resolve({ rows: [] }),
+    pool.query(`
+      SELECT e.id, e.base, e.chefe_nome, e.contacto, e.total_op, e.observacoes,
+             mr.viatura_cod AS mr_cod,
+             vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
+             vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula
+      FROM fsbf_emr_equipa e
+      LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
+      LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
+      LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
+      WHERE e.data = $1 ORDER BY e.ordem, e.created_at`, [data]),
+  ]);
+  return { data, gruata: g || null, linhas: linhasRes.rows, emrs: emrsRes.rows };
+}
+
+app.get('/api/fsbf/gruata', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const data = req.query.data || new Date().toISOString().slice(0, 10);
+  res.json(await loadGruata(data));
+}));
+
+// Constituir/repopular: copia as linhas GSBF da carta desse dia.
+app.post('/api/fsbf/gruata/constituir', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  const { rows: gsbf } = await pool.query(`
+    SELECT e.*, v.viatura_cod, v.matricula
+    FROM fsbf_bsbf_equipa e
+    LEFT JOIN viaturas v ON v.id = e.veiculo_id
+    WHERE e.data=$1 AND e.brigada='GSBF' ORDER BY e.ordem, e.created_at`, [data]);
+  if (!gsbf.length)
+    return res.status(404).json({ error: `Sem linhas GSBF na Carta de Meios de ${data}.` });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [g] } = await client.query(
+      `INSERT INTO fsbf_gruata (data, created_by) VALUES ($1,$2)
+       ON CONFLICT (data) DO UPDATE SET updated_at=now() RETURNING *`, [data, req.user.id]);
+    // Repopular preserva o ISSI já escrito, que não existe na carta
+    const { rows: prev } = await client.query(
+      `SELECT fsbf_bsbf_id, issi FROM fsbf_gruata_linha WHERE gruata_id=$1`, [g.id]);
+    const issiPor = Object.fromEntries(prev.filter(p => p.fsbf_bsbf_id).map(p => [p.fsbf_bsbf_id, p.issi]));
+    await client.query(`DELETE FROM fsbf_gruata_linha WHERE gruata_id=$1`, [g.id]);
+    for (let i = 0; i < gsbf.length; i++) {
+      const v = gsbf[i];
+      await client.query(
+        `INSERT INTO fsbf_gruata_linha
+           (gruata_id, fsbf_bsbf_id, ordem, veiculo, matricula, chefe_equipa, contacto, issi, guarnicao, observacoes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [g.id, v.id, i, v.viatura_cod || null, v.matricula || null, v.chefe_nome || null,
+         v.contacto || null, issiPor[v.id] || null, v.guarnicao ?? null, v.observacoes || null]);
+    }
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+  res.json(await loadGruata(data));
+}));
+
+app.put('/api/fsbf/gruata', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const F = ['ocorrencia_num','cmdt_nome','cmdt_contacto','cmdt_indicativo','cmdt_issi',
+             'previsao_saida','local_destino','previsao_chegada_pp','emr_issi'];
+  const { rows: [g] } = await pool.query(
+    `INSERT INTO fsbf_gruata (data, ${F.join(',')}, created_by)
+     VALUES ($1,${F.map((_, i) => `$${i + 2}`).join(',')},$${F.length + 2})
+     ON CONFLICT (data) DO UPDATE SET
+       ${F.map((f, i) => `${f}=$${i + 2}`).join(', ')}, updated_at=now()
+     RETURNING *`,
+    [b.data, ...F.map(f => b[f] ?? null), req.user.id]);
+
+  // A ocorrência da Gruata desce às equipas GSBF de origem: uma Gruata
+  // constituída para uma ocorrência empenha as suas guarnições.
+  const ocor = (b.ocorrencia_num || '').trim() || null;
+  await pool.query(
+    `UPDATE fsbf_bsbf_equipa SET ocorrencia_num=$2, updated_at=now()
+     WHERE id IN (SELECT fsbf_bsbf_id FROM fsbf_gruata_linha
+                  WHERE gruata_id=$1 AND fsbf_bsbf_id IS NOT NULL)`, [g.id, ocor]);
+  if (g.emr_id) await pool.query(
+    `UPDATE fsbf_emr_equipa SET ocorrencia_num=$2, updated_at=now() WHERE id=$1`, [g.emr_id, ocor]);
+
+  res.json(await loadGruata(b.data));
+}));
+
+// Escolher a EMR: guarda o instantâneo e marca a base da EMR na carta.
+app.put('/api/fsbf/gruata/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { data, emr_id } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
+  if (!g) return res.status(404).json({ error: 'Gruata ainda não constituída.' });
+
+  let snap = gruataEmrSnapshot(null);
+  if (emr_id) {
+    const { rows: [e] } = await pool.query(`
+      SELECT e.*, mr.viatura_cod AS mr_cod,
+             vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
+             vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula
+      FROM fsbf_emr_equipa e
+      LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
+      LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
+      LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
+      WHERE e.id=$1`, [emr_id]);
+    if (!e) return res.status(404).json({ error: 'EMR não encontrada.' });
+    snap = gruataEmrSnapshot(e);
+    // A EMR integrada na Gruata passa a ter GSBF01 como base na carta
+    await pool.query(
+      `UPDATE fsbf_emr_equipa SET base='GSBF01', ocorrencia_num=COALESCE($2, ocorrencia_num), updated_at=now()
+       WHERE id=$1`, [emr_id, (g.ocorrencia_num || '').trim() || null]);
+  }
+  const K = Object.keys(snap);
+  await pool.query(
+    `UPDATE fsbf_gruata SET emr_id=$2, ${K.map((k, i) => `${k}=$${i + 3}`).join(', ')}, updated_at=now()
+     WHERE id=$1`, [g.id, emr_id || null, ...K.map(k => snap[k])]);
+  res.json(await loadGruata(data));
+}));
+
+app.patch('/api/fsbf/gruata/linha/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const ALLOWED = ['issi','veiculo','matricula','chefe_equipa','contacto','guarnicao','observacoes'];
+  const sets = [], vals = [req.params.id];
+  for (const k of ALLOWED)
+    if (k in req.body) { sets.push(`${k}=$${vals.length + 1}`); vals.push(req.body[k] ?? null); }
+  if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
+  const { rows: [l] } = await pool.query(
+    `UPDATE fsbf_gruata_linha SET ${sets.join(',')} WHERE id=$1 RETURNING *`, vals);
+  if (!l) return res.status(404).json({ error: 'Linha não encontrada.' });
+  res.json(l);
+}));
+
+app.delete('/api/fsbf/gruata', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const data = req.query.data;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  await pool.query(`DELETE FROM fsbf_gruata WHERE data=$1`, [data]);
+  res.json({ ok: true });
 }));
 
 // ── Membros de guarnição ───────────────────────────────────────
@@ -2497,6 +2722,40 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // GRUATA — força especial constituída a partir do GSBF da Carta de Meios.
+    // É um instantâneo: as linhas são copiadas no momento da constituição para
+    // que a ficha entregue ao Comandante da Força não mude se a carta mudar.
+    `CREATE TABLE IF NOT EXISTS fsbf_gruata (
+        id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        data                DATE NOT NULL UNIQUE,
+        numero              INT  NOT NULL DEFAULT 1,
+        ocorrencia_num      TEXT,
+        cmdt_nome           TEXT,
+        cmdt_contacto       TEXT,
+        cmdt_indicativo     TEXT,
+        cmdt_issi           TEXT,
+        previsao_saida      TEXT,
+        local_destino       TEXT,
+        previsao_chegada_pp TEXT,
+        emr_id              UUID REFERENCES fsbf_emr_equipa(id) ON DELETE SET NULL,
+        emr_mr              TEXT, emr_vaop            TEXT, emr_vaop_matricula   TEXT,
+        emr_piloto          TEXT, emr_piloto_matricula TEXT,
+        emr_chefe           TEXT, emr_contacto        TEXT, emr_issi TEXT,
+        emr_total_op        INT,  emr_obs             TEXT,
+        created_at          TIMESTAMPTZ DEFAULT now(),
+        updated_at          TIMESTAMPTZ DEFAULT now(),
+        created_by          UUID REFERENCES utilizadores(id) ON DELETE SET NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS fsbf_gruata_linha (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        gruata_id    UUID NOT NULL REFERENCES fsbf_gruata(id) ON DELETE CASCADE,
+        fsbf_bsbf_id UUID REFERENCES fsbf_bsbf_equipa(id) ON DELETE SET NULL,
+        ordem        INT DEFAULT 0,
+        veiculo      TEXT, matricula TEXT, chefe_equipa TEXT, contacto TEXT,
+        issi         TEXT, guarnicao INT,  observacoes  TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS fsbf_gruata_linha_idx ON fsbf_gruata_linha (gruata_id, ordem)`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS fsbf_gruata_id UUID REFERENCES fsbf_gruata(id) ON DELETE SET NULL`,
     // Nº da ocorrência em que a equipa está empenhada (texto livre por agora).
     // É este campo que define "empenhado": uma equipa sem ocorrência está de
     // prontidão, não empenhada.
