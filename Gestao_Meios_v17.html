@@ -1108,7 +1108,10 @@
             <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
             <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
           </div>
-          <button class="btn btn-ghost btn-xs auth-gestor-icnf" id="btn-etl-sync" onclick="runEtlSync()" style="margin-bottom:4px;">⟳ Importar Escalas</button>
+          <label class="btn btn-ghost btn-xs auth-gestor-icnf" id="btn-etl-sync" style="margin-bottom:4px;cursor:pointer;" title="Importar escala OLN ou EGFR a partir de um CSV">
+            ⬆ Importar Escalas
+            <input type="file" accept=".csv,text/csv" style="display:none;" onchange="escalaFicheiroEscolhido(this)"/>
+          </label>
         </div>
         <div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>
 
@@ -8674,15 +8677,74 @@ async function deleteOlnSlot(id){
 
 // ── Tab 5: EGFR ───────────────────────────────────────────────────
 
-async function runEtlSync(){
-  const btn = document.getElementById('btn-etl-sync');
-  btn.disabled = true; btn.textContent = '⟳ A importar…';
-  const { data, error } = await apiFetch('/api/gestao/sync', { method: 'POST' });
-  btn.disabled = false; btn.textContent = '⟳ Importar Escalas';
-  const output = (error ? (error.detail || error.message || 'Erro desconhecido') : (data && data.output)) || '';
-  document.getElementById('etl-output').textContent = output;
+// ── Importar escalas OLN / EGFR a partir de um CSV do utilizador ──────
+// O tipo é detectado pelas colunas do ficheiro. Mostra-se sempre uma
+// pré-visualização antes de gravar: a escala OLN apaga o intervalo de datas
+// do ficheiro, pelo que um CSV errado destrói escala existente.
+let _escalaCsv = null;
+
+async function escalaFicheiroEscolhido(input){
+  const f = input.files?.[0];
+  input.value = '';
+  if(!f) return;
+  if(f.size > 1_500_000){ toast('Ficheiro demasiado grande (máx. 1,5 MB).','err'); return; }
+  _escalaCsv = await f.text();
+  document.getElementById('etl-file-name').textContent = f.name;
+  await preverEscala();
+}
+
+async function preverEscala(){
+  const out = document.getElementById('etl-output');
+  const btn = document.getElementById('etl-confirm-btn');
+  out.textContent = 'A analisar…';
+  btn.style.display = 'none';
   openModal('modal-etl');
-  if(!error) renderGestaoICNF();
+
+  const { data, error } = await apiFetch('/api/gestao/escalas/import',
+    { method:'POST', body: JSON.stringify({ csv:_escalaCsv, dry_run:true }) });
+  if(error){ out.textContent = '✕ ' + (error.message || 'Erro ao analisar o CSV.'); return; }
+
+  const L = [];
+  L.push(`Tipo detectado : escala ${data.tipo.toUpperCase()}`);
+  L.push(`Linhas         : ${data.linhas}   (${data.dias} dia(s) distintos)`);
+  L.push(`Intervalo      : ${data.de}  →  ${data.ate}`);
+  if(data.reparado) L.push(`\n⚠ Acentos corrigidos: o ficheiro estava em UTF-8 lido como Latin-1.`);
+  if(data.tipo==='oln'){
+    L.push(`\nA escala OLN substitui o intervalo:`);
+    L.push(`  • remove ${data.a_remover} registo(s) existente(s) entre ${data.de} e ${data.ate}`);
+    L.push(`  • insere ${data.a_inserir} registo(s) do ficheiro`);
+    if(data.nomes_sem_recurso.length)
+      L.push(`  • ${data.nomes_sem_recurso.length} nome(s) sem recurso OLN ficam SEM escala`);
+  } else {
+    L.push(`\nA escala EGFR actualiza sem remover:`);
+    L.push(`  • ${data.existentes_no_intervalo} registo(s) já existem no intervalo`);
+    L.push(`  • ${data.a_gravar} registo(s) serão criados ou actualizados`);
+    if(data.nomes_sem_recurso.length)
+      L.push(`  • ${data.nomes_sem_recurso.length} nome(s) entram sem ligação a recurso`);
+  }
+  if(data.nomes_sem_recurso.length){
+    L.push(`\nNomes não encontrados em recursos (${data.tipo==='oln'?'OLN':'TGFR'}):`);
+    data.nomes_sem_recurso.forEach(n=>L.push(`  – ${n}`));
+    L.push(`\nO nome tem de coincidir exactamente com o código do recurso.`);
+  }
+  out.textContent = L.join('\n');
+  btn.style.display = '';
+}
+
+async function confirmarImportEscala(){
+  const btn = document.getElementById('etl-confirm-btn');
+  const out = document.getElementById('etl-output');
+  btn.disabled = true; btn.textContent = 'A importar…';
+  const { data, error } = await apiFetch('/api/gestao/escalas/import',
+    { method:'POST', body: JSON.stringify({ csv:_escalaCsv }) });
+  btn.disabled = false; btn.textContent = '✓ Confirmar importação';
+  if(error){ out.textContent = '✕ ' + (error.message || 'Erro na importação.'); return; }
+  out.textContent = data.tipo==='oln'
+    ? `✓ Escala OLN importada.\n\nInseridos : ${data.inseridos}\nIgnorados : ${data.ignorados} (nome sem recurso)\nIntervalo : ${data.de} → ${data.ate}`
+    : `✓ Escala EGFR importada.\n\nGravados  : ${data.gravados}\nIntervalo : ${data.de} → ${data.ate}`;
+  btn.style.display = 'none';
+  toast('Escala importada.','ok');
+  renderGestaoICNF();
 }
 
 async function renderICNFEgfr(){
@@ -9393,7 +9455,12 @@ async function mergeSaveConfirm(){
 <div class="modal-overlay" id="modal-etl" onclick="if(event.target===this)closeModal('modal-etl')">
   <div class="modal modal-wide">
     <div class="modal-header">
-      <div class="modal-title">Resultado — Importar Escalas</div>
+      <div>
+        <div class="modal-title">Importar Escalas</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          Ficheiro: <span id="etl-file-name" style="font-family:'IBM Plex Mono',monospace;">—</span>
+        </div>
+      </div>
       <button class="modal-close" onclick="closeModal('modal-etl')">✕</button>
     </div>
     <div class="modal-body">
@@ -9401,6 +9468,7 @@ async function mergeSaveConfirm(){
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-etl')">Fechar</button>
+      <button class="btn btn-primary" id="etl-confirm-btn" style="display:none;" onclick="confirmarImportEscala()">✓ Confirmar importação</button>
     </div>
   </div>
 </div>

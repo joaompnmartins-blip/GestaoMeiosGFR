@@ -2660,6 +2660,128 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
 //  MÓDULOS DE GESTÃO — ETL SYNC
 // ══════════════════════════════════════════════════════════════════
 
+// ── Importação de escalas a partir de CSV enviado pelo utilizador ──────
+// Substitui a leitura de ficheiros em disco: o CSV chega no corpo do pedido.
+// Com dry_run devolve o que aconteceria, sem escrever nada.
+
+// Excel em pt-PT grava frequentemente UTF-8 relido como Latin-1 ("SantarÃ©m").
+// Detecta-se pelo padrão Ã seguido do byte alto e repara-se, porque um nome
+// corrompido nunca casa com recursos.codigo e a linha perder-se-ia em silêncio.
+function repararMojibake(txt) {
+  if (!/Ã[-¿]/.test(txt)) return { txt, reparado: false };
+  try {
+    const fix = Buffer.from(txt, 'latin1').toString('utf8');
+    if (fix.includes('�')) return { txt, reparado: false };
+    return { txt: fix, reparado: true };
+  } catch { return { txt, reparado: false }; }
+}
+
+function lerEscalaCsv(csvRaw) {
+  const { parse } = require('csv-parse/sync');
+  const { txt, reparado } = repararMojibake(String(csvRaw || ''));
+  const rows = parse(txt, { columns: true, skip_empty_lines: true, trim: true, bom: true });
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  const tipo = (cols.includes('equipa') && cols.includes('posicao')) ? 'egfr'
+             : (cols.includes('nome') && cols.includes('data')) ? 'oln' : null;
+  return { rows, cols, tipo, reparado };
+}
+
+app.post('/api/gestao/escalas/import', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+  const { csv, dry_run } = req.body;
+  if (!csv || !String(csv).trim()) return res.status(400).json({ error: 'CSV vazio.' });
+
+  let parsed;
+  try { parsed = lerEscalaCsv(csv); }
+  catch (e) { return res.status(400).json({ error: `CSV ilegível: ${e.message}` }); }
+
+  const { rows, cols, reparado } = parsed;
+  const tipo = req.body.tipo || parsed.tipo;
+  if (!rows.length) return res.status(400).json({ error: 'CSV sem linhas de dados.' });
+  if (!tipo) return res.status(400).json({
+    error: `Não foi possível identificar o tipo de escala. Colunas encontradas: ${cols.join(', ')}.` });
+
+  const OBRIG = tipo === 'oln' ? ['data','nome'] : ['data','turno','equipa','posicao','nome'];
+  const faltam = OBRIG.filter(k => !cols.includes(k));
+  if (faltam.length) return res.status(400).json({
+    error: `Faltam colunas obrigatórias (${tipo.toUpperCase()}): ${faltam.join(', ')}.` });
+
+  const isDate = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '').trim());
+  const maus = rows.map((r, i) => ({ i: i + 2, r }))
+    .filter(x => !isDate(x.r.data) || !String(x.r.nome || '').trim());
+  if (maus.length) return res.status(400).json({
+    error: `${maus.length} linha(s) sem data válida (AAAA-MM-DD) ou sem nome. Primeira: linha ${maus[0].i}.` });
+
+  const tipoRecurso = tipo === 'oln' ? 'OLN' : 'TGFR';
+  const { rows: recursos } = await pool.query(
+    `SELECT id, codigo FROM recursos WHERE tipo=$1 AND ativo=true`, [tipoRecurso]);
+  const nameMap = Object.fromEntries(recursos.map(r => [r.codigo.toLowerCase(), r.id]));
+
+  const datas = rows.map(r => r.data.trim()).sort();
+  const de = datas[0], ate = datas[datas.length - 1];
+  const semRecurso = [...new Set(rows.filter(r => !nameMap[r.nome.trim().toLowerCase()])
+                                     .map(r => r.nome.trim()))];
+
+  const resumo = { tipo, linhas: rows.length, de, ate, reparado,
+                   nomes_sem_recurso: semRecurso, dias: new Set(datas).size };
+
+  if (tipo === 'oln') {
+    const { rows: [c] } = await pool.query(
+      `SELECT count(*)::int n FROM oln_escala WHERE inicio::date >= $1 AND inicio::date <= $2`, [de, ate]);
+    resumo.a_remover = c.n;          // OLN limpa o intervalo antes de inserir
+    resumo.a_inserir = rows.length - rows.filter(r => !nameMap[r.nome.trim().toLowerCase()]).length;
+  } else {
+    const { rows: [c] } = await pool.query(
+      `SELECT count(*)::int n FROM egfr_escala WHERE data >= $1 AND data <= $2`, [de, ate]);
+    resumo.existentes_no_intervalo = c.n;
+    resumo.a_gravar = rows.length;   // EGFR faz upsert, não remove
+  }
+
+  if (dry_run) return res.json({ ok: true, dry_run: true, ...resumo });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    if (tipo === 'oln') {
+      await client.query(
+        `DELETE FROM oln_escala WHERE inicio::date >= $1 AND inicio::date <= $2`, [de, ate]);
+      let ins = 0;
+      for (const r of rows) {
+        const rid = nameMap[r.nome.trim().toLowerCase()];
+        if (!rid) continue;
+        await client.query(
+          `INSERT INTO oln_escala (recurso_id, inicio, fim, notas, created_by)
+           VALUES ($1, $2::date::timestamptz, $2::date::timestamptz + interval '1 day', $3, $4)`,
+          [rid, r.data.trim(), (r.uo || '').trim() || null, req.user.id]);
+        ins++;
+      }
+      resumo.inseridos = ins;
+      resumo.ignorados = rows.length - ins;
+    } else {
+      let up = 0;
+      for (const r of rows) {
+        await client.query(
+          `INSERT INTO egfr_escala
+             (data, semana_ano, semana_escala, turno, equipa, posicao, nome, recurso_id, capacidade_supressao)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (data, equipa, posicao) DO UPDATE SET
+             nome=EXCLUDED.nome, recurso_id=EXCLUDED.recurso_id, turno=EXCLUDED.turno,
+             semana_ano=EXCLUDED.semana_ano, semana_escala=EXCLUDED.semana_escala,
+             capacidade_supressao=EXCLUDED.capacidade_supressao`,
+          [r.data.trim(), parseInt(r.semana_ano) || null, parseInt(r.semana_escala) || null,
+           (r.turno || '').trim(), (r.equipa || '').trim(), (r.posicao || '').trim(),
+           r.nome.trim(), nameMap[r.nome.trim().toLowerCase()] || null,
+           String(r.capacidade_supressao || '').trim().toLowerCase() === 'sim']);
+        up++;
+      }
+      resumo.gravados = up;
+    }
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+
+  res.json({ ok: true, ...resumo });
+}));
+
 app.post('/api/gestao/sync', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   const { execFile } = require('child_process');
   const path = require('path');
