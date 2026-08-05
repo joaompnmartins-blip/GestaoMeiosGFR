@@ -1198,17 +1198,27 @@ app.post('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap
 app.patch('/api/gestao/recursos/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
   await assertFonteAccess(pool, req.params.id, req.user.role);
   const b = req.body;
-  const ALLOWED = ['regime','num_elementos','entidade','local_base','lat_base','long_base',
+  const ALLOWED = ['codigo','regime','num_elementos','entidade','local_base','lat_base','long_base',
                    'contacto','email','concelho','subregiao','agfr','notas','ativo'];
+  if ('codigo' in b && !String(b.codigo || '').trim())
+    return res.status(400).json({ error: 'Código obrigatório.' });
   const sets = [], vals = [];
   for (const k of ALLOWED) {
-    if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(b[k]); }
+    if (k in b) { sets.push(`${k}=$${vals.length+2}`); vals.push(k === 'codigo' ? String(b[k]).trim() : b[k]); }
   }
   if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para atualizar.' });
   sets.push('updated_at=now()');
-  const { rows: [r] } = await pool.query(
-    `UPDATE recursos SET ${sets.join(',')} WHERE id=$1 RETURNING *`, [req.params.id, ...vals]
-  );
+  let r;
+  try {
+    ({ rows: [r] } = await pool.query(
+      `UPDATE recursos SET ${sets.join(',')} WHERE id=$1 RETURNING *`, [req.params.id, ...vals]
+    ));
+  } catch (e) {
+    // codigo é UNIQUE: renomear para um já existente devolve 409, não 500
+    if (e.code === '23505')
+      return res.status(409).json({ error: `Já existe um recurso com o código "${String(b.codigo).trim()}".` });
+    throw e;
+  }
   res.json(r);
 }));
 

@@ -6417,6 +6417,7 @@ function openGestaoRecursoModal(id){
   document.getElementById('grec-mode').value      = 'edit';
   document.getElementById('grec-create-fields').style.display = 'none';
   document.getElementById('grec-codigo').textContent = r.codigo;
+  document.getElementById('grec-cod').value       = r.codigo || '';
   document.getElementById('grec-entidade').value  = r.entidade  || '';
   document.getElementById('grec-contacto').value  = r.contacto  || '';
   document.getElementById('grec-email').value     = r.email     || '';
@@ -6459,11 +6460,12 @@ async function saveGestaoRecurso(){
     subregiao:    document.getElementById('grec-subregiao').value         || null,
     concelho:     document.getElementById('grec-concelho').value.trim()   || null,
   };
+  payload.codigo = document.getElementById('grec-cod').value.trim();
+  if(!payload.codigo){ toast('Código obrigatório.','err'); return; }
   let error;
   if(mode === 'create'){
-    payload.codigo = document.getElementById('grec-new-codigo').value.trim();
-    payload.tipo   = document.getElementById('grec-new-tipo').value;
-    if(!payload.codigo || !payload.tipo){ toast('Código e tipo são obrigatórios.','err'); return; }
+    payload.tipo = document.getElementById('grec-new-tipo').value;
+    if(!payload.tipo){ toast('Tipo obrigatório.','err'); return; }
     ({ error } = await apiFetch('/api/gestao/recursos', { method:'POST', body:JSON.stringify(payload) }));
   } else {
     ({ error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'PATCH', body:JSON.stringify(payload) }));
@@ -8321,7 +8323,7 @@ async function openNewRecursoModal(){
   document.getElementById('grec-mode').value = 'create';
   document.getElementById('grec-codigo').textContent = 'Novo Recurso';
   document.getElementById('grec-create-fields').style.display = '';
-  document.getElementById('grec-new-codigo').value = '';
+  document.getElementById('grec-cod').value = '';
   const sel = document.getElementById('grec-new-tipo');
   sel.innerHTML = '<option value="">— Selecionar tipo —</option>' +
     _recursoTipos.map(t=>`<option value="${t.codigo}">${esc(t.codigo)} — ${esc(t.fonte||'')}</option>`).join('');
@@ -8349,7 +8351,7 @@ async function openNewRecursoModalSF(){
   document.getElementById('grec-mode').value = 'create';
   document.getElementById('grec-codigo').textContent = 'Novo Recurso SF';
   document.getElementById('grec-create-fields').style.display = '';
-  document.getElementById('grec-new-codigo').value = '';
+  document.getElementById('grec-cod').value = '';
   const sfTipos = _recursoTipos.filter(t=>t.fonte==='SF');
   const sel = document.getElementById('grec-new-tipo');
   sel.innerHTML = '<option value="">— Selecionar tipo —</option>' +
@@ -9049,22 +9051,21 @@ async function mergeSaveConfirm(){
       <!-- Create-only fields (hidden on edit) -->
       <div id="grec-create-fields" style="display:none;margin-bottom:14px;">
         <div class="form-grid-3">
-          <div class="form-field span3" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div class="form-field">
-              <label class="form-label">Código *</label>
-              <input class="form-input" id="grec-new-codigo" placeholder="Nome/identificador do recurso"/>
-            </div>
-            <div class="form-field">
-              <label class="form-label">Tipo *</label>
-              <select class="form-select" id="grec-new-tipo">
-                <option value="">— Selecionar tipo —</option>
-              </select>
-            </div>
+          <div class="form-field span3">
+            <label class="form-label">Tipo *</label>
+            <select class="form-select" id="grec-new-tipo">
+              <option value="">— Selecionar tipo —</option>
+            </select>
           </div>
         </div>
         <hr style="border:none;border-top:1px solid var(--border);margin:10px 0 14px;"/>
       </div>
       <div class="form-grid-3">
+        <div class="form-field span3">
+          <label class="form-label">Código / Nome *</label>
+          <input class="form-input" id="grec-cod" placeholder="Nome/identificador do recurso"
+                 oninput="document.getElementById('grec-codigo').textContent=this.value"/>
+        </div>
         <div class="form-field">
           <label class="form-label">Entidade</label>
           <input class="form-input" id="grec-entidade" placeholder="Ex: AGIF, ICNF…"/>
