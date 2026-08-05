@@ -168,6 +168,10 @@
   @media print{
     body{ background:#fff; }
     .pagina{ margin:0; box-shadow:none; width:auto; min-height:auto; }
+    /* cada folha ocupa uma página; a 2.ª começa sempre em página nova */
+    .pagina--2{ break-before:page; page-break-before:always; }
+    /* nada dentro de uma folha se parte ao meio */
+    .bloco, table, .total{ break-inside:avoid; page-break-inside:avoid; }
     .acoes{ display:none; }
     td,th{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .titulo,.rotulo,.total .rot,.total .val{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -386,7 +390,24 @@ function render(data){
   }
 }
 
+/* A carta sai em duas páginas com o mesmo conteúdo: a 1.ª sem o bloco Por
+   Companhia, para distribuição; a 2.ª repete a carta e acrescenta-o, para
+   comando/arquivo. O clone é feito depois de render() para que a 2.ª página
+   herde os dados já preenchidos. */
+function paginar(){
+  const p1 = document.querySelector(".pagina");
+  if(!p1) return;
+  const p2 = p1.cloneNode(true);
+  p2.classList.add("pagina--2");
+  // ids só servem durante o render; duplicá-los tornaria o documento inválido
+  p2.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+  const comp = p1.querySelector("#bloco-companhias");
+  if(comp) comp.remove();
+  p1.after(p2);
+}
+
 render(DATA);
+paginar();
 </script>
 </body>
 </html>
