@@ -6429,6 +6429,11 @@ function openGestaoRecursoModal(id){
   document.getElementById('grec-agfr').value      = r.agfr      || '';
   document.getElementById('grec-notas').value     = r.notas     || '';
   document.getElementById('grec-ativo').checked   = r.ativo !== false;
+  // Capacidades EGFR só fazem sentido em TGFR e só estas roles as gerem
+  const podeCaps = (r.tipo === 'TGFR') && ['admin','gestor_icnf'].includes(currentRole);
+  document.getElementById('grec-caps').style.display = podeCaps ? '' : 'none';
+  document.getElementById('grec-fc').checked = !!r.fogo_controlado;
+  document.getElementById('grec-fs').checked = !!r.fogo_supressao;
   document.getElementById('grec-regime').value    = r.regime    || '';
   populateSubregiaoSelect('grec-subregiao', r.subregiao || '');
   document.getElementById('grec-concelho').value  = r.concelho  || '';
@@ -6463,6 +6468,11 @@ async function saveGestaoRecurso(){
     subregiao:    document.getElementById('grec-subregiao').value         || null,
     concelho:     document.getElementById('grec-concelho').value.trim()   || null,
   };
+  // Enviado apenas quando o bloco está visível — o servidor revalida role e tipo
+  if(document.getElementById('grec-caps').style.display !== 'none'){
+    payload.fogo_controlado = document.getElementById('grec-fc').checked;
+    payload.fogo_supressao  = document.getElementById('grec-fs').checked;
+  }
   payload.codigo = document.getElementById('grec-cod').value.trim();
   if(!payload.codigo){ toast('Código obrigatório.','err'); return; }
   let error;
@@ -8338,6 +8348,7 @@ async function openNewRecursoModal(){
   document.getElementById('grec-num-elem').value = '1';
   document.getElementById('grec-regime').value = '';
   document.getElementById('grec-ativo').checked = true;
+  document.getElementById('grec-caps').style.display = 'none';
   document.getElementById('grec-viaturas-linked').innerHTML='';
   document.getElementById('grec-radios-linked').innerHTML='';
   document.getElementById('grec-viatura-select').innerHTML='';
@@ -8366,6 +8377,7 @@ async function openNewRecursoModalSF(){
   document.getElementById('grec-num-elem').value = '1';
   document.getElementById('grec-regime').value = '';
   document.getElementById('grec-ativo').checked = true;
+  document.getElementById('grec-caps').style.display = 'none';
   document.getElementById('grec-viaturas-linked').innerHTML='';
   document.getElementById('grec-radios-linked').innerHTML='';
   document.getElementById('grec-viatura-select').innerHTML='';
@@ -9175,6 +9187,21 @@ async function mergeSaveConfirm(){
         <div class="form-field span3" style="display:flex;align-items:center;gap:8px;">
           <input type="checkbox" id="grec-ativo" style="width:16px;height:16px;"/>
           <label for="grec-ativo" class="form-label" style="margin:0;">Ativo</label>
+        </div>
+        <!-- Capacidades EGFR: só recursos TGFR, só admin/gestor_icnf -->
+        <div class="form-field span3" id="grec-caps" style="display:none;">
+          <label class="form-label">Capacidades EGFR</label>
+          <div style="display:flex;gap:20px;align-items:center;padding:8px 10px;
+                      border:1px solid var(--border);border-radius:6px;background:var(--bg-card,var(--bg));">
+            <label style="display:flex;align-items:center;gap:7px;margin:0;cursor:pointer;">
+              <input type="checkbox" id="grec-fc" style="width:16px;height:16px;"/>
+              <span style="font-size:12px;">Fogo Controlado <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;">FC</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;margin:0;cursor:pointer;">
+              <input type="checkbox" id="grec-fs" style="width:16px;height:16px;"/>
+              <span style="font-size:12px;">Fogo Supressão <span style="color:var(--muted);font-family:'IBM Plex Mono',monospace;">FS</span></span>
+            </label>
+          </div>
         </div>
       </div>
 

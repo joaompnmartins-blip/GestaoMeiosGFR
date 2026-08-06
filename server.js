@@ -1199,7 +1199,17 @@ app.patch('/api/gestao/recursos/:id', requireAuth('visualizador'), ALL_GESTORES,
   await assertFonteAccess(pool, req.params.id, req.user.role);
   const b = req.body;
   const ALLOWED = ['codigo','regime','num_elementos','entidade','local_base','lat_base','long_base',
-                   'contacto','email','concelho','subregiao','agfr','notas','ativo'];
+                   'contacto','email','concelho','subregiao','agfr','notas','ativo',
+                   'fogo_controlado','fogo_supressao'];
+  // Capacidades EGFR: só admin e gestor_icnf, e só em recursos TGFR
+  if ('fogo_controlado' in b || 'fogo_supressao' in b) {
+    if (!['admin','gestor_icnf'].includes(req.user.role))
+      return res.status(403).json({ error: 'Sem permissão para alterar capacidades EGFR.' });
+    const { rows: [alvo] } = await pool.query(`SELECT tipo FROM recursos WHERE id=$1`, [req.params.id]);
+    if (!alvo) return res.status(404).json({ error: 'Recurso não encontrado.' });
+    if (alvo.tipo !== 'TGFR')
+      return res.status(400).json({ error: 'Capacidades EGFR só se aplicam a recursos TGFR.' });
+  }
   if ('codigo' in b && !String(b.codigo || '').trim())
     return res.status(400).json({ error: 'Código obrigatório.' });
   const sets = [], vals = [];
