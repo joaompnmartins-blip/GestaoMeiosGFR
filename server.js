@@ -1192,7 +1192,17 @@ app.post('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap
      b.contacto||null, b.email||null, b.concelho||null, b.subregiao||null,
      b.agfr||null, b.notas||null]
   );
-  res.json(r);
+  // Devolver com categoria e fonte, como o GET: fonte não é coluna de recursos,
+  // vem do tipo, e a ficha usa-a para decidir o que mostrar. Sem ela, um recurso
+  // acabado de criar abria sem os filtros de viaturas e rádios.
+  const { rows: [completo] } = await pool.query(`
+    SELECT r.*, rt.categoria, f.codigo AS fonte,
+           0::int AS viaturas_count, 0::int AS radios_count
+    FROM recursos r
+    JOIN recurso_tipos rt ON rt.codigo = r.tipo
+    JOIN fontes f ON f.id = rt.fonte_id
+    WHERE r.id = $1`, [r.id]);
+  res.json(completo || r);
 }));
 
 app.patch('/api/gestao/recursos/:id', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
