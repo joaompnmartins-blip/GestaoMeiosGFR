@@ -1795,6 +1795,127 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-gruata', requireCCON, wrap(async (
 }));
 
 // ══════════════════════════════════════════════════════════════════
+//  EMPENHAMENTO por companhia
+// ══════════════════════════════════════════════════════════════════
+// Empenhado = pertence a uma equipa com nº de ocorrência preenchido.
+// A companhia de uma viatura vem da sua base (base→companhia é 1:1 nos
+// operacionais); viaturas sem base mapeável ficam de fora, tal como o
+// denominador, que conta apenas viaturas no dispositivo.
+
+const EMPENHAMENTO_SQL = `
+WITH mapa AS (
+  SELECT DISTINCT base, companhia FROM operacionais_fsbf
+  WHERE ativo AND base IS NOT NULL AND companhia IS NOT NULL
+),
+comps AS (
+  SELECT DISTINCT companhia FROM operacionais_fsbf WHERE ativo AND companhia IS NOT NULL
+),
+op_ef AS (
+  SELECT companhia, count(*)::int n FROM operacionais_fsbf
+  WHERE ativo AND companhia IS NOT NULL GROUP BY companhia
+),
+vi_ef AS (
+  SELECT m.companhia, count(*)::int n
+  FROM viaturas v JOIN mapa m ON m.base = v.base
+  WHERE v.megfr = 'FSBF' AND v.dispositivo AND v.ativo
+  GROUP BY m.companhia
+),
+op_emp AS (
+  SELECT o.companhia, count(DISTINCT mm.operacional_id)::int n
+  FROM fsbf_equipa_membros mm
+  JOIN operacionais_fsbf o ON o.id = mm.operacional_id
+  LEFT JOIN fsbf_bsbf_equipa b ON b.id = mm.fsbf_bsbf_id
+  LEFT JOIN fsbf_emr_equipa  e ON e.id = mm.fsbf_emr_id
+  WHERE mm.data = $1
+    AND COALESCE(NULLIF(btrim(b.ocorrencia_num),''), NULLIF(btrim(e.ocorrencia_num),'')) IS NOT NULL
+    AND o.companhia IS NOT NULL
+  GROUP BY o.companhia
+),
+vsrc AS (
+  SELECT veiculo_id       AS vid, ocorrencia_num FROM fsbf_bsbf_equipa WHERE data = $1
+  UNION ALL SELECT mr_viatura_id,      ocorrencia_num FROM fsbf_emr_equipa WHERE data = $1
+  UNION ALL SELECT vaop_viatura_id,    ocorrencia_num FROM fsbf_emr_equipa WHERE data = $1
+  UNION ALL SELECT vpiloto_viatura_id, ocorrencia_num FROM fsbf_emr_equipa WHERE data = $1
+  UNION ALL SELECT vlci_viatura_id,    ocorrencia_num FROM fsbf_emr_equipa WHERE data = $1
+),
+vi_emp AS (
+  SELECT m.companhia, count(DISTINCT v.id)::int n
+  FROM vsrc x
+  JOIN viaturas v ON v.id = x.vid
+  JOIN mapa m ON m.base = v.base
+  WHERE x.vid IS NOT NULL
+    AND COALESCE(btrim(x.ocorrencia_num),'') <> ''
+    AND v.dispositivo AND v.ativo
+  GROUP BY m.companhia
+)
+SELECT c.companhia,
+       COALESCE(oe.n,0) AS op_empenhados, COALESCE(oef.n,0) AS op_efetivo,
+       COALESCE(ve.n,0) AS vi_empenhadas, COALESCE(vef.n,0) AS vi_efetivo
+FROM comps c
+LEFT JOIN op_emp oe  ON oe.companhia  = c.companhia
+LEFT JOIN op_ef  oef ON oef.companhia = c.companhia
+LEFT JOIN vi_emp ve  ON ve.companhia  = c.companhia
+LEFT JOIN vi_ef  vef ON vef.companhia = c.companhia
+ORDER BY CASE c.companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' THEN 3 ELSE 4 END`;
+
+const pct = (n, d) => d ? Math.round((n / d) * 1000) / 10 : 0;
+
+async function calcularEmpenhamento(data) {
+  const { rows } = await pool.query(EMPENHAMENTO_SQL, [data]);
+  return rows;
+}
+
+async function gravarEmpenhamento(data) {
+  const rows = await calcularEmpenhamento(data);
+  for (const r of rows) {
+    await pool.query(
+      `INSERT INTO fsbf_empenhamento_diario
+         (data, companhia, op_empenhados, op_efetivo, vi_empenhadas, vi_efetivo, atualizado_em)
+       VALUES ($1,$2,$3,$4,$5,$6, now())
+       ON CONFLICT (data, companhia) DO UPDATE SET
+         op_empenhados=EXCLUDED.op_empenhados, op_efetivo=EXCLUDED.op_efetivo,
+         vi_empenhadas=EXCLUDED.vi_empenhadas, vi_efetivo=EXCLUDED.vi_efetivo,
+         atualizado_em=now()`,
+      [data, r.companhia, r.op_empenhados, r.op_efetivo, r.vi_empenhadas, r.vi_efetivo]);
+  }
+  return rows;
+}
+
+// Série do período. O dia corrente é sempre recalculado (ainda está a mudar);
+// os dias passados vêm do instantâneo, para que editar uma carta antiga não
+// reescreva a série já registada.
+app.get('/api/fsbf/empenhamento', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ate  = req.query.ate || hoje;
+  const de   = req.query.de  ||
+    new Date(Date.now() - 29 * 864e5).toISOString().slice(0, 10);
+  if (de > ate) return res.status(400).json({ error: 'Intervalo inválido.' });
+
+  if (ate >= hoje && de <= hoje) await gravarEmpenhamento(hoje);
+
+  const { rows } = await pool.query(
+    `SELECT data::text, companhia, op_empenhados, op_efetivo, vi_empenhadas, vi_efetivo
+     FROM fsbf_empenhamento_diario
+     WHERE data BETWEEN $1 AND $2
+     ORDER BY data, CASE companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' THEN 3 ELSE 4 END`,
+    [de, ate]);
+  res.json({
+    de, ate, hoje,
+    series: rows.map(r => ({ ...r,
+      op_pct: pct(r.op_empenhados, r.op_efetivo),
+      vi_pct: pct(r.vi_empenhadas, r.vi_efetivo) })),
+  });
+}));
+
+// Recalcular um dia — necessário depois de corrigir uma carta antiga.
+app.post('/api/fsbf/empenhamento/snapshot', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  const rows = await gravarEmpenhamento(data);
+  res.json({ ok: true, data, companhias: rows.length });
+}));
+
+// ══════════════════════════════════════════════════════════════════
 //  GRUATA — força especial constituída a partir do GSBF da carta
 // ══════════════════════════════════════════════════════════════════
 
@@ -2948,6 +3069,19 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Empenhamento diário por companhia — instantâneo. O cálculo depende de
+    // ocorrencia_num, que é estado corrente e mutável: apagar um número reescreve
+    // o passado. Guardar os números do dia torna a série histórica confiável.
+    `CREATE TABLE IF NOT EXISTS fsbf_empenhamento_diario (
+        data          DATE NOT NULL,
+        companhia     TEXT NOT NULL,
+        op_empenhados INT  NOT NULL DEFAULT 0,
+        op_efetivo    INT  NOT NULL DEFAULT 0,
+        vi_empenhadas INT  NOT NULL DEFAULT 0,
+        vi_efetivo    INT  NOT NULL DEFAULT 0,
+        atualizado_em TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (data, companhia)
+    )`,
     // Validação de linhas da Carta de Meios: confirmação humana de que a linha
     // está correcta. Distinta de "gravada" — gravar acontece implicitamente em
     // vários fluxos, pelo que só um acto explícito marca validado.
