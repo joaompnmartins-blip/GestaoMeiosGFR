@@ -8110,10 +8110,38 @@ async function confirmDeployNacional(){
 
 // Builds the canonical carta payload shared by the PDF and Excel exports.
 // Returns null (after toasting) when the data cannot be loaded.
+// Aviso antes de exportar. Não bloqueia — a carta pode ter de sair com linhas
+// ainda por confirmar — mas obriga a uma decisão consciente e diz exactamente
+// o que falta, para não ser um alerta que se aprende a ignorar.
+function fsbfAvisoNaoValidadas(cd){
+  const bsbf = cd?.bsbf || [], emr = cd?.emr || [], carta = cd?.carta;
+  const rotulo = b => b==='Outros' ? 'Outros Meios' : b==='GSBF' ? 'GSBF' : `BSBF ${b}`;
+  const porSeccao = {};
+  bsbf.filter(r=>!r.validado).forEach(r=>{
+    const k = rotulo(r.brigada);
+    porSeccao[k] = (porSeccao[k]||0)+1;
+  });
+  const pend = Object.entries(porSeccao).map(([k,n])=>`  • ${k}: ${n} linha(s)`);
+  const nEmr = emr.filter(r=>!r.validado).length;
+  if(nEmr) pend.push(`  • Máquinas de Rasto: ${nEmr} linha(s)`);
+  if(carta && !carta.validado) pend.push('  • Cabeçalho (Coordenador / Chefe de Grupo)');
+  if(!pend.length) return true;
+
+  const tot = bsbf.length + emr.length;
+  const val = bsbf.filter(r=>r.validado).length + emr.filter(r=>r.validado).length;
+  return confirm(
+    'Esta Carta de Meios tem dados ainda não validados:\n\n'
+    + pend.join('\n')
+    + `\n\nLinhas validadas: ${val} de ${tot}.`
+    + '\n\nExportar mesmo assim?');
+}
+
 async function buildFsbfCartaData(data){
   await saveFsbfHeaderSilent(data);
   const { data: cd, error } = await apiFetch(`/api/fsbf/carta?data=${data}`);
   if(error){ toast('Erro ao carregar dados da carta.','err'); return null; }
+  // Devolver null cancela a exportação — os dois chamadores já tratam esse caso
+  if(!fsbfAvisoNaoValidadas(cd)) return null;
 
   const carta = cd?.carta || {};
   const bsbf  = cd?.bsbf  || [];
