@@ -1860,6 +1860,19 @@ ORDER BY CASE c.companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' TH
 
 const pct = (n, d) => d ? Math.round((n / d) * 1000) / 10 : 0;
 
+// pg devolve DATE como Date à meia-noite local; usar toISOString aqui recuaria
+// um dia no horário de verão.
+const diaISO = d => d instanceof Date
+  ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  : String(d).slice(0, 10);
+
+// Corrigir a ocorrência de uma equipa muda o empenhamento desse dia. Refrescar
+// aqui evita ter de carregar em "Recalcular dia" depois de cada correcção.
+async function refrescarEmpenhamento(data) {
+  try { await gravarEmpenhamento(diaISO(data)); }
+  catch (e) { console.warn('empenhamento não refrescado:', e.message); }
+}
+
 async function calcularEmpenhamento(data) {
   const { rows } = await pool.query(EMPENHAMENTO_SQL, [data]);
   return rows;
@@ -1892,6 +1905,19 @@ app.get('/api/fsbf/empenhamento', requireAuth('visualizador'), FSBF_GESTORES, wr
   if (de > ate) return res.status(400).json({ error: 'Intervalo inválido.' });
 
   if (ate >= hoje && de <= hoje) await gravarEmpenhamento(hoje);
+
+  // Preencher os dias que têm carta mas ainda não têm instantâneo. Sem isto,
+  // um dia só entrava na série se alguém abrisse esta página nesse próprio dia
+  // ou carregasse em "Recalcular dia" — e ficava invisível para sempre.
+  // Um dia com carta e sem empenhamento fica a zeros, que é um facto, não um vazio.
+  const { rows: emFalta } = await pool.query(`
+    SELECT DISTINCT x.d::text AS d FROM (
+      SELECT data AS d FROM fsbf_bsbf_equipa WHERE data BETWEEN $1 AND $2
+      UNION SELECT data FROM fsbf_emr_equipa WHERE data BETWEEN $1 AND $2
+    ) x
+    WHERE NOT EXISTS (SELECT 1 FROM fsbf_empenhamento_diario e WHERE e.data = x.d)
+    ORDER BY 1`, [de, ate]);
+  for (const r of emFalta) await gravarEmpenhamento(r.d);
 
   const { rows } = await pool.query(
     `SELECT data::text, companhia, op_empenhados, op_efetivo, vi_empenhadas, vi_efetivo
@@ -2462,6 +2488,8 @@ app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap
     const r = await syncChefeMembro(pool, { data: e.data, bsbfId: e.id, chefeNome: e.chefe_nome });
     if (!r.ok) return res.status(409).json({ error: `${r.conflito} já está noutra guarnição neste dia.` });
   }
+  if ('ocorrencia_num' in b && String(b.ocorrencia_num ?? '') !== String(atual.ocorrencia_num ?? ''))
+    await refrescarEmpenhamento(e.data);
   res.json(e);
 }));
 
@@ -2515,6 +2543,8 @@ app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(
     const r = await syncChefeMembro(pool, { data: e.data, emrId: e.id, chefeNome: e.chefe_nome });
     if (!r.ok) return res.status(409).json({ error: `${r.conflito} já está noutra guarnição neste dia.` });
   }
+  if ('ocorrencia_num' in b && String(b.ocorrencia_num ?? '') !== String(atual.ocorrencia_num ?? ''))
+    await refrescarEmpenhamento(e.data);
   res.json(e);
 }));
 
