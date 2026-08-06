@@ -117,9 +117,6 @@
   .sec-om .rotulo, .sec-om th{ background:var(--amarelo-om); color:#000; }
   .sec-om tbody tr:nth-child(even) td{ background:var(--amarelo-claro); }
 
-  .sec-comp .rotulo, .sec-comp th{ background:var(--verde-titulo); color:#fff; }
-  .sec-comp tbody tr:nth-child(even) td{ background:var(--verde-claro); }
-
   /* Totais */
   .total{
     display:flex;
@@ -168,8 +165,6 @@
   @media print{
     body{ background:#fff; }
     .pagina{ margin:0; box-shadow:none; width:auto; min-height:auto; }
-    /* cada folha ocupa uma página; a 2.ª começa sempre em página nova */
-    .pagina--2{ break-before:page; page-break-before:always; }
     /* nada dentro de uma folha se parte ao meio */
     .bloco, table, .total{ break-inside:avoid; page-break-inside:avoid; }
     .acoes{ display:none; }
@@ -236,20 +231,6 @@
   <div class="total">
     <div class="rot">Total de Operacionais:</div>
     <div class="val" id="total-operacionais"></div>
-  </div>
-  <div class="bloco sec-comp" id="bloco-companhias" style="margin-top:10px;">
-    <div class="rotulo">Por Companhia</div>
-    <table class="t-sec" style="width:74mm">
-      <thead>
-        <tr>
-          <th style="width:24mm">Companhia</th>
-          <th style="width:18mm">Empenhados</th>
-          <th style="width:14mm">Efetivo</th>
-          <th>%</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-companhias"></tbody>
-    </table>
   </div>
 
 </div>
@@ -373,41 +354,9 @@ function render(data){
   );
   document.getElementById("total-meios").textContent = nMeios;
   document.getElementById("total-operacionais").textContent = nOp;
-
-  // Empenhamento por companhia: percentagem sobre o efetivo de cada companhia,
-  // pelo que as linhas não somam 100%.
-  const comp = (t.por_companhia)||[];
-  const blocoComp = document.getElementById("bloco-companhias");
-  if(!comp.length){ blocoComp.style.display = "none"; }
-  else {
-    blocoComp.style.display = "";
-    document.getElementById("tbody-companhias").innerHTML = comp.map(c => `<tr>
-      <td class="esq">${esc(c.companhia)}</td>
-      <td>${esc(c.n)}</td>
-      <td>${esc(c.efetivo)}</td>
-      <td>${String(c.pct).replace(".", ",")}%</td>
-    </tr>`).join("");
-  }
-}
-
-/* A carta sai em duas páginas com o mesmo conteúdo: a 1.ª sem o bloco Por
-   Companhia, para distribuição; a 2.ª repete a carta e acrescenta-o, para
-   comando/arquivo. O clone é feito depois de render() para que a 2.ª página
-   herde os dados já preenchidos. */
-function paginar(){
-  const p1 = document.querySelector(".pagina");
-  if(!p1) return;
-  const p2 = p1.cloneNode(true);
-  p2.classList.add("pagina--2");
-  // ids só servem durante o render; duplicá-los tornaria o documento inválido
-  p2.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
-  const comp = p1.querySelector("#bloco-companhias");
-  if(comp) comp.remove();
-  p1.after(p2);
 }
 
 render(DATA);
-paginar();
 </script>
 </body>
 </html>
