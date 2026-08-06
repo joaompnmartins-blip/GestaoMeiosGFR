@@ -532,21 +532,27 @@
 
   /* ── Carta de Meios: estado de validação das linhas ──────────────
      âmbar = alterações não gravadas · normal = gravada · verde = confirmada.
-     .fsbf-dirty vem depois de .fsbf-validado para que pendente prevaleça:
+     Verde é --success (estado), não --accent3 (que é azul).
+     As percentagens são fixadas por tema: no claro a mesma mistura fraca
+     sobre fundo branco fica indistinguível do fundo. */
+  :root { --fsbf-verde: rgba(109,184,109,.16); --fsbf-ambar: rgba(200,154,42,.17); }
+  html.theme-light { --fsbf-verde: rgba(46,125,46,.15); --fsbf-ambar: rgba(138,96,16,.16); }
+
+  /* .fsbf-dirty depois de .fsbf-validado para que pendente prevaleça:
      uma linha confirmada que voltou a ser editada não pode continuar verde. */
-  tr.fsbf-validado > td { background: color-mix(in srgb, var(--accent3) 9%, transparent); }
-  tr.fsbf-validado > td:first-child { box-shadow: inset 3px 0 0 var(--accent3); }
-  tr.fsbf-dirty > td { background: color-mix(in srgb, var(--warn) 11%, transparent); }
+  tr.fsbf-validado > td { background: var(--fsbf-verde); }
+  tr.fsbf-validado > td:first-child { box-shadow: inset 3px 0 0 var(--success); }
+  tr.fsbf-dirty > td { background: var(--fsbf-ambar); }
   tr.fsbf-dirty > td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
 
-  .fsbf-bloco.fsbf-validado { border-left: 3px solid var(--accent3); background: color-mix(in srgb, var(--accent3) 7%, transparent); }
-  .fsbf-bloco.fsbf-dirty    { border-left: 3px solid var(--warn);    background: color-mix(in srgb, var(--warn) 9%, transparent); }
+  .fsbf-bloco.fsbf-validado { border-left: 3px solid var(--success); background: var(--fsbf-verde); }
+  .fsbf-bloco.fsbf-dirty    { border-left: 3px solid var(--warn);    background: var(--fsbf-ambar); }
 
   .fsbf-val-btn { min-width: 30px; }
-  .fsbf-val-on  { background: color-mix(in srgb, var(--accent3) 16%, transparent) !important;
-                  color: var(--accent3) !important; border: 1px solid var(--accent3) !important; }
+  .fsbf-val-on  { background: var(--fsbf-verde) !important;
+                  color: var(--success) !important; border: 1px solid var(--success) !important; }
   .fsbf-val-cnt { font-size: 11px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .fsbf-val-cnt.completo { color: var(--accent3); }
+  .fsbf-val-cnt.completo { color: var(--success); }
   </style>
 </head>
 <body>
@@ -7676,13 +7682,17 @@ async function fsbfToggleVal(tipo, id, estaValidada){
   renderFsbfCarta();
 }
 
-async function fsbfToggleValCarta(estaValidada){
+async function fsbfToggleValCarta(grupo, estaValidada){
   const data = document.getElementById('fsbf-data').value;
-  const body = estaValidada ? { data, validado:false }
-                            : Object.assign(_fsbfHeaderBody(), { data, validado:true });
+  const chave = grupo + '_validado';
+  // Anular é só estado; validar grava o cabeçalho primeiro. Só o bloco
+  // clicado muda — o outro mantém a confirmação que já tinha.
+  const body = estaValidada ? { data, [chave]:false }
+                            : Object.assign(_fsbfHeaderBody(), { data, [chave]:true });
   const { error } = await apiFetch('/api/fsbf/carta',{method:'PUT',body:JSON.stringify(body)});
   if(error){ toast(error.message,'err'); return; }
-  toast(estaValidada?'Validação anulada.':'Cabeçalho validado.', estaValidada?'info':'ok');
+  const rot = grupo==='coord' ? 'Coordenador' : 'Chefe de Grupo';
+  toast(estaValidada?`${rot}: validação anulada.`:`${rot} validado.`, estaValidada?'info':'ok');
   renderFsbfCarta();
 }
 
@@ -7969,7 +7979,7 @@ async function renderFsbfCarta(){
   const _cartaHtml = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
       <!-- Coordenador -->
-      <div data-fsbf-row="carta" class="fsbf-bloco${carta.validado?' fsbf-validado':''}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
+      <div data-fsbf-row="carta-coord" class="fsbf-bloco${carta.coord_validado?' fsbf-validado':''}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
         <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Coordenador de Dia</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
@@ -7978,11 +7988,11 @@ async function renderFsbfCarta(){
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-coord-cont" value="${esc(carta.coord_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
-          <button class="btn btn-xs fsbf-val-btn ${carta.validado?'fsbf-val-on':'btn-primary'}" title="${carta.validado?'Cabeçalho validado — clicar para anular':'Guardar e validar'}" onclick="fsbfToggleValCarta(${carta.validado?'true':'false'})">${carta.validado?'✓':'💾'}</button>
+          <button class="btn btn-xs fsbf-val-btn ${carta.coord_validado?'fsbf-val-on':'btn-primary'}" title="${carta.coord_validado?'Coordenador validado — clicar para anular':'Guardar e validar'}" onclick="fsbfToggleValCarta('coord',${carta.coord_validado?'true':'false'})">${carta.coord_validado?'✓':'💾'}</button>
         </div>
       </div>
       <!-- Chefe de Grupo -->
-      <div data-fsbf-row="carta" class="fsbf-bloco${carta.validado?' fsbf-validado':''}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
+      <div data-fsbf-row="carta-chefe" class="fsbf-bloco${carta.chefe_validado?' fsbf-validado':''}" style="background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:14px;">
         <div style="font-weight:600;font-size:13px;margin-bottom:10px;">Chefe de Grupo</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
@@ -7999,7 +8009,7 @@ async function renderFsbfCarta(){
             <input class="form-input" id="fsbf-chefe-guar" type="number" min="0" value="${carta.chefe_guarnicao??''}" style="font-size:12px;width:55px;"/></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-chefe-cont" value="${esc(carta.chefe_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
-          <button class="btn btn-xs fsbf-val-btn ${carta.validado?'fsbf-val-on':'btn-primary'}" title="${carta.validado?'Cabeçalho validado — clicar para anular':'Guardar e validar'}" onclick="fsbfToggleValCarta(${carta.validado?'true':'false'})">${carta.validado?'✓':'💾'}</button>
+          <button class="btn btn-xs fsbf-val-btn ${carta.chefe_validado?'fsbf-val-on':'btn-primary'}" title="${carta.chefe_validado?'Chefe de Grupo validado — clicar para anular':'Guardar e validar'}" onclick="fsbfToggleValCarta('chefe',${carta.chefe_validado?'true':'false'})">${carta.chefe_validado?'✓':'💾'}</button>
         </div>
       </div>
     </div>

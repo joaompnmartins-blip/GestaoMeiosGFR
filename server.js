@@ -2263,8 +2263,12 @@ app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
 app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
-  const CH = ['coord_nome','coord_contacto','chefe_nome','chefe_contacto',
-              'chefe_guarnicao','chefe_veiculo_id','chefe_veiculo_texto'];
+  // Cada bloco do cabeçalho valida-se por si: editar o Coordenador não pode
+  // anular a confirmação do Chefe de Grupo, e vice-versa.
+  const CAMPOS = {
+    coord: ['coord_nome','coord_contacto'],
+    chefe: ['chefe_nome','chefe_contacto','chefe_guarnicao','chefe_veiculo_id','chefe_veiculo_texto'],
+  };
   const { rows: [antes] } = await pool.query(`SELECT * FROM fsbf_carta WHERE data=$1`, [b.data]);
   const { rows: [carta] } = await pool.query(`
     INSERT INTO fsbf_carta
@@ -2291,7 +2295,20 @@ app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
 
   // Mesma regra do resto da carta: confirmar é explícito, alterar anula
   const sets = [], vals = [carta.data];
-  sets.push(...validacaoSets(b, antes, CH, req.user.id, vals));
+  for (const g of ['coord','chefe']) {
+    const chave = `${g}_validado`;
+    if (chave in b) {
+      if (b[chave]) {
+        vals.push(req.user.id);
+        sets.push(`${chave}=true`, `${g}_validado_por=$${vals.length}`, `${g}_validado_em=now()`);
+      } else {
+        sets.push(`${chave}=false`, `${g}_validado_por=NULL`, `${g}_validado_em=NULL`);
+      }
+    } else if (antes?.[chave]) {
+      const mudou = CAMPOS[g].some(k => k in b && String(b[k] ?? '') !== String(antes[k] ?? ''));
+      if (mudou) sets.push(`${chave}=false`, `${g}_validado_por=NULL`, `${g}_validado_em=NULL`);
+    }
+  }
   if (sets.length) {
     const { rows: [upd] } = await pool.query(
       `UPDATE fsbf_carta SET ${sets.join(',')} WHERE data=$1 RETURNING *`, vals);
@@ -3085,6 +3102,13 @@ async function runMigrations() {
     // Validação de linhas da Carta de Meios: confirmação humana de que a linha
     // está correcta. Distinta de "gravada" — gravar acontece implicitamente em
     // vários fluxos, pelo que só um acto explícito marca validado.
+    // O cabeçalho tem dois blocos independentes (Coordenador e Chefe de Grupo),
+    // cada um com o seu botão, logo cada um com o seu estado de validação.
+    ...['coord','chefe'].flatMap(g => [
+      `ALTER TABLE IF EXISTS fsbf_carta ADD COLUMN IF NOT EXISTS ${g}_validado     BOOLEAN NOT NULL DEFAULT false`,
+      `ALTER TABLE IF EXISTS fsbf_carta ADD COLUMN IF NOT EXISTS ${g}_validado_por UUID REFERENCES utilizadores(id) ON DELETE SET NULL`,
+      `ALTER TABLE IF EXISTS fsbf_carta ADD COLUMN IF NOT EXISTS ${g}_validado_em  TIMESTAMPTZ`,
+    ]),
     ...['fsbf_bsbf_equipa','fsbf_emr_equipa','fsbf_carta'].flatMap(t => [
       `ALTER TABLE IF EXISTS ${t} ADD COLUMN IF NOT EXISTS validado     BOOLEAN NOT NULL DEFAULT false`,
       `ALTER TABLE IF EXISTS ${t} ADD COLUMN IF NOT EXISTS validado_por UUID REFERENCES utilizadores(id) ON DELETE SET NULL`,
