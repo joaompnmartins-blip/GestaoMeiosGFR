@@ -2142,6 +2142,9 @@ app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
 app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const CH = ['coord_nome','coord_contacto','chefe_nome','chefe_contacto',
+              'chefe_guarnicao','chefe_veiculo_id','chefe_veiculo_texto'];
+  const { rows: [antes] } = await pool.query(`SELECT * FROM fsbf_carta WHERE data=$1`, [b.data]);
   const { rows: [carta] } = await pool.query(`
     INSERT INTO fsbf_carta
       (data, coord_nome, coord_contacto,
@@ -2164,6 +2167,15 @@ app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
       b.chefe_nome||null, b.chefe_contacto||null, b.chefe_guarnicao||null,
       b.chefe_veiculo_id||null, b.chefe_veiculo_texto||null,
       b.notas_outros_meios||null, req.user.id]);
+
+  // Mesma regra do resto da carta: confirmar é explícito, alterar anula
+  const sets = [], vals = [carta.data];
+  sets.push(...validacaoSets(b, antes, CH, req.user.id, vals));
+  if (sets.length) {
+    const { rows: [upd] } = await pool.query(
+      `UPDATE fsbf_carta SET ${sets.join(',')} WHERE data=$1 RETURNING *`, vals);
+    return res.json(upd);
+  }
   res.json(carta);
 }));
 
@@ -2271,13 +2283,37 @@ app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
   res.json(e);
 }));
 
+// Decide o que fazer ao estado de validação num PATCH.
+//  - validado:true explícito  -> confirma (guardar-e-validar é uma só acção)
+//  - validado:false explícito -> anula
+//  - alteração real de um campo -> anula, porque a confirmação deixou de descrever
+//    a linha. Compara-se com o valor actual: gravar sem alterar nada (o que
+//    acontece ao adicionar uma linha, que grava todas as outras) não deve anular.
+function validacaoSets(body, atual, campos, userId, vals) {
+  if ('validado' in body) {
+    if (body.validado) {
+      vals.push(userId);
+      return [`validado=true`, `validado_por=$${vals.length}`, `validado_em=now()`];
+    }
+    return [`validado=false`, `validado_por=NULL`, `validado_em=NULL`];
+  }
+  if (!atual?.validado) return [];
+  const mudou = campos.some(k => k in body &&
+    String(body[k] ?? '') !== String(atual[k] ?? ''));
+  return mudou ? [`validado=false`, `validado_por=NULL`, `validado_em=NULL`] : [];
+}
+
 app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   const ALLOWED = ['base','veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ocorrencia_num','ordem'];
+  const SUBST  = ALLOWED.filter(k => k !== 'ordem');
+  const { rows: [atual] } = await pool.query(`SELECT * FROM fsbf_bsbf_equipa WHERE id=$1`, [req.params.id]);
+  if (!atual) return res.status(404).json({ error: 'Entrada não encontrada.' });
   const sets = [], vals = [req.params.id];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
   }
+  sets.push(...validacaoSets(b, atual, SUBST, req.user.id, vals));
   if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
   sets.push(`updated_at=now()`);
   const { rows: [e] } = await pool.query(
@@ -2323,10 +2359,14 @@ app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(
   const ALLOWED = ['base','mr_viatura_id','vaop_viatura_id','vpiloto_viatura_id',
                    'vlci_viatura_id','chefe_nome','contacto','total_op','observacoes',
                    'ocorrencia_num','ordem'];
+  const SUBST  = ALLOWED.filter(k => k !== 'ordem');
+  const { rows: [atual] } = await pool.query(`SELECT * FROM fsbf_emr_equipa WHERE id=$1`, [req.params.id]);
+  if (!atual) return res.status(404).json({ error: 'Entrada não encontrada.' });
   const sets = [], vals = [req.params.id];
   for (const k of ALLOWED) {
     if (k in b) { sets.push(`${k}=$${vals.length+1}`); vals.push(b[k] ?? null); }
   }
+  sets.push(...validacaoSets(b, atual, SUBST, req.user.id, vals));
   if (!sets.length) return res.status(400).json({ error: 'Nenhum campo para actualizar.' });
   sets.push(`updated_at=now()`);
   const { rows: [e] } = await pool.query(
@@ -2908,6 +2948,14 @@ async function runMigrations() {
          CHECK (role IN ('admin','ofligacao_ccon','ofligacao','operacional','visualizador',
                          'gestor_sf','gestor_fsbf','chefe_grupo_fsbf','gestor_icnf'));
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Validação de linhas da Carta de Meios: confirmação humana de que a linha
+    // está correcta. Distinta de "gravada" — gravar acontece implicitamente em
+    // vários fluxos, pelo que só um acto explícito marca validado.
+    ...['fsbf_bsbf_equipa','fsbf_emr_equipa','fsbf_carta'].flatMap(t => [
+      `ALTER TABLE IF EXISTS ${t} ADD COLUMN IF NOT EXISTS validado     BOOLEAN NOT NULL DEFAULT false`,
+      `ALTER TABLE IF EXISTS ${t} ADD COLUMN IF NOT EXISTS validado_por UUID REFERENCES utilizadores(id) ON DELETE SET NULL`,
+      `ALTER TABLE IF EXISTS ${t} ADD COLUMN IF NOT EXISTS validado_em  TIMESTAMPTZ`,
+    ]),
     // GRUATA — força especial constituída a partir do GSBF da Carta de Meios.
     // É um instantâneo: as linhas são copiadas no momento da constituição para
     // que a ficha entregue ao Comandante da Força não mude se a carta mudar.
