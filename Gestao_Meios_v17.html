@@ -6455,6 +6455,22 @@ let _currentRecursoFonte = null;
 let _allViaturas = [];   // full picker list (ICNF) or disponivel (SF/FSBF)
 let _allRadios   = [];
 
+// Viaturas e rádios ligam-se por recurso_id, que só existe depois de gravar.
+// Em criação escondem-se as secções e explica-se porquê, em vez de mostrar
+// listas vazias que não fazem nada.
+function grecMostrarLigacoes(mostrar){
+  const v=document.getElementById('grec-sec-viaturas');
+  const r=document.getElementById('grec-sec-radios');
+  const n=document.getElementById('grec-links-nota');
+  if(v) v.style.display = mostrar ? '' : 'none';
+  if(r) r.style.display = mostrar ? '' : 'none';
+  if(n) n.style.display = mostrar ? 'none' : '';
+  if(!mostrar){
+    ['grec-viaturas-linked','grec-radios-linked','grec-viatura-select','grec-radio-select']
+      .forEach(id=>{ const el=document.getElementById(id); if(el) el.innerHTML=''; });
+  }
+}
+
 // Edit recurso modal
 function openGestaoRecursoModal(id){
   const r = _gestaoRecursos[id];
@@ -6479,6 +6495,7 @@ function openGestaoRecursoModal(id){
   document.getElementById('grec-fs').checked = !!r.fogo_supressao;
   document.getElementById('grec-regime').value    = r.regime    || '';
   populateSubregiaoSelect('grec-subregiao', r.subregiao || '');
+  grecMostrarLigacoes(true);
   document.getElementById('grec-concelho').value  = r.concelho  || '';
   // Clear equipamento sections while loading
   _currentRecursoId    = r.id;
@@ -6518,11 +6535,11 @@ async function saveGestaoRecurso(){
   }
   payload.codigo = document.getElementById('grec-cod').value.trim();
   if(!payload.codigo){ toast('Código obrigatório.','err'); return; }
-  let error;
+  let error, criado;
   if(mode === 'create'){
     payload.tipo = document.getElementById('grec-new-tipo').value;
     if(!payload.tipo){ toast('Tipo obrigatório.','err'); return; }
-    ({ error } = await apiFetch('/api/gestao/recursos', { method:'POST', body:JSON.stringify(payload) }));
+    ({ data: criado, error } = await apiFetch('/api/gestao/recursos', { method:'POST', body:JSON.stringify(payload) }));
   } else {
     ({ error } = await apiFetch(`/api/gestao/recursos/${id}`, { method:'PATCH', body:JSON.stringify(payload) }));
   }
@@ -6535,6 +6552,13 @@ async function saveGestaoRecurso(){
   if(activePage==='page-gestao-icnf') renderGestaoICNF();
   const { data } = await apiFetch('/api/recursos');
   if(data) db.recursos = data;
+
+  // Recém-criado: reabrir em edição, que é onde as ligações a viaturas e
+  // rádios existem — de outro modo seria preciso procurá-lo na lista.
+  if(criado?.id){
+    _gestaoRecursos[criado.id] = criado;
+    openGestaoRecursoModal(criado.id);
+  }
 }
 
 // ── Equipamento load / render ────────────────────────────────────
@@ -8709,10 +8733,8 @@ async function openNewRecursoModal(){
   document.getElementById('grec-regime').value = '';
   document.getElementById('grec-ativo').checked = true;
   document.getElementById('grec-caps').style.display = 'none';
-  document.getElementById('grec-viaturas-linked').innerHTML='';
-  document.getElementById('grec-radios-linked').innerHTML='';
-  document.getElementById('grec-viatura-select').innerHTML='';
-  document.getElementById('grec-radio-select').innerHTML='';
+  populateSubregiaoSelect('grec-subregiao','');
+  grecMostrarLigacoes(false);
   openModal('modal-gestao-recurso');
 }
 
@@ -8738,10 +8760,8 @@ async function openNewRecursoModalSF(){
   document.getElementById('grec-regime').value = '';
   document.getElementById('grec-ativo').checked = true;
   document.getElementById('grec-caps').style.display = 'none';
-  document.getElementById('grec-viaturas-linked').innerHTML='';
-  document.getElementById('grec-radios-linked').innerHTML='';
-  document.getElementById('grec-viatura-select').innerHTML='';
-  document.getElementById('grec-radio-select').innerHTML='';
+  populateSubregiaoSelect('grec-subregiao','');
+  grecMostrarLigacoes(false);
   document.getElementById('grec-viatura-icnf-filters').style.display='none';
   document.getElementById('grec-radio-icnf-filters').style.display='none';
   openModal('modal-gestao-recurso');
@@ -9565,8 +9585,12 @@ async function mergeSaveConfirm(){
         </div>
       </div>
 
+      <!-- Ligações só existem depois de o recurso ter id -->
+      <div id="grec-links-nota" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;font-size:12px;color:var(--muted);">
+        Viaturas e rádios ligam-se ao recurso depois de o criar — ao guardar, a ficha reabre para os poder ligar.
+      </div>
       <!-- Viaturas -->
-      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div id="grec-sec-viaturas" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Viaturas</div>
         <div id="grec-viaturas-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
         <div id="grec-viatura-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
@@ -9588,7 +9612,7 @@ async function mergeSaveConfirm(){
       </div>
 
       <!-- Rádios -->
-      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+      <div id="grec-sec-radios" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Rádios</div>
         <div id="grec-radios-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
         <div id="grec-radio-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
