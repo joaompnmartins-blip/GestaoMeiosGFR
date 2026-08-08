@@ -6,9 +6,15 @@ const jwt      = require('jsonwebtoken');
 const path     = require('path');
 
 const app  = express();
+// SSL é exigido por qualquer Postgres remoto. O Railway usa certificado
+// self-signed, daí rejectUnauthorized:false. Localhost liga sem SSL.
+// PGSSL=false força a desactivar em qualquer caso.
+const _conn  = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+const _local = /@(localhost|127\.0\.0\.1)[:/]/.test(_conn || '');
 const pool = new Pool({
-  connectionString: process.env.TEST_DATABASE_URL || process.env.DATABASE_URL,
-  ssl: process.env.PGSSL === 'false' ? false : (process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false),
+  connectionString: _conn,
+  ssl: process.env.PGSSL === 'false' ? false
+     : (process.env.NODE_ENV === 'production' || !_local) ? { rejectUnauthorized: false } : false,
 });
 
 const JWT_SECRET  = process.env.JWT_SECRET || 'dev-secret-CHANGE-IN-PRODUCTION';
@@ -3455,4 +3461,4 @@ if (require.main === module) {
     .catch(err => { console.error('Erro na migração:', err.message); process.exit(1); });
 }
 
-module.exports = { app, pool };
+module.exports = { app, pool, runMigrations };
