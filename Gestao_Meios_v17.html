@@ -557,6 +557,17 @@
                   color: var(--success) !important; border: 1px solid var(--success) !important; }
   .fsbf-val-cnt { font-size: 11px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
   .fsbf-val-cnt.completo { color: var(--success); }
+
+  /* Guarnições são de um só dígito. São inputs de texto e não number: as setas
+     tapavam o valor num campo de 46px, e `max` nunca limitou nada porque o
+     valor é lido com parseInt(el.value) e não por validação de formulário. */
+  .num1 { text-align: center; font-variant-numeric: tabular-nums; }
+  /* Uma tecla recusada não produz evento nenhum, logo sem este aviso era
+     indistinguível de a app ter comido a tecla. */
+  .num1.num1-rej { border-color: var(--warn) !important; background: var(--fsbf-ambar); }
+  @media (prefers-reduced-motion: no-preference) {
+    .num1 { transition: background .12s, border-color .12s; }
+  }
   </style>
 </head>
 <body>
@@ -7870,6 +7881,36 @@ function fsbfBaseOpts(selected){
     list.map(b=>`<option value="${esc(b)}"${selected===b?' selected':''}>${esc(b)}</option>`).join('');
 }
 
+// ── Campos de um dígito (guarnição / total de operacionais) ──────────────
+// Atributos partilhados pelos três campos. onfocus=select() é o que torna o
+// campo editável: com um só caracter, escrever por cima é a única forma de
+// mudar o valor sem apagar primeiro.
+const NUM1_ATTRS = 'type="text" inputmode="numeric" autocomplete="off" maxlength="1"'
+  + ' class="form-input num1" title="Máximo 9"'
+  + ' onfocus="this.select()" onkeydown="num1Tecla(event)" oninput="num1Limpa(this)"';
+
+function num1Aviso(el){
+  el.classList.add('num1-rej');
+  clearTimeout(el._num1t);
+  el._num1t = setTimeout(()=>el.classList.remove('num1-rej'), 350);
+}
+// Recusa a 2.ª tecla em vez de truncar depois: um clamp para 9 transformaria
+// silenciosamente um 5 que se queria passar a 8 (intermédio "58") em 9.
+function num1Tecla(e){
+  const el = e.target;
+  if (e.ctrlKey || e.metaKey || e.altKey || !e.key || e.key.length !== 1) return;  // Tab, setas, Backspace…
+  const temSelecao = el.selectionStart !== el.selectionEnd;
+  if (!/[0-9]/.test(e.key) || (el.value.length >= 1 && !temSelecao)) {
+    e.preventDefault();
+    num1Aviso(el);
+  }
+}
+// Rede para colar e para métodos de entrada que escapam ao keydown.
+function num1Limpa(el){
+  const limpo = el.value.replace(/\D/g,'').slice(0,1);
+  if (limpo !== el.value) { el.value = limpo; num1Aviso(el); }
+}
+
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
   const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM','MU'], row.veiculo_id);
@@ -7886,7 +7927,7 @@ function fsbfBsbfRow(row, allViat, isCarta){
     </td>
     <td><input class="form-input mono" style="width:100px;font-size:12px;" id="fsbf-b-mat-${id}" value="${esc(savedMat)}" placeholder="—" readonly/></td>
     <td style="white-space:nowrap;">
-      <input class="form-input" style="width:46px;font-size:12px;" id="fsbf-b-guar-${id}" type="number" min="0" value="${row.guarnicao??''}" placeholder="0"/>
+      <input ${NUM1_ATTRS} style="width:38px;font-size:12px;" id="fsbf-b-guar-${id}" value="${row.guarnicao??''}" placeholder="0"/>
       ${fsbfMembrosBtn(row,'bsbf')}
     </td>
     <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
@@ -7933,7 +7974,7 @@ function fsbfEmrCard(row, allViat){
           id="fsbf-e-ocor-${id}" title="Equipa empenhada nesta ocorrência">${fsbfOcorrenciaOpts(row.ocorrencia_num)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Total Op.</label>
         <div style="display:flex;gap:4px;align-items:center;">
-          <input class="form-input" style="font-size:12px;min-width:0;" id="fsbf-e-top-${id}" type="number" min="0" value="${row.total_op??''}" placeholder="0"/>
+          <input ${NUM1_ATTRS} style="font-size:12px;width:38px;min-width:0;" id="fsbf-e-top-${id}" value="${row.total_op??''}" placeholder="0"/>
           ${fsbfMembrosBtn(row,'emr')}
         </div></div>
       <div style="grid-column:1/-1"><label style="font-size:11px;color:var(--muted);">Obs</label>
@@ -8034,7 +8075,7 @@ async function renderFsbfCarta(){
               <option value="">— catálogo —</option>${chViatOpts}
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Guar.</label>
-            <input class="form-input" id="fsbf-chefe-guar" type="number" min="0" value="${carta.chefe_guarnicao??''}" style="font-size:12px;width:55px;"/></div>
+            <input ${NUM1_ATTRS} id="fsbf-chefe-guar" value="${carta.chefe_guarnicao??''}" style="font-size:12px;width:38px;"/></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-chefe-cont" value="${esc(carta.chefe_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
           <button class="btn btn-xs fsbf-val-btn ${carta.chefe_validado?'fsbf-val-on':'btn-primary'}" title="${carta.chefe_validado?'Chefe de Grupo validado — clicar para anular':'Guardar e validar'}" onclick="fsbfToggleValCarta('chefe',${carta.chefe_validado?'true':'false'})">${carta.chefe_validado?'✓':'💾'}</button>

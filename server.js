@@ -2301,10 +2301,27 @@ app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
   });
 }));
 
+// Guarnições e totais de operacionais são de um só dígito. O cliente já limita
+// o campo, mas a API tem de impor o mesmo limite: um valor absurdo aqui chega à
+// carta (que rende `guarnicao - 1` dropdowns de membro) e às estatísticas de
+// empenhamento. O CHECK na base é a última rede; isto devolve 400 em vez de 500.
+const MAX_GUARNICAO = 9;
+function erroGuarnicao(body, campos) {
+  for (const k of campos) {
+    if (!(k in body) || body[k] == null || body[k] === '') continue;
+    const n = Number(body[k]);
+    if (!Number.isInteger(n) || n < 0 || n > MAX_GUARNICAO)
+      return `${k}: só são aceites números inteiros entre 0 e ${MAX_GUARNICAO}.`;
+  }
+  return null;
+}
+
 // ── PUT /api/fsbf/carta (upsert header) ───────────────────────
 app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const errG = erroGuarnicao(b, ['chefe_guarnicao']);
+  if (errG) return res.status(400).json({ error: errG });
   // Cada bloco do cabeçalho valida-se por si: editar o Coordenador não pode
   // anular a confirmação do Chefe de Grupo, e vice-versa.
   const CAMPOS = {
@@ -2450,6 +2467,8 @@ app.post('/api/fsbf/carta/copy', requireAuth('visualizador'), FSBF_GESTORES, wra
 app.post('/api/fsbf/bsbf', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   if (!b.data || !b.brigada) return res.status(400).json({ error: 'data e brigada obrigatórios.' });
+  const errG = erroGuarnicao(b, ['guarnicao']);
+  if (errG) return res.status(400).json({ error: errG });
   const { rows: [e] } = await pool.query(`
     INSERT INTO fsbf_bsbf_equipa
       (data, brigada, veiculo_id, guarnicao, chefe_nome, contacto, observacoes, ordem, created_by)
@@ -2487,6 +2506,8 @@ app.patch('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap
   const b = req.body;
   const ALLOWED = ['base','veiculo_id','guarnicao','chefe_nome','contacto','observacoes','ocorrencia_num','ordem'];
   const SUBST  = ALLOWED.filter(k => k !== 'ordem');
+  const errG = erroGuarnicao(b, ['guarnicao']);
+  if (errG) return res.status(400).json({ error: errG });
   const { rows: [atual] } = await pool.query(`SELECT * FROM fsbf_bsbf_equipa WHERE id=$1`, [req.params.id]);
   if (!atual) return res.status(404).json({ error: 'Entrada não encontrada.' });
   const sets = [], vals = [req.params.id];
@@ -2521,6 +2542,8 @@ app.delete('/api/fsbf/bsbf/:id', requireAuth('visualizador'), FSBF_GESTORES, wra
 app.post('/api/fsbf/emr', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
   const b = req.body;
   if (!b.data) return res.status(400).json({ error: 'data obrigatória.' });
+  const errG = erroGuarnicao(b, ['total_op']);
+  if (errG) return res.status(400).json({ error: errG });
   const { rows: [e] } = await pool.query(`
     INSERT INTO fsbf_emr_equipa
       (data, base, mr_viatura_id, vaop_viatura_id, vpiloto_viatura_id, vlci_viatura_id,
@@ -2542,6 +2565,8 @@ app.patch('/api/fsbf/emr/:id', requireAuth('visualizador'), FSBF_GESTORES, wrap(
                    'vlci_viatura_id','chefe_nome','contacto','total_op','observacoes',
                    'ocorrencia_num','ordem'];
   const SUBST  = ALLOWED.filter(k => k !== 'ordem');
+  const errG = erroGuarnicao(b, ['total_op']);
+  if (errG) return res.status(400).json({ error: errG });
   const { rows: [atual] } = await pool.query(`SELECT * FROM fsbf_emr_equipa WHERE id=$1`, [req.params.id]);
   if (!atual) return res.status(404).json({ error: 'Entrada não encontrada.' });
   const sets = [], vals = [req.params.id];
@@ -3239,6 +3264,26 @@ async function runMigrations() {
        ALTER TABLE fsbf_bsbf_equipa DROP CONSTRAINT IF EXISTS fsbf_bsbf_equipa_brigada_check;
        ALTER TABLE fsbf_bsbf_equipa ADD CONSTRAINT fsbf_bsbf_equipa_brigada_check
          CHECK (brigada IN ('Norte','Sul','GSBF','Outros'));
+     EXCEPTION WHEN OTHERS THEN NULL; END $$`,
+    // Guarnições/totais de operacionais são de um só dígito (ver erroGuarnicao).
+    // Rede final: a API valida primeiro e devolve 400, isto impede escritas por
+    // outras vias. NULL continua permitido — significa "não preenchido".
+    `DO $$ BEGIN
+       ALTER TABLE fsbf_bsbf_equipa  DROP CONSTRAINT IF EXISTS fsbf_bsbf_equipa_guarnicao_check;
+       ALTER TABLE fsbf_bsbf_equipa  ADD CONSTRAINT fsbf_bsbf_equipa_guarnicao_check
+         CHECK (guarnicao IS NULL OR guarnicao BETWEEN 0 AND 9);
+       ALTER TABLE fsbf_emr_equipa   DROP CONSTRAINT IF EXISTS fsbf_emr_equipa_total_op_check;
+       ALTER TABLE fsbf_emr_equipa   ADD CONSTRAINT fsbf_emr_equipa_total_op_check
+         CHECK (total_op IS NULL OR total_op BETWEEN 0 AND 9);
+       ALTER TABLE fsbf_carta        DROP CONSTRAINT IF EXISTS fsbf_carta_chefe_guarnicao_check;
+       ALTER TABLE fsbf_carta        ADD CONSTRAINT fsbf_carta_chefe_guarnicao_check
+         CHECK (chefe_guarnicao IS NULL OR chefe_guarnicao BETWEEN 0 AND 9);
+       ALTER TABLE fsbf_gruata_linha DROP CONSTRAINT IF EXISTS fsbf_gruata_linha_guarnicao_check;
+       ALTER TABLE fsbf_gruata_linha ADD CONSTRAINT fsbf_gruata_linha_guarnicao_check
+         CHECK (guarnicao IS NULL OR guarnicao BETWEEN 0 AND 9);
+       ALTER TABLE fsbf_gruata       DROP CONSTRAINT IF EXISTS fsbf_gruata_emr_total_op_check;
+       ALTER TABLE fsbf_gruata       ADD CONSTRAINT fsbf_gruata_emr_total_op_check
+         CHECK (emr_total_op IS NULL OR emr_total_op BETWEEN 0 AND 9);
      EXCEPTION WHEN OTHERS THEN NULL; END $$`,
   ];
   for (const sql of preSchemaAlters) {
