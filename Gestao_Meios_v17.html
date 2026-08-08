@@ -6515,10 +6515,10 @@ function openGestaoRecursoModal(id){
   document.getElementById('grec-radios-linked').innerHTML   = '<span style="font-size:11px;color:var(--muted)">A carregar…</span>';
   document.getElementById('grec-viatura-select').innerHTML  = '';
   document.getElementById('grec-radio-select').innerHTML    = '';
-  // Show ICNF filters only for ICNF fonte
-  const isICNF = r.fonte === 'ICNF';
-  document.getElementById('grec-viatura-icnf-filters').style.display = isICNF ? 'flex' : 'none';
-  document.getElementById('grec-radio-icnf-filters').style.display   = isICNF ? 'flex' : 'none';
+  // Os filtros voltam ao estado neutro a cada abertura: são elementos únicos
+  // reutilizados por todos os recursos e um valor deixado da ficha anterior
+  // esconderia candidatos sem explicação.
+  grecLimparFiltrosPicker();
   openModal('modal-gestao-recurso');
   loadRecursoEquipamento(r.id, r.fonte);
 }
@@ -6574,18 +6574,46 @@ async function saveGestaoRecurso(){
 
 // ── Equipamento load / render ────────────────────────────────────
 
+function grecLimparFiltrosPicker(){
+  ['grec-viatura-search','grec-viatura-megfr','grec-viatura-status',
+   'grec-radio-search','grec-radio-tipo','grec-radio-status']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+}
+
+// Opções construídas a partir do que foi carregado: uma lista fixa arriscava
+// oferecer filtros que não correspondem a viatura nenhuma.
+function grecPreencherMegfrOpts(){
+  const sel = document.getElementById('grec-viatura-megfr');
+  if(!sel) return;
+  const atual = sel.value;
+  const vals = [...new Set(_allViaturas.map(v=>v.megfr).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+  sel.innerHTML = '<option value="">Todos os MEGFR</option>' +
+    vals.map(m=>`<option value="${esc(m)}"${m===atual?' selected':''}>${esc(m)}</option>`).join('');
+}
+
 async function loadRecursoEquipamento(recursoId, fonte){
-  const isICNF = fonte === 'ICNF';
-  const viatUrl = isICNF ? '/api/gestao/viaturas?ativo=true'       : '/api/gestao/viaturas?disponivel=true&ativo=true';
-  const radUrl  = isICNF ? '/api/gestao/radios?ativo=true'         : '/api/gestao/radios?disponivel=true&ativo=true';
+  // Catálogo completo para todas as fontes. Antes SF/FSBF só recebiam as
+  // viaturas livres, logo as centenas já ligadas eram invisíveis e não havia
+  // como procurá-las; o sufixo [recurso] identifica as que estão ocupadas.
   const [linkedV, linkedR, availV, availR] = await Promise.all([
     apiFetch(`/api/gestao/viaturas?recurso_id=${recursoId}&ativo=true`),
     apiFetch(`/api/gestao/radios?recurso_id=${recursoId}&ativo=true`),
-    apiFetch(viatUrl),
-    apiFetch(radUrl),
+    apiFetch('/api/gestao/viaturas?ativo=true'),
+    apiFetch('/api/gestao/radios?ativo=true'),
   ]);
+  // Um pedido falhado dava a mesma lista vazia que um catálogo vazio, sem
+  // aviso: era indistinguível de "não há viaturas".
+  const falhas = [
+    availV.error  && 'catálogo de viaturas',
+    availR.error  && 'catálogo de rádios',
+    linkedV.error && 'viaturas ligadas',
+    linkedR.error && 'rádios ligados',
+  ].filter(Boolean);
+  if(falhas.length) toast(`Não foi possível carregar: ${falhas.join(', ')}.`,'err');
+
   _allViaturas = availV.data || [];
   _allRadios   = availR.data || [];
+  grecPreencherMegfrOpts();
   renderLinkedViaturas(linkedV.data || []);
   renderLinkedRadios(linkedR.data   || []);
   renderViaturasPicker();
@@ -6615,11 +6643,11 @@ function renderLinkedRadios(list){
 function renderViaturasPicker(){
   const sel = document.getElementById('grec-viatura-select');
   const q   = (document.getElementById('grec-viatura-search')?.value||'').toLowerCase();
-  const fF  = document.getElementById('grec-viatura-fonte')?.value||'';
+  const fM  = document.getElementById('grec-viatura-megfr')?.value||'';
   const fS  = document.getElementById('grec-viatura-status')?.value||'';
   let list  = _allViaturas;
   if(q)  list = list.filter(v=>(v.viatura_cod+' '+(v.matricula||'')).toLowerCase().includes(q));
-  if(fF) list = list.filter(v=>v.fonte===fF);
+  if(fM) list = list.filter(v=>v.megfr===fM);
   if(fS==='disponivel') list = list.filter(v=>!v.recurso_id);
   if(fS==='ligada')     list = list.filter(v=>!!v.recurso_id);
   sel.innerHTML = list.length
@@ -6627,7 +6655,11 @@ function renderViaturasPicker(){
         const linked = v.recurso_id && v.recurso_id !== _currentRecursoId ? ` [${esc(v.recurso_codigo||'?')}]` : '';
         return `<option value="${v.id}">${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}${linked}</option>`;
       }).join('')
-    : '<option disabled>Sem viaturas disponíveis</option>';
+    // Distinguir os dois casos: sem catálogo é problema de carregamento,
+    // sem correspondência é o filtro do utilizador.
+    : _allViaturas.length
+      ? '<option disabled>Nenhuma viatura corresponde aos filtros</option>'
+      : '<option disabled>Catálogo de viaturas não carregado</option>';
 }
 
 function renderRadiosPicker(){
@@ -6647,7 +6679,9 @@ function renderRadiosPicker(){
           : r.viatura_id ? ` [viatura]` : '';
         return `<option value="${r.id}">${esc(r.ddi)} ${esc(r.tipo)}${r.indicativo?' · '+esc(r.indicativo):''}${linked}</option>`;
       }).join('')
-    : '<option disabled>Sem rádios disponíveis</option>';
+    : _allRadios.length
+      ? '<option disabled>Nenhum rádio corresponde aos filtros</option>'
+      : '<option disabled>Catálogo de rádios não carregado</option>';
 }
 
 function filterViaturasPicker(){ renderViaturasPicker(); }
@@ -6657,6 +6691,11 @@ async function linkViatura(){
   const sel = document.getElementById('grec-viatura-select');
   const vId = sel.value;
   if(!vId || sel.options[sel.selectedIndex]?.disabled) return;
+  // O catálogo passou a incluir viaturas já atribuídas: ligar uma delas
+  // retira-a do outro recurso, e isso tem de ser dito antes.
+  const v = _allViaturas.find(x=>x.id===vId);
+  if(v?.recurso_id && v.recurso_id !== _currentRecursoId &&
+     !confirm(`${v.viatura_cod} está ligada a ${v.recurso_codigo||'outro recurso'}.\nLigar aqui remove-a de lá. Continuar?`)) return;
   const { error } = await apiFetch(`/api/gestao/viaturas/${vId}`, {
     method:'PATCH', body:JSON.stringify({ recurso_id: _currentRecursoId })
   });
@@ -6678,6 +6717,10 @@ async function linkRadio(){
   const sel = document.getElementById('grec-radio-select');
   const rId = sel.value;
   if(!rId || sel.options[sel.selectedIndex]?.disabled) return;
+  const r = _allRadios.find(x=>x.id===rId);
+  const ondeEsta = r?.recurso_id && r.recurso_id !== _currentRecursoId
+    ? (r.recurso_codigo||'outro recurso') : (r?.viatura_id ? 'uma viatura' : null);
+  if(ondeEsta && !confirm(`${r.ddi} está ligado a ${ondeEsta}.\nLigar aqui remove-o de lá. Continuar?`)) return;
   const { error } = await apiFetch(`/api/gestao/radios/${rId}`, {
     method:'PATCH', body:JSON.stringify({ recurso_id: _currentRecursoId, viatura_id: null })
   });
@@ -8802,9 +8845,9 @@ async function openNewRecursoModalSF(){
   document.getElementById('grec-ativo').checked = true;
   document.getElementById('grec-caps').style.display = 'none';
   populateSubregiaoSelect('grec-subregiao','');
+  // grecMostrarLigacoes(false) esconde as secções inteiras, filtros incluídos.
   grecMostrarLigacoes(false);
-  document.getElementById('grec-viatura-icnf-filters').style.display='none';
-  document.getElementById('grec-radio-icnf-filters').style.display='none';
+  grecLimparFiltrosPicker();
   openModal('modal-gestao-recurso');
 }
 
@@ -9634,11 +9677,15 @@ async function mergeSaveConfirm(){
       <div id="grec-sec-viaturas" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Viaturas</div>
         <div id="grec-viaturas-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
-        <div id="grec-viatura-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        <!-- Filtros para todas as fontes. Antes só apareciam em ICNF, o que
+             deixava SF/FSBF sem procura nenhuma sobre centenas de viaturas. -->
+        <div id="grec-viatura-filtros" style="margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
           <input class="form-input" id="grec-viatura-search" placeholder="🔍 Código / matrícula…" oninput="filterViaturasPicker()" style="flex:1;min-width:140px;font-size:11px;padding:4px 6px;"/>
-          <select class="form-select" id="grec-viatura-fonte" onchange="filterViaturasPicker()" style="font-size:11px;padding:4px 6px;">
-            <option value="">Todas as fontes</option>
-            <option value="SF">SF</option><option value="FSBF">FSBF</option><option value="ICNF">ICNF</option>
+          <!-- MEGFR e não fonte: fonte deriva do recurso ligado, logo é sempre
+               NULL nas viaturas livres e o filtro nunca acertava em nenhuma.
+               As opções são construídas a partir dos dados carregados. -->
+          <select class="form-select" id="grec-viatura-megfr" onchange="filterViaturasPicker()" style="font-size:11px;padding:4px 6px;">
+            <option value="">Todos os MEGFR</option>
           </select>
           <select class="form-select" id="grec-viatura-status" onchange="filterViaturasPicker()" style="font-size:11px;padding:4px 6px;">
             <option value="">Todas</option>
@@ -9656,7 +9703,7 @@ async function mergeSaveConfirm(){
       <div id="grec-sec-radios" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
         <div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Rádios</div>
         <div id="grec-radios-linked" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
-        <div id="grec-radio-icnf-filters" style="display:none;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        <div id="grec-radio-filtros" style="margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap;">
           <input class="form-input" id="grec-radio-search" placeholder="🔍 DDI / indicativo…" oninput="filterRadiosPicker()" style="flex:1;min-width:140px;font-size:11px;padding:4px 6px;"/>
           <select class="form-select" id="grec-radio-tipo" onchange="filterRadiosPicker()" style="font-size:11px;padding:4px 6px;">
             <option value="">Todos os tipos</option>
