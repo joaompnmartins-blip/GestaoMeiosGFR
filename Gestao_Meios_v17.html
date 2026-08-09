@@ -5393,6 +5393,22 @@ function openNewEquipaFromTeam(){
 }
 let _equipa_from_team=false;
 
+// Duas razões distintas para não constar deste modal:
+//
+// Nacionais — empenhados pelo ofligacao_ccon a partir da Carta de Meios
+// (deploy/fsbf-bsbf, deploy/fsbf-emr, deploy/fsbf-gruata, todos requireCCON).
+// Oferecê-los aqui deixava um ofligacao local contornar o CCON. TFSBF fica de
+// fora desta lista de propósito: não tem via CCON própria.
+//
+// Não empenháveis — OLN não é um meio, é a escala nacional de oficiais de
+// ligação, que alimenta o campo Oficial de Ligação CCON.
+const MEIOS_NACIONAIS       = ['EFSBF','EMR'];
+const COMPOSICOES_NACIONAIS = ['BSBF'];
+const MEIOS_NAO_EMPENHAVEIS = ['OLN'];
+const foraDesteModal = r => MEIOS_NACIONAIS.includes(r.tipo)
+  || COMPOSICOES_NACIONAIS.includes(r.tipo)
+  || MEIOS_NAO_EMPENHAVEIS.includes(r.tipo);
+
 function refreshPresetSelect(selectedId){
   const sel = document.getElementById('team-preset');
   if(!sel) return;
@@ -5415,14 +5431,18 @@ function refreshPresetSelect(selectedId){
   }));
   const catalog = [...base, ...bsfEntries, ...raEntries];
 
+  // Opções dos filtros derivadas do catálogo já sem os nacionais, e sem a
+  // excepção do selectedId: senão, abrir primeiro um meio nacional em edição
+  // fixava o tipo na lista para o resto da sessão.
+  const local = catalog.filter(r => !foraDesteModal(r));
   const teSel = document.getElementById('preset-filter-te');
   const srSel = document.getElementById('preset-filter-sr');
   if(teSel && teSel.options.length <= 1){
-    const tipos = [...new Set(catalog.map(r=>r.tipo).filter(Boolean))].sort();
+    const tipos = [...new Set(local.map(r=>r.tipo).filter(Boolean))].sort();
     teSel.innerHTML = '<option value="">Tipo…</option>' + tipos.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
   }
   if(srSel && srSel.options.length <= 1){
-    const subs = [...new Set(catalog.map(r=>r.subregiao).filter(Boolean))].sort();
+    const subs = [...new Set(local.map(r=>r.subregiao).filter(Boolean))].sort();
     srSel.innerHTML = '<option value="">Sub-região…</option>' + subs.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
   }
 
@@ -5444,6 +5464,9 @@ function refreshPresetSelect(selectedId){
   });
 
   const filtered = catalog.filter(r => {
+    // selectedId sobrevive para que editar um meio nacional já empenhado não
+    // perca a sua selecção nem a apague ao gravar.
+    if(foraDesteModal(r) && r.id !== selectedId) return false;
     if(fTE && r.tipo !== fTE) return false;
     if(fSR && r.subregiao !== fSR) return false;
     if(r.id !== selectedId && busyRecurso.has(r.id)) return false;

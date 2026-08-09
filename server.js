@@ -304,8 +304,43 @@ app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
   res.json(result);
 }));
 
+// Meios nacionais. O FSBF é empenhado pelo Oficial de Ligação CCON a partir da
+// Carta de Meios — deploy/fsbf-bsbf, deploy/fsbf-emr e deploy/fsbf-gruata, todos
+// requireCCON. Sem esta verificação, o POST genérico de meios era uma porta
+// paralela para um ofligacao local empenhar meios nacionais sem passar pelo CCON.
+// TFSBF não entra na lista: não tem via CCON própria e ficaria sem forma de ser
+// empenhado.
+const TIPOS_NACIONAIS       = ['EFSBF','EMR'];
+const COMPOSICOES_NACIONAIS = ['BSBF'];
+const VIA_CCON = 'Empenhamento a partir da Carta de Meios, pelo Oficial de Ligação CCON.';
+
+// OLN é outra coisa: não é um meio que se empenhe, é a escala nacional de
+// oficiais de ligação (oln_escala) que alimenta o campo Oficial de Ligação
+// CCON. Por isso é recusado a todos os perfis, e não só aos locais.
+const TIPOS_NAO_EMPENHAVEIS = ['OLN'];
+
+async function erroMeioNacional(recursoId, composicaoId, role) {
+  const podeNacional = role === 'admin' || role === 'ofligacao_ccon';
+  if (recursoId) {
+    const { rows } = await pool.query('SELECT tipo FROM recursos WHERE id=$1', [recursoId]);
+    const tipo = rows[0]?.tipo;
+    if (TIPOS_NAO_EMPENHAVEIS.includes(tipo))
+      return `${tipo} não é um meio empenhável: é a escala nacional de oficiais de ligação, apresentada no campo Oficial de Ligação CCON.`;
+    if (!podeNacional && TIPOS_NACIONAIS.includes(tipo))
+      return `${tipo} é um meio nacional. ${VIA_CCON}`;
+  }
+  if (composicaoId && !podeNacional) {
+    const { rows } = await pool.query('SELECT tipo FROM composicoes WHERE id=$1', [composicaoId]);
+    if (rows[0] && COMPOSICOES_NACIONAIS.includes(rows[0].tipo))
+      return `${rows[0].tipo} é uma brigada nacional. ${VIA_CCON}`;
+  }
+  return null;
+}
+
 app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
+  const errNac = await erroMeioNacional(b.recurso_id, b.composicao_id, req.user.role);
+  if (errNac) return res.status(403).json({ error: errNac });
   const conflict = await findRecursoConflict(b.recurso_id, b.estado, null);
   if (conflict) {
     return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
@@ -333,6 +368,22 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   // must not null out NOT NULL columns like ocorrencia_id or eq.
   const cols = MEIO_COLS.filter(c => c in b);
   if (!cols.length) return res.json({ ok: true });
+
+  // Trocar o recurso de um meio existente é outra via para o mesmo desvio. Só
+  // se verifica quando o valor muda de facto: já existem meios nacionais
+  // empenhados e reenviar o mesmo recurso_id ao gravar não pode trancá-los.
+  if ('recurso_id' in b || 'composicao_id' in b) {
+    const { rows: [antes] } = await pool.query(
+      'SELECT recurso_id, composicao_id FROM meios WHERE id=$1', [req.params.id]);
+    const igual = (k) => String(b[k] ?? '') === String(antes?.[k] ?? '');
+    const recNovo  = 'recurso_id'    in b && !igual('recurso_id');
+    const compNovo = 'composicao_id' in b && !igual('composicao_id');
+    if (recNovo || compNovo) {
+      const errNac = await erroMeioNacional(
+        recNovo ? b.recurso_id : null, compNovo ? b.composicao_id : null, req.user.role);
+      if (errNac) return res.status(403).json({ error: errNac });
+    }
+  }
 
   if (await hasPendingDeleteRequest(req.params.id)) {
     return res.status(409).json({ error: 'Este meio tem um pedido de remoção pendente e não pode ser editado.' });
@@ -999,6 +1050,8 @@ app.post('/api/composicoes/:id/prontidao', requireAuth('visualizador'), requireM
 app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { composicao_id, estado = 'previsto', ...camposDespacho } = req.body;
   if (!composicao_id) return res.status(400).json({ error: 'composicao_id obrigatório.' });
+  const errNac = await erroMeioNacional(null, composicao_id, req.user.role);
+  if (errNac) return res.status(403).json({ error: errNac });
 
   const { rows: [comp] } = await pool.query(
     `SELECT c.*, json_agg(json_build_object(
