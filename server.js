@@ -142,8 +142,35 @@ app.post('/api/ocorrencias', requireAuth('ofligacao'), wrap(async (req, res) => 
   }
 }));
 
+// Um meio só está resolvido quando foi desmobilizado E chegou à base. Enquanto
+// não chegar, continua a contar como ocupado (ver findRecursoConflict), pelo que
+// fechar a ocorrência nesse estado prende o recurso numa ocorrência arquivada
+// sem que nada o indique.
+const MEIO_RESOLVIDO = `(estado='desmobilizado' AND data_chegada_entidade IS NOT NULL)`;
+
+async function meiosPendentes(ocorrenciaId) {
+  const { rows } = await pool.query(
+    `SELECT eq, tipo, estado, (data_chegada_entidade IS NULL) AS sem_chegada_base
+       FROM meios
+      WHERE ocorrencia_id = $1 AND NOT ${MEIO_RESOLVIDO}
+      ORDER BY estado, eq`, [ocorrenciaId]);
+  return rows;
+}
+
 app.patch('/api/ocorrencias/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
+
+  // Fechar exige que todos os meios estejam desmobilizados e com chegada à base.
+  if (b.status === 'closed') {
+    const pendentes = await meiosPendentes(req.params.id);
+    if (pendentes.length) {
+      return res.status(409).json({
+        error: `Não é possível fechar: ${pendentes.length} meio(s) sem desmobilização completa.`,
+        meios_pendentes: pendentes,
+      });
+    }
+  }
+
   try {
     await pool.query(
       `UPDATE ocorrencias

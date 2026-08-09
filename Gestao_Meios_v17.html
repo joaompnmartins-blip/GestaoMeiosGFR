@@ -3538,13 +3538,66 @@ function openPostoDetalhe(postoId){
   document.querySelector('[data-page="ocorrencias"]').classList.add('active');
 }
 
+const ESTADO_ROTULO = {
+  previsto:'Previsto', transito:'Em trânsito', operacao:'Em operação',
+  descanso:'Em descanso', desmobilizado:'Desmobilizado',
+};
+
+// Um meio só está resolvido quando foi desmobilizado E deu chegada à base. Até
+// aí continua a bloquear o recurso (ver findRecursoConflict no servidor), pelo
+// que fechar prendia-o numa ocorrência arquivada sem nada o indicar.
+function meiosPendentesFecho(occId){
+  return db.teams.filter(t => t.ocorrencia_id===occId &&
+    !(t.estado==='desmobilizado' && t.dataChegadaEntidade));
+}
+
+function avisarMeiosPendentes(lista){
+  const emServico  = lista.filter(t => t.estado !== 'desmobilizado');
+  const emRegresso = lista.filter(t => t.estado === 'desmobilizado');
+  const linhas = ts => ts.map(t => `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px solid var(--border);">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;flex:1;">${esc(t.eq)}</span>
+      <span style="font-size:10px;color:var(--muted);">${esc(t.tipo||'')}</span>
+      <span style="font-size:10px;color:var(--warn);white-space:nowrap;">${esc(ESTADO_ROTULO[t.estado]||t.estado)}</span>
+    </div>`).join('');
+  const bloco = (titulo, nota, ts) => ts.length ? `<div style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--warn);margin-bottom:2px;">${titulo} · ${ts.length}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${nota}</div>
+      ${linhas(ts)}</div>` : '';
+
+  document.getElementById('modal-action-box').style.width='520px';
+  document.getElementById('modal-action-title').textContent='Não é possível fechar a ocorrência';
+  document.getElementById('action-body').innerHTML = `
+    <p style="font-size:13px;margin:0 0 14px;">
+      ${lista.length} meio(s) sem desmobilização completa. Enquanto não derem
+      chegada à base, os seus recursos continuam indisponíveis para outras
+      ocorrências — mesmo com esta arquivada.
+    </p>
+    ${bloco('Ainda em serviço','Desmobilizar e registar a chegada à base.',emServico)}
+    ${bloco('Em regresso à base','Desmobilizados; falta registar a chegada à base.',emRegresso)}`;
+  document.getElementById('action-footer').innerHTML =
+    `<button class="btn btn-primary" onclick="closeModal('modal-action')">Entendido</button>`;
+  openModal('modal-action');
+}
+
 async function toggleCloseOcorrencia(){
   const o=db.ocorrencias.find(x=>x.id===currentOccId);
   if(!o) return;
   if(o.status==='active'){
+    const pendentes = meiosPendentesFecho(o.id);
+    if(pendentes.length){ avisarMeiosPendentes(pendentes); return; }
     if(!confirm('Fechar esta ocorrência? Será arquivada e removida da lista de ativas.\n\nSerá gerada automaticamente uma tabela Excel com o resumo de todos os meios.')) return;
     o.status='closed';
-    await supaWriteOrQueue('ocorrencias','update',{id:o.id, row:{status:'closed'}}, o.id, `Fechar: ${o.nome}`);
+    // O servidor volta a verificar os pendentes e pode recusar (alguém pode ter
+    // acrescentado um meio entretanto). supaWriteOrQueue devolve null nesse caso
+    // — sem isto, a ocorrência ficava fechada no ecrã e activa na base.
+    const gravado = await supaWriteOrQueue('ocorrencias','update',{id:o.id, row:{status:'closed'}}, o.id, `Fechar: ${o.nome}`);
+    if(gravado === null){
+      o.status='active';
+      const frescos = meiosPendentesFecho(o.id);
+      if(frescos.length) avisarMeiosPendentes(frescos);
+      renderTeams();
+      return;
+    }
     await persistOccEvento(o.id,'occ','Ocorrência fechada.');
     await cacheToIDB();
     // Generate Excel summary on close
