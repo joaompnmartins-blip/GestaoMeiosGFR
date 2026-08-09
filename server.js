@@ -337,10 +337,32 @@ async function erroMeioNacional(recursoId, composicaoId, role) {
   return null;
 }
 
+// Um meio inoperacional não se empenha. Verifica-se apenas quando a atribuição
+// muda: um recurso pode ser marcado INOP depois de já estar empenhado (existe
+// um caso assim em produção) e isso não pode trancar o meio que já lá está.
+async function erroProntidao(recursoId, viaturaId) {
+  const inop = (cod, motivo) => `${cod} está inoperacional${motivo ? `: ${motivo}` : ''} e não pode ser empenhado.`;
+  if (recursoId) {
+    const { rows } = await pool.query(
+      `SELECT codigo, prontidao_motivo FROM recursos
+        WHERE id=$1 AND prontidao='inoperacional'`, [recursoId]);
+    if (rows[0]) return inop(rows[0].codigo, rows[0].prontidao_motivo);
+  }
+  if (viaturaId) {
+    const { rows } = await pool.query(
+      `SELECT viatura_cod, prontidao_motivo FROM viaturas
+        WHERE id=$1 AND prontidao='inoperacional'`, [viaturaId]);
+    if (rows[0]) return inop(rows[0].viatura_cod, rows[0].prontidao_motivo);
+  }
+  return null;
+}
+
 app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
   const errNac = await erroMeioNacional(b.recurso_id, b.composicao_id, req.user.role);
   if (errNac) return res.status(403).json({ error: errNac });
+  const errPr = await erroProntidao(b.recurso_id, b.viatura_id);
+  if (errPr) return res.status(409).json({ error: errPr });
   const conflict = await findRecursoConflict(b.recurso_id, b.estado, null);
   if (conflict) {
     return res.status(409).json({ error: `Este recurso já está activo na ocorrência "${conflict.local_ignicao}".` });
@@ -372,16 +394,22 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   // Trocar o recurso de um meio existente é outra via para o mesmo desvio. Só
   // se verifica quando o valor muda de facto: já existem meios nacionais
   // empenhados e reenviar o mesmo recurso_id ao gravar não pode trancá-los.
-  if ('recurso_id' in b || 'composicao_id' in b) {
+  if ('recurso_id' in b || 'composicao_id' in b || 'viatura_id' in b) {
     const { rows: [antes] } = await pool.query(
-      'SELECT recurso_id, composicao_id FROM meios WHERE id=$1', [req.params.id]);
+      'SELECT recurso_id, composicao_id, viatura_id FROM meios WHERE id=$1', [req.params.id]);
     const igual = (k) => String(b[k] ?? '') === String(antes?.[k] ?? '');
     const recNovo  = 'recurso_id'    in b && !igual('recurso_id');
     const compNovo = 'composicao_id' in b && !igual('composicao_id');
+    const viatNovo = 'viatura_id'    in b && !igual('viatura_id');
     if (recNovo || compNovo) {
       const errNac = await erroMeioNacional(
         recNovo ? b.recurso_id : null, compNovo ? b.composicao_id : null, req.user.role);
       if (errNac) return res.status(403).json({ error: errNac });
+    }
+    if (recNovo || viatNovo) {
+      const errPr = await erroProntidao(
+        recNovo ? b.recurso_id : null, viatNovo ? b.viatura_id : null);
+      if (errPr) return res.status(409).json({ error: errPr });
     }
   }
 
@@ -1059,7 +1087,9 @@ app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap
        'codigo', COALESCE(r.codigo, v.viatura_cod),
        'tipo',   COALESCE(r.tipo,   v.classe),
        'num_elementos', COALESCE(r.num_elementos, 1),
-       'matricula', v.matricula, 'contacto', r.contacto
+       'matricula', v.matricula, 'contacto', r.contacto,
+       'prontidao', CASE WHEN r.prontidao='inoperacional' OR v.prontidao='inoperacional'
+                         THEN 'inoperacional' ELSE 'operacional' END
      ) ORDER BY cm.ordem) AS membros
      FROM composicoes c
      JOIN composicao_membros cm ON cm.composicao_id = c.id
@@ -1069,6 +1099,15 @@ app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap
     [composicao_id]
   );
   if (!comp) return res.status(404).json({ error: 'Composição não encontrada.' });
+
+  // Uma composição não se empenha com membros inoperacionais: seria empenhar
+  // pela porta lateral aquilo que é recusado membro a membro.
+  const inops = (comp.membros || []).filter(m => m.prontidao === 'inoperacional');
+  if (inops.length) {
+    return res.status(409).json({
+      error: `Composição com ${inops.length} membro(s) inoperacional(is): ${inops.map(m => m.codigo || '?').join(', ')}.`,
+    });
+  }
 
   const client = await pool.connect();
   try {

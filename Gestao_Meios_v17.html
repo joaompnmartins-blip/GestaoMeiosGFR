@@ -5467,6 +5467,9 @@ function refreshPresetSelect(selectedId){
     // selectedId sobrevive para que editar um meio nacional já empenhado não
     // perca a sua selecção nem a apague ao gravar.
     if(foraDesteModal(r) && r.id !== selectedId) return false;
+    // Inoperacional não é empenhável. A excepção do selectedId mantém-no
+    // visível quando já está empenhado e passou a INOP depois disso.
+    if(r.prontidao === 'inoperacional' && r.id !== selectedId) return false;
     if(fTE && r.tipo !== fTE) return false;
     if(fSR && r.subregiao !== fSR) return false;
     if(r.id !== selectedId && busyRecurso.has(r.id)) return false;
@@ -7904,7 +7907,11 @@ function fsbfAutoContacto(selectEl, contactElId){
 }
 
 function fsbfViatOpts(viaturas, classes, selectedId){
-  let list = viaturas.filter(v => (v.dispositivo && !v.em_uso) || v.id === selectedId);
+  // Inoperacional junta-se a "fora do dispositivo" e "em uso" como motivo para
+  // não ser oferecida. selectedId sobrevive: uma viatura já na carta que passe
+  // a INOP continua visível, em vez de desaparecer da linha sem explicação.
+  let list = viaturas.filter(v =>
+    (v.dispositivo && !v.em_uso && v.prontidao !== 'inoperacional') || v.id === selectedId);
   list = classes
     ? list.filter(v => classes.includes(v.classe))
     : list.filter(v => v.classe !== 'MR');
