@@ -3619,12 +3619,29 @@ async function toggleCloseOcorrencia(){
 }
 
 // ─── OFICIAL DE LIGAÇÃO ──────────────────────────────────────────
+// Um oficial de ligação ocupa um só lugar: PCO de uma ocorrência ou oficial de
+// um PCF/AIM. O servidor devolve ocupado_em preenchido para quem já está
+// atribuído; o lugar que se está a editar é a excepção, senão o titular actual
+// desaparecia da sua própria lista.
+function ofligLivres(lista, titularId){
+  return (lista||[]).filter(u => !u.ocupado_em || u.id === titularId);
+}
+// Um nome que desaparece sem explicação lê-se como avaria. Dizer quantos estão
+// ocultos e porquê evita a procura às cegas.
+function ofligNotaOcultos(n){
+  return n > 0
+    ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">${n} oficial(is) não listado(s) por já estar(em) atribuído(s) a outra ocorrência ou posto.</div>`
+    : '';
+}
+
 async function openChangeOfLigacao(){
   const o=db.ocorrencias.find(x=>x.id===currentOccId);
   if(!o) return;
   document.getElementById('modal-action-box').style.width='420px';
   const { data, error } = await apiFetch('/api/utilizadores/ofligacao');
   if(error){ toast('Não foi possível obter a lista de oficiais de ligação.','err'); return; }
+  const livres = ofligLivres(data, o.oficialLigacaoId);
+  const ocultos = (data||[]).length - livres.length - ((data||[]).some(u=>u.id===o.oficialLigacaoId)?1:0);
   document.getElementById('action-team-id').value=o.id;
   document.getElementById('modal-action-title').textContent='Alterar Oficial de Ligação';
   document.getElementById('action-body').innerHTML=`
@@ -3633,8 +3650,9 @@ async function openChangeOfLigacao(){
       <label class="form-label">Novo Oficial de Ligação</label>
       <select class="form-select" id="oflig-new">
         <option value="">— Selecionar —</option>
-        ${(data||[]).filter(u=>u.id!==o.oficialLigacaoId).map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}">${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('')}
+        ${livres.filter(u=>u.id!==o.oficialLigacaoId).map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}">${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('')}
       </select>
+      ${ofligNotaOcultos(ocultos)}
     </div>`;
   document.getElementById('action-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
     <button class="btn btn-primary" onclick="submitChangeOfLigacao('${o.id}')">✓ Confirmar</button>`;
@@ -3705,7 +3723,9 @@ async function openPostoModal(postoId){
   document.getElementById('action-team-id').value = postoId||'';
 
   const { data: ofLigs } = await apiFetch('/api/utilizadores/ofligacao');
-  const olOptions = (ofLigs||[]).map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}"${posto?.oficial_ligacao_id===u.id?' selected':''}>${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('');
+  const olLivres  = ofligLivres(ofLigs, posto?.oficial_ligacao_id);
+  const olOcultos = (ofLigs||[]).length - olLivres.length;
+  const olOptions = olLivres.map(u=>`<option value="${u.id}" data-nome="${esc(u.nome)}"${posto?.oficial_ligacao_id===u.id?' selected':''}>${esc(u.nome)}${u.subregiao?' ('+esc(u.subregiao)+')':''}</option>`).join('');
 
   title.textContent = posto ? `Editar Posto — ${posto.nome}` : 'Novo Posto de Comando';
   body.innerHTML = `
@@ -3727,6 +3747,7 @@ async function openPostoModal(postoId){
           <option value="">— Sem OL —</option>
           ${olOptions}
         </select>
+        ${ofligNotaOcultos(olOcultos)}
       </div>
     </div>`;
   footer.innerHTML = `<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>

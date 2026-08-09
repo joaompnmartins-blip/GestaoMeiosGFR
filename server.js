@@ -127,13 +127,20 @@ app.get('/api/ocorrencias', requireAuth('visualizador'), wrap(async (req, res) =
 
 app.post('/api/ocorrencias', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
+  // Quem cria fica PCO, mas só se estiver livre. Registar uma ocorrência nunca
+  // pode ser bloqueado — é o acto mais urgente da aplicação — por isso, se o
+  // autor já está atribuído noutro lugar, a ocorrência nasce sem PCO e fica à
+  // espera de atribuição explícita, em vez de duplicar a pessoa em silêncio.
+  const autorOcupado = await ofligOcupadoEm(req.user.id);
+  const ofId   = autorOcupado ? null : req.user.id;
+  const ofNome = autorOcupado ? null : req.user.nome;
   try {
     const { rows } = await pool.query(
       `INSERT INTO ocorrencias
          (local_ignicao, codigo_ocorrencia, subregiao, concelho, obs, inicio, status, created_by, oficial_ligacao_id, oficial_ligacao_nome)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8,$9) RETURNING *`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [b.local_ignicao, b.codigo_ocorrencia || null, b.subregiao || null, b.concelho || null,
-       b.obs || null, b.inicio || null, b.status || 'active', req.user.id, req.user.nome]
+       b.obs || null, b.inicio || null, b.status || 'active', req.user.id, ofId, ofNome]
     );
     res.json(rows[0]);
   } catch(e) {
@@ -159,6 +166,11 @@ async function meiosPendentes(ocorrenciaId) {
 
 app.patch('/api/ocorrencias/:id', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
+
+  if ('oficial_ligacao_id' in b) {
+    const ondeOF = await ofligOcupadoEm(b.oficial_ligacao_id, { ocorrenciaId: req.params.id });
+    if (ondeOF) return res.status(409).json({ error: `Oficial de ligação já atribuído a: ${ondeOF}.` });
+  }
 
   // Fechar exige que todos os meios estejam desmobilizados e com chegada à base.
   if (b.status === 'closed') {
@@ -603,6 +615,8 @@ app.get('/api/ocorrencias/:id/postos', requireAuth('visualizador'), wrap(async (
 app.post('/api/ocorrencias/:id/postos', requireAuth('ofligacao'), wrap(async (req, res) => {
   const b = req.body;
   if (!b.nome || !b.tipo) return res.status(400).json({ error: 'nome e tipo obrigatórios.' });
+  const ondeOF = await ofligOcupadoEm(b.oficial_ligacao_id);
+  if (ondeOF) return res.status(409).json({ error: `Oficial de ligação já atribuído a: ${ondeOF}.` });
   const { rows } = await pool.query(
     `INSERT INTO postos_comando (ocorrencia_id, nome, tipo, oficial_ligacao_id, oficial_ligacao_nome, created_by)
      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -621,6 +635,10 @@ app.patch('/api/postos/:id', requireAuth('ofligacao'), wrap(async (req, res) => 
   const b = req.body;
   const cols = ALLOWED.filter(c => c in b);
   if (!cols.length) return res.json({ ok: true });
+  if ('oficial_ligacao_id' in b) {
+    const ondeOF = await ofligOcupadoEm(b.oficial_ligacao_id, { postoId: req.params.id });
+    if (ondeOF) return res.status(409).json({ error: `Oficial de ligação já atribuído a: ${ondeOF}.` });
+  }
   const sets = cols.map((c, i) => `${c}=$${i + 1}`).join(',');
   const vals = [...cols.map(c => b[c] ?? null), req.params.id];
   const { rows } = await pool.query(`UPDATE postos_comando SET ${sets} WHERE id=$${cols.length + 1} RETURNING *`, vals);
@@ -838,13 +856,55 @@ app.delete('/api/operacionais/:id', requireAuth('ofligacao'), wrap(async (req, r
 }));
 
 // Lista de candidatos a Oficial de Ligação (para transferir o papel numa ocorrência)
+// Um oficial de ligação ocupa um só posto de cada vez: PCO de uma ocorrência ou
+// oficial de um PCF/AIM. Só contam lugares vivos — ocorrência activa e, no caso
+// dos postos, posto activo. Sem isto, ocorrências fechadas e postos encerrados
+// iam retendo pessoas e a lista de escolha esgotava-se com o tempo.
+const OFLIG_OCUPACAO_SQL = `
+  SELECT o.oficial_ligacao_id AS user_id,
+         'Ocorrência ' || o.local_ignicao AS onde
+    FROM ocorrencias o
+   WHERE o.oficial_ligacao_id IS NOT NULL AND o.status = 'active'
+  UNION ALL
+  SELECT p.oficial_ligacao_id AS user_id,
+         p.tipo || ' ' || p.nome || ' (' || o.local_ignicao || ')' AS onde
+    FROM postos_comando p
+    JOIN ocorrencias o ON o.id = p.ocorrencia_id
+   WHERE p.oficial_ligacao_id IS NOT NULL AND p.ativo AND o.status = 'active'
+`;
+
 app.get('/api/utilizadores/ofligacao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, nome, subregiao FROM utilizadores
-     WHERE role IN ('ofligacao','ofligacao_ccon','admin') AND ativo = true ORDER BY nome`
+    `SELECT u.id, u.nome, u.subregiao,
+            (SELECT string_agg(oc.onde, ' · ' ORDER BY oc.onde)
+               FROM (${OFLIG_OCUPACAO_SQL}) oc WHERE oc.user_id = u.id) AS ocupado_em
+       FROM utilizadores u
+      WHERE u.role IN ('ofligacao','ofligacao_ccon','admin') AND u.ativo = true
+      ORDER BY u.nome`
   );
   res.json(rows);
 }));
+
+// Onde é que este oficial já está, ignorando o lugar que se está a editar.
+async function ofligOcupadoEm(userId, { ocorrenciaId, postoId } = {}) {
+  if (!userId) return null;
+  const { rows } = await pool.query(
+    `SELECT onde FROM (${OFLIG_OCUPACAO_SQL}) oc
+      WHERE oc.user_id = $1 LIMIT 1`, [userId]);
+  if (!rows[0]) return null;
+  // O lugar em edição não conta como conflito consigo mesmo.
+  if (ocorrenciaId) {
+    const { rows: [r] } = await pool.query(
+      `SELECT 1 FROM ocorrencias WHERE id=$1 AND oficial_ligacao_id=$2`, [ocorrenciaId, userId]);
+    if (r) return null;
+  }
+  if (postoId) {
+    const { rows: [r] } = await pool.query(
+      `SELECT 1 FROM postos_comando WHERE id=$1 AND oficial_ligacao_id=$2`, [postoId, userId]);
+    if (r) return null;
+  }
+  return rows[0].onde;
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  UTILIZADORES (admin only)
