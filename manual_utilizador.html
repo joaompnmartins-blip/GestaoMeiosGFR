@@ -562,6 +562,7 @@
         <a class="toc-item" href="#sec-occ-detalhe"><span class="toc-num">2.3</span><span class="toc-label">Detalhe da Ocorrência e Fita do Tempo</span></a>
         <a class="toc-item" href="#sec-occ-oflig"><span class="toc-num">2.4</span><span class="toc-label">Oficial de Ligação</span></a>
         <a class="toc-item" href="#sec-occ-fechar"><span class="toc-num">2.5</span><span class="toc-label">Fechar e Reabrir</span></a>
+        <a class="toc-item" href="#sec-occ-postos"><span class="toc-num">2.6</span><span class="toc-label">Postos de Comando (PCF e AIM)</span></a>
       </li>
       <li><a class="toc-item" href="#sec-meios"><span class="toc-num">03</span><span class="toc-label">Gestão de Meios</span></a></li>
       <li class="toc-sub">
@@ -589,12 +590,15 @@
         <a class="toc-item" href="#sec-gfsbf-carta"><span class="toc-num">10.2</span><span class="toc-label">Carta de Meios</span></a>
         <a class="toc-item" href="#sec-gfsbf-viaturas"><span class="toc-num">10.3</span><span class="toc-label">Gestão de Viaturas FSBF</span></a>
         <a class="toc-item" href="#sec-gfsbf-operacionais"><span class="toc-num">10.4</span><span class="toc-label">Operacionais FSBF</span></a>
+        <a class="toc-item" href="#sec-gfsbf-gruata"><span class="toc-num">10.5</span><span class="toc-label">Gruata</span></a>
+        <a class="toc-item" href="#sec-gfsbf-empenhamento"><span class="toc-num">10.6</span><span class="toc-label">Empenhamento</span></a>
       </li>
       <li><a class="toc-item" href="#sec-gestor-icnf"><span class="toc-num">11</span><span class="toc-label">Módulo Gestor ICNF</span></a></li>
       <li class="toc-sub">
         <a class="toc-item" href="#sec-gicnf-occ"><span class="toc-num">11.1</span><span class="toc-label">Vista de Ocorrências ICNF</span></a>
         <a class="toc-item" href="#sec-gicnf-radios"><span class="toc-num">11.2</span><span class="toc-label">Gestão de Rádios ICNF</span></a>
         <a class="toc-item" href="#sec-gicnf-egfr"><span class="toc-num">11.3</span><span class="toc-label">Escalas EGFR</span></a>
+        <a class="toc-item" href="#sec-gicnf-escalas-csv"><span class="toc-num">11.4</span><span class="toc-label">Importar Escalas por CSV</span></a>
       </li>
     </ul>
   </div>
@@ -863,7 +867,7 @@
           <div class="step-num">01</div>
           <div class="step-body">
             <strong>Atribuição automática</strong>
-            <p>O OfLigacao que cria a ocorrência é automaticamente designado Oficial de Ligação. Esta atribuição fica registada na Fita do Tempo.</p>
+            <p>Quem cria a ocorrência é designado Oficial de Ligação, <strong>desde que não esteja já atribuído noutro lugar</strong>. Se já for OL de outra ocorrência activa ou de um posto de comando, a ocorrência é criada <strong>sem OL</strong> e fica à espera de atribuição explícita — registar a ocorrência nunca é bloqueado. A atribuição fica registada na Fita do Tempo.</p>
           </div>
         </div>
         <div class="step">
@@ -881,6 +885,10 @@
           </div>
         </div>
       </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Um oficial de ligação ocupa um só lugar</div>
+        Um OL não pode estar atribuído a duas ocorrências ao mesmo tempo, nem a uma ocorrência e a um posto de comando simultaneamente. <strong>Quem já está atribuído não aparece nas listas de escolha</strong> — cada lista indica, em nota, quantos oficiais estão ocultos por esse motivo. Contam apenas os lugares vivos: ocorrências fechadas ou fundidas e postos encerrados libertam a pessoa.
+      </div>
       <div class="info-box">
         <div class="info-box-title">Nota</div>
         O botão <kbd>✎ Alterar</kbd> não está disponível em ocorrências fechadas/arquivadas.
@@ -896,6 +904,7 @@
           <div class="step-body">
             <strong>Fechar</strong>
             <p>Na vista de detalhe, clicar em <kbd>Fechar Ocorrência</kbd>. É pedida confirmação. Após fechar, a ocorrência passa para o Arquivo e deixa de aparecer na lista principal.</p>
+            <p><strong>Só é possível fechar com todos os meios resolvidos</strong> — ver o aviso abaixo.</p>
           </div>
         </div>
         <div class="step">
@@ -906,9 +915,60 @@
           </div>
         </div>
       </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Não é possível fechar com meios pendentes</div>
+        <p style="margin:0 0 8px;">Um meio só está resolvido quando foi <strong>desmobilizado</strong> e registou <strong>chegada à base</strong>. Enquanto isso não acontecer, o recurso continua indisponível para outras ocorrências — e ficaria preso numa ocorrência arquivada, sem nada o indicar.</p>
+        <p style="margin:0;">Ao tentar fechar com meios pendentes, aparece um aviso que os lista em dois grupos, porque a acção necessária é diferente:</p>
+        <ul style="margin:8px 0 0 20px;font-size:13px;line-height:1.9;">
+          <li><strong>Ainda em serviço</strong> — desmobilizar e registar a chegada à base.</li>
+          <li><strong>Em regresso à base</strong> — já desmobilizados; falta apenas registar a chegada.</li>
+        </ul>
+      </div>
       <div class="info-box danger">
         <div class="info-box-title">Eliminação permanente</div>
         A eliminação de uma ocorrência (e de todos os meios e eventos associados) é irreversível e requer perfil <span class="role-badge role-admin" style="font-size:8px;">admin</span>.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-occ-postos">
+      <div class="subsection-title">2.6 — Postos de Comando (PCF e AIM)</div>
+      <p>Requer perfil <span class="role-badge role-ofligacao">ofligacao</span> ou superior. Uma ocorrência pode ser organizada em postos de comando avançados, além do <strong>PCO Principal</strong>, que é o destino por omissão de todos os meios.</p>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">PCF — Posto de Comando de Frente</div>
+          <p style="font-size:13px;">Comando de uma frente de fogo. Recebe os meios que lhe são transferidos e pode ter o seu próprio Oficial de Ligação.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">AIM — Área de Intervenção Municipal</div>
+          <p style="font-size:13px;">Área de intervenção de âmbito municipal, com a mesma mecânica de meios e oficial de ligação.</p>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Criar um posto</strong>
+            <p>Clicar em <kbd>+ Novo PCF/AIM</kbd>, escolher o <strong>Tipo</strong>, dar um <strong>Nome / Designação</strong> (ex.: <em>PCF Norte</em>) e, opcionalmente, atribuir um Oficial de Ligação. Gravar com <kbd>+ Criar Posto</kbd>. Ao reabrir o posto para edição, o botão passa a <kbd>✓ Guardar</kbd>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Transferir meios para o posto</strong>
+            <p>Nas acções rápidas de um meio, usar <kbd>⇄ Confirmar Transferência</kbd> e escolher o posto de destino. A transferência fica registada na Fita do Tempo.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <strong>Encerrar o posto</strong>
+            <p>Ao fechar um posto, <strong>os meios que lhe estavam atribuídos voltam ao PCO Principal</strong> — nenhum meio fica órfão. O encerramento é registado na Fita do Tempo.</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Filtros da Fita do Tempo</div>
+        Os postos de comando servem também de filtro na Fita do Tempo, permitindo ver apenas os eventos de uma frente.
       </div>
     </div>
   </div>
@@ -939,7 +999,7 @@
           <div class="step-num">02</div>
           <div class="step-body">
             <strong>Seleccionar um meio predefinido (recomendado)</strong>
-            <p>Utilizar os filtros <strong>Tipo Equipa</strong>, <strong>Sub-Região</strong> e <strong>Concelho</strong> para restringir a lista. Seleccionar a equipa na lista — os campos <strong>Designação</strong>, <strong>Tipo</strong>, <strong>N.º Operacionais</strong> e <strong>Concelho</strong> são preenchidos automaticamente.</p>
+            <p>Utilizar os filtros <strong>Tipo</strong> e <strong>Sub-região</strong> para restringir a lista. Seleccionar o meio — os campos <strong>Designação</strong>, <strong>Tipo</strong>, <strong>N.º Operacionais</strong> e <strong>Concelho</strong> são preenchidos automaticamente. Além dos recursos do catálogo, a lista inclui as brigadas <strong>BSF</strong> constituídas e os recursos <em>ad-hoc</em> criados para a ocorrência (marcados <strong>★ ad-hoc</strong>).</p>
           </div>
         </div>
         <div class="step">
@@ -964,6 +1024,15 @@
           </div>
         </div>
       </div>
+      <div class="info-box warn">
+        <div class="info-box-title">O que não aparece na lista, e porquê</div>
+        <ul style="margin:6px 0 0 20px;font-size:13px;line-height:1.9;">
+          <li><strong>Recursos e viaturas inoperacionais</strong> (prontidão INOP) não são empenháveis. A recusa aplica-se a todos os perfis, incluindo <span class="role-badge role-admin" style="font-size:8px;">admin</span> — a prontidão é um estado operacional definido de propósito por um gestor.</li>
+          <li><strong>Meios nacionais do FSBF</strong> — tipos <strong>EFSBF</strong> e <strong>EMR</strong>, e brigadas <strong>BSBF</strong> — são empenhados pelo <span class="role-badge role-ofligacao" style="font-size:8px;">ofligacao_ccon</span> a partir da Carta de Meios, e não por aqui.</li>
+          <li><strong>OLN</strong> não é um meio empenhável: é a escala nacional de oficiais de ligação, apresentada no campo <em>Oficial de Ligação CCON</em>.</li>
+          <li><strong>Recursos já activos noutra ocorrência</strong> desaparecem da lista. Um meio desmobilizado <em>sem</em> chegada à base ainda conta como ocupado.</li>
+        </ul>
+      </div>
     </div>
 
     <div class="subsection" id="sec-meios-estados">
@@ -972,7 +1041,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;">
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:8px 12px;">
           <span class="badge badge-transito">● Em Trânsito</span>
-          <span style="font-size:12px;color:var(--muted);">Estado inicial ao adicionar o meio</span>
+          <span style="font-size:12px;color:var(--muted);">A caminho do teatro de operações</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:2px;padding:8px 12px;">
           <span class="badge badge-operacao">● Em Operação</span>
@@ -1295,6 +1364,10 @@
         <div class="info-box-title">Compatibilidade</div>
         O ficheiro exportado é texto simples, compatível com qualquer editor de texto, e pode ser impresso ou arquivado directamente.
       </div>
+      <div class="info-box">
+        <div class="info-box-title">Excel ao fechar a ocorrência</div>
+        Ao fechar uma ocorrência é gerada automaticamente uma folha de cálculo com o resumo de todos os meios. Os códigos e matrículas são exportados como texto, para que a folha de cálculo não os converta em datas ou números.
+      </div>
     </div>
   </div>
 
@@ -1397,7 +1470,7 @@
 
 
   <!-- ══════════════════════════════════════
-       10. MÓDULO GESTOR FSBF
+       10. MÓDULO GESTOR / CHEFE GRUPO FSBF
   ══════════════════════════════════════ -->
   <div class="section" id="sec-gestor-fsbf">
     <div class="section-num">10 — Módulo Gestor / Chefe Grupo FSBF</div>
@@ -1469,9 +1542,30 @@
           <p style="font-size:13px;">O botão <kbd>📋 Copiar dia anterior</kbd> replica automaticamente todos os dados do dia anterior (coordenador, linhas BSBF e EMR) para a data selecionada, substituindo quaisquer dados já existentes.</p>
         </div>
       </div>
+      <div class="two-col" style="margin-top:10px;">
+        <div class="card">
+          <div class="card-title">Outros Meios</div>
+          <p style="font-size:13px;">Secção com a mesma estrutura das brigadas — base, viatura, matrícula, guarnição, chefe, contacto, ocorrência e observações — para meios que não pertencem à BSBF Norte, Sul ou GSBF.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Guarnição e Total Op.</div>
+          <p style="font-size:13px;">Campos de <strong>um só dígito</strong> (0 a 9). Escrever um segundo algarismo é recusado, com um piscar âmbar. Para alterar um valor, o campo selecciona-se ao receber o foco: basta escrever por cima.</p>
+        </div>
+      </div>
       <div class="info-box">
-        <div class="info-box-title">Exportar PDF</div>
-        O botão <kbd>🖨 Exportar PDF</kbd> abre a janela de impressão do browser com a carta formatada para impressão em A4.
+        <div class="info-box-title">Validação de linhas — âmbar, normal, verde</div>
+        <p style="margin:0 0 8px;">Cada linha da carta, e cada um dos blocos <strong>Coordenador de Dia</strong> e <strong>Chefe de Grupo</strong>, tem um botão de gravar-e-validar. As cores indicam o estado:</p>
+        <ul style="margin:0 0 8px 20px;font-size:13px;line-height:1.9;">
+          <li><strong>Âmbar</strong> — alterado no ecrã e ainda não gravado.</li>
+          <li><strong>Normal</strong> — gravado, mas não confirmado.</li>
+          <li><strong>Verde</strong> — confirmado. O botão mostra <kbd>✓</kbd>; clicar de novo anula a validação.</li>
+        </ul>
+        <p style="margin:0;">Alterar um campo substantivo de uma linha já confirmada <strong>anula a confirmação</strong>, porque esta deixou de descrever a linha. O Coordenador e o Chefe de Grupo validam-se de forma independente. Copiar um dia traz as linhas por validar.</p>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Exportar</div>
+        <p style="margin:0 0 6px;"><kbd>🖨 Exportar PDF</kbd> abre a janela de impressão do browser com a carta formatada em A4, numa só página.</p>
+        <p style="margin:0;"><kbd>📊 Exportar Excel</kbd> produz um ficheiro editável com as mesmas secções e colunas, incluindo a coluna <strong>Ocorrência</strong>. Se houver linhas por validar, é apresentado um aviso antes de exportar, com a contagem por secção.</p>
       </div>
     </div>
 
@@ -1496,6 +1590,59 @@
       <div class="info-box">
         <div class="info-box-title">Campos de nome e contacto na carta</div>
         Ao selecionar um operacional pelo nome na carta de meios (coordenador ou chefe de equipa), o campo de contacto é preenchido automaticamente com o número registado na lista de operacionais.
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Base, Companhia e Grupo</div>
+        Cada operacional tem <strong>Base</strong>, <strong>Companhia</strong> e <strong>Grupo</strong>, apresentados como colunas na lista e disponíveis como filtros. A Companhia é atributo do operacional — não se deduz da base.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gfsbf-gruata">
+      <div class="subsection-title">10.5 — Gruata <span style="font-size:12px;font-weight:400;color:var(--muted);">(gestor_fsbf e chefe_grupo_fsbf)</span></div>
+      <p>O separador <strong>Gruata</strong> constitui a força especial do dia a partir das linhas <strong>GSBF</strong> da Carta de Meios. É um <strong>retrato fixo</strong>: uma vez constituída, a Gruata não acompanha alterações posteriores à carta.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Constituir</strong>
+            <p>Escolher a data e clicar em <kbd>⚙ Constituir / Repopular</kbd>. As linhas do GSBF desse dia — viatura, matrícula, chefe, contacto, guarnição, ISSI e local de pré-posicionamento — são copiadas para a Gruata. Existe <strong>uma Gruata por dia</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Ajustar e exportar</strong>
+            <p>As linhas podem ser editadas na Gruata sem afectar a carta. <kbd>🖨 Exportar PDF</kbd> e <kbd>📊 Exportar Excel</kbd> produzem a ficha da força.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <strong>Empenhar numa ocorrência</strong>
+            <p>A Gruata é empenhada como meio nacional pelo <span class="role-badge role-ofligacao">ofligacao_ccon</span>, a partir da vista de meios nacionais disponíveis da ocorrência.</p>
+          </div>
+        </div>
+      </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Limpar o dia</div>
+        Limpar a Gruata de um dia desfaz também os seus efeitos: a base do EMR é reposta no valor anterior e as ocorrências atribuídas às linhas são libertadas. Repopular substitui integralmente o retrato anterior.
+      </div>
+    </div>
+
+    <div class="subsection" id="sec-gfsbf-empenhamento">
+      <div class="subsection-title">10.6 — Empenhamento <span style="font-size:12px;font-weight:400;color:var(--muted);">(gestor_fsbf e chefe_grupo_fsbf)</span></div>
+      <p>O separador <strong>Empenhamento</strong> mostra, por dia e por <strong>companhia</strong>, que parte do dispositivo FSBF está empenhada. Apresenta tabelas e gráficos de evolução.</p>
+      <div class="info-box">
+        <div class="info-box-title">O que conta como empenhado</div>
+        Uma equipa está empenhada quando tem uma <strong>ocorrência atribuída</strong> na Carta de Meios — o campo <em>Ocorrência</em> da linha. Não basta constar da carta. Só entram nos totais as viaturas <strong>no dispositivo</strong>; meios que não podem ser atribuídos a uma companhia não são contados.
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Cálculo automático</div>
+        Os valores de cada dia são calculados e guardados automaticamente ao abrir o separador — não é necessário recalcular dia a dia. Alterar a ocorrência de uma linha da carta actualiza o dia correspondente.
+      </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Leitura das percentagens por companhia</div>
+        A companhia de um <strong>operacional</strong> está registada na lista de operacionais. A de uma <strong>viatura</strong> é deduzida da sua base, e base não determina companhia — as percentagens relativas a viaturas devem por isso ser lidas como indicativas.
       </div>
     </div>
   </div>
@@ -1600,13 +1747,59 @@
         A edição de escalas EGFR está restrita aos perfis <span class="role-badge role-ofligacao" style="font-size:8px;">ofligacao_ccon</span>, <span class="role-badge role-gestor-icnf" style="font-size:8px;">gestor_icnf</span> e <span class="role-badge role-admin" style="font-size:8px;">admin</span>. Outros perfis podem visualizar as escalas mas não as editar.
       </div>
     </div>
+
+    <div class="subsection" id="sec-gicnf-escalas-csv">
+      <div class="subsection-title">11.4 — Importar Escalas por CSV</div>
+      <p>As escalas <strong>OLN</strong> e <strong>EGFR</strong> podem ser carregadas a partir de um ficheiro CSV escolhido pelo utilizador, através do botão <kbd>⬆ Importar Escalas</kbd>.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <div class="step-body">
+            <strong>Escolher o ficheiro</strong>
+            <p>Clicar em <kbd>⬆ Importar Escalas</kbd> e selecionar o <code>.csv</code>. O nome do ficheiro escolhido é apresentado na janela de importação.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <div class="step-body">
+            <strong>Rever a pré-visualização</strong>
+            <p>Antes de gravar, é apresentado um resumo: tipo de escala, número de linhas, <strong>intervalo de datas</strong> abrangido e quantos registos já existentes nesse intervalo vão ser substituídos. Nada é escrito nesta fase.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <div class="step-body">
+            <strong>Confirmar</strong>
+            <p>Clicar em <kbd>✓ Confirmar importação</kbd> para aplicar. Sem esta confirmação, a importação não altera nada.</p>
+          </div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Colunas obrigatórias — OLN</div>
+          <p style="font-size:13px;"><code>data</code>, <code>nome</code></p>
+        </div>
+        <div class="card">
+          <div class="card-title">Colunas obrigatórias — EGFR</div>
+          <p style="font-size:13px;"><code>data</code>, <code>turno</code>, <code>equipa</code>, <code>posicao</code>, <code>nome</code></p>
+        </div>
+      </div>
+      <div class="info-box danger">
+        <div class="info-box-title">A importação substitui todo o intervalo de datas</div>
+        A importação <strong>apaga as escalas existentes em todo o intervalo coberto pelo ficheiro</strong> e insere as do CSV — não faz fusão linha a linha. Um ficheiro que abranja um intervalo maior do que o pretendido apaga os dias intermédios, mesmo os que não constam do CSV. Confirme sempre o intervalo de datas apresentado na pré-visualização antes de confirmar.
+      </div>
+      <div class="info-box warn">
+        <div class="info-box-title">Nomes têm de coincidir exactamente</div>
+        Os operacionais são ligados por <strong>nome exacto</strong> ao registo existente. Uma diferença de grafia — <em>João Batista</em> e <em>João Baptista</em> — cria uma correspondência falhada sem aviso. Acentos mal codificados são corrigidos automaticamente quando detectados, e a pré-visualização indica quantas linhas foram reparadas.
+      </div>
+    </div>
   </div>
 
 
   <!-- ══════ RODAPÉ ══════ -->
   <div class="footer">
     <div class="footer-logo">Gestão<span>Meios</span></div>
-    <div>ICNF · Gestão de Fogos Rurais · Manual do Utilizador v17 beta 1</div>
+    <div>ICNF · Gestão de Fogos Rurais · Manual do Utilizador v17 · revisto em 10 Ago 2026</div>
     <div>Documento editável — abrir em qualquer editor de texto ou browser</div>
   </div>
 
