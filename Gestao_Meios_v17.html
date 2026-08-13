@@ -8303,12 +8303,28 @@ function fsbfAutoContacto(selectEl, contactElId){
   if(el && op?.contacto) el.value = op.contacto;
 }
 
+// Viaturas já escolhidas noutro ponto da carta do mesmo dia. Cobre as linhas
+// das brigadas, os quatro lugares de cada cartão EMR e o veículo do Chefe de
+// Grupo. Sem isto a mesma viatura podia ficar em dois sítios ao mesmo tempo: o
+// em_uso do dropdown refere-se a empenhamento numa ocorrência, não à carta, e
+// não há restrição na base que o impeça.
+let _fsbfViatUsadas = new Set();
+function fsbfViatUsadasNaCarta(bsbf, emr, carta){
+  const s = new Set();
+  (bsbf||[]).forEach(r => r.veiculo_id && s.add(r.veiculo_id));
+  (emr||[]).forEach(r => ['mr_viatura_id','vaop_viatura_id','vpiloto_viatura_id','vlci_viatura_id']
+    .forEach(k => r[k] && s.add(r[k])));
+  if(carta && carta.chefe_veiculo_id) s.add(carta.chefe_veiculo_id);
+  return s;
+}
+
 function fsbfViatOpts(viaturas, classes, selectedId){
   // Inoperacional junta-se a "fora do dispositivo" e "em uso" como motivo para
   // não ser oferecida. selectedId sobrevive: uma viatura já na carta que passe
   // a INOP continua visível, em vez de desaparecer da linha sem explicação.
   let list = viaturas.filter(v =>
-    (v.dispositivo && !v.em_uso && v.prontidao !== 'inoperacional') || v.id === selectedId);
+    (v.dispositivo && !v.em_uso && v.prontidao !== 'inoperacional'
+      && !_fsbfViatUsadas.has(v.id)) || v.id === selectedId);
   list = classes
     ? list.filter(v => classes.includes(v.classe))
     : list.filter(v => v.classe !== 'MR');
@@ -8387,7 +8403,10 @@ function num1Limpa(el){
 
 function fsbfBsbfRow(row, allViat, isCarta){
   const id = row.id;
-  const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM','MU'], row.veiculo_id);
+  // MR incluída: uma máquina de rasto pode ser atribuída a uma linha de brigada,
+  // além do cartão EMR próprio. A exclusão do que já está na carta impede que
+  // fique nos dois sítios no mesmo dia.
+  const vOpts = fsbfViatOpts(allViat, ['VCOT','VFCI','VLCI','VTTP','PM','MU','MR'], row.veiculo_id);
   const savedViat = allViat.find(v => v.id === row.veiculo_id);
   const savedMat = savedViat?.matricula || row.matricula || '';
   return `<tr id="fsbf-bsbf-row-${id}" data-fsbf-row="bsbf:${id}"${row.validado?' class="fsbf-validado"':''}>
@@ -8503,6 +8522,7 @@ async function renderFsbfCarta(){
   _fsbfOperacionaisCache = opRes.data || [];
   _fsbfBsbfCache = bsbf;
   _fsbfEmrCache  = emr;
+  _fsbfViatUsadas = fsbfViatUsadasNaCarta(bsbf, emr, carta);
   _fsbfFogosCache = (fogosRes.data?.success ? fogosRes.data.data : null) || [];
 
   const norte  = bsbf.filter(r=>r.brigada==='Norte');

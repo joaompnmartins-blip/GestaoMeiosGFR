@@ -502,3 +502,69 @@ A ocorrência de teste foi eliminada no fim.
 2. Abrir uma ocorrência arquivada: não há botão de reabrir na ficha.
 3. Confirmar que continua a poder **fechar** uma ocorrência activa sua.
 4. Como `ofligacao_ccon` e como `admin`, confirmar que reabrem normalmente.
+
+---
+
+## 7 — MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta
+
+**Data:** 13/08/2026 · **Estado:** por validar
+
+### O que muda
+
+**As Máquinas de Rasto passam a constar do dropdown Código** das linhas de
+BSBF Norte, BSBF Sul, GSBF e Outros Meios. Eram excluídas em dois pontos: a
+lista de classes destas linhas não incluía `MR`, e o `fsbfViatOpts()` tinha um
+ramo de recurso que retirava `MR` sempre que não fosse pedida uma classe
+explícita. Ficam disponíveis **21 MR** — as activas, no dispositivo e
+operacionais, de um total de 30.
+
+**Nenhuma viatura pode ficar em dois pontos da carta do mesmo dia.** Passa a
+haver um conjunto das viaturas já escolhidas, e o dropdown exclui-as.
+
+### Porque a exclusão era necessária
+
+O `em_uso` que o dropdown já usava significa *empenhada numa ocorrência* — vem
+da tabela `meios` — e **não** *já usada nesta carta*. E não existe restrição na
+base: `fsbf_bsbf_equipa` e `fsbf_emr_equipa` só têm chave primária e índice por
+data, nada sobre `(data, veiculo_id)`. A mesma viatura podia portanto ficar em
+duas linhas ao mesmo tempo.
+
+O risco já existia para as outras classes, mas tornava-se muito mais provável
+com as MR, que têm secção própria: **9 MR já estão em uso em cartões EMR**, e
+sem a exclusão apareceriam também nas linhas de brigada.
+
+### Âmbito do conjunto
+
+Conta como usada uma viatura que esteja em qualquer destes pontos da carta do
+dia: a coluna Código de uma linha de brigada, qualquer um dos quatro lugares de
+um cartão EMR — MR, VAOP, piloto, VLCI — ou o veículo do Chefe de Grupo.
+
+**A viatura da própria linha continua sempre visível**, tal como acontece com as
+inoperacionais: se desaparecesse, gravar a linha apagava-a.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `MR` acrescentada às classes das linhas de brigada;
+  `fsbfViatUsadasNaCarta()` e `_fsbfViatUsadas`, calculados no
+  `renderFsbfCarta()` antes de desenhar; exclusão aplicada em `fsbfViatOpts()`.
+- **Servidor:** nenhuma.
+- **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Por decidir
+
+A exclusão vive no cliente. Nada impede, pela API, gravar a mesma viatura em
+duas linhas — nem existe índice único que o impeça. Se isso for para fechar, a
+forma sólida é um índice `UNIQUE (data, veiculo_id)` mais uma verificação que
+devolva 409, e vale entrada própria: há que decidir antes se alguma secção pode
+legitimamente repetir uma viatura.
+
+### Como validar
+
+1. Numa linha de BSBF Norte, abrir o dropdown Código: devem aparecer MR.
+2. Escolher uma MR e gravar; abrir o dropdown de outra linha: essa MR já não
+   consta.
+3. Abrir o cartão EMR que use essa MR: continua a mostrá-la como selecção.
+4. Reabrir a linha que a tem: continua visível — não desaparece da sua própria
+   linha.
+5. Confirmar o mesmo para uma VFCI usada no Chefe de Grupo: não deve aparecer
+   nas linhas de brigada.
