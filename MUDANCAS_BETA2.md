@@ -69,10 +69,22 @@ já podia ler este endpoint, apenas não tinha por onde chegar à página.
 ### Alterações
 
 - `Gestao_Meios_v17.html` — item de navegação passa de `auth-admin` a
-  `auth-ofligacao`; `renderDeleteRequests()` condiciona os botões a
+  `auth-ofligacao`; **`navTo()` deixa de exigir `admin` para a página
+  `pedidos`**; `renderDeleteRequests()` condiciona os botões a
   `currentRole==='admin'`; nota da página adaptada ao perfil.
 - **Servidor:** nenhuma.
 - **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Correcção após o primeiro teste (13/08)
+
+Mostrar o item de navegação não bastava: o `navTo()` tinha um segundo
+controlo que agrupava `pedidos` com `utilizadores` e recusava tudo o que não
+fosse `admin` — o separador aparecia mas clicar devolvia *«Acesso restrito a
+administradores»*. Os dois controlos estavam separados no código e só um
+tinha sido alterado.
+
+São agora três pontos, coerentes entre si: visibilidade do item,
+`navTo()`, e os botões. `utilizadores` mantém-se exclusivo do `admin`.
 
 ### Por decidir
 

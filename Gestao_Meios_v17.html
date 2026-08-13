@@ -2632,7 +2632,11 @@ let currentOccId=null, currentPostoId=null, currentView='sector';
 
 function navTo(page,el){
   const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':['gestor_fsbf','chefe_grupo_fsbf'],'gestao-icnf':'gestor_icnf'};
-  if((page==='utilizadores'||page==='pedidos')&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
+  if(page==='utilizadores'&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
+  // Pedidos: os oficiais de ligação consultam, só o admin aprova ou rejeita.
+  // A restrição de escrita está em renderDeleteRequests e no servidor.
+  if(page==='pedidos'&&!['admin','ofligacao','ofligacao_ccon'].includes(currentRole)){
+    toast('Acesso restrito a oficiais de ligação e administradores.','err'); return; }
   if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação regionais.','err'); return; }
   const _allowedMod = MODULE_PAGES[page];
   if(_allowedMod && currentRole!=='admin' && ![].concat(_allowedMod).includes(currentRole)){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
