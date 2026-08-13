@@ -558,6 +558,17 @@
   .fsbf-val-cnt { font-size: 11px; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
   .fsbf-val-cnt.completo { color: var(--success); }
 
+  /* Campo em leitura por o meio já ter passado essa fase. Tem de ler-se como
+     "fechado de propósito" e não como avariado: mantém o valor visível e
+     seleccionável, muda o fundo e o cursor, e leva um title com o motivo. */
+  .campo-bloqueado {
+    background: var(--surface2) !important;
+    color: var(--muted) !important;
+    cursor: not-allowed;
+    border-style: dashed !important;
+  }
+  .campo-bloqueado:focus { outline: none; box-shadow: none; }
+
   /* Guarnições são de um só dígito. São inputs de texto e não number: as setas
      tapavam o valor num campo de 46px, e `max` nunca limitou nada porque o
      valor é lido com parseInt(el.value) e não por validação de formulário. */
@@ -1615,6 +1626,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label class="form-label">Estado</label>
+        <div id="team-bloqueio-nota" style="display:none;font-size:11px;line-height:1.5;margin-bottom:6px;"></div>
         <select class="form-select" id="team-estado" onchange="toggleMobilizacaoFields(this.value,!!document.getElementById('team-edit-id').value)">
           <option value="previsto">Previsto</option>
           <option value="transito">Em Trânsito</option>
@@ -4788,6 +4800,49 @@ function makeOpsItem(val, idx){
   return div;
 }
 
+// ── Progressão de estados de um meio ─────────────────────────────────────
+// O percurso é de sentido único: um meio não regressa a um estado que já
+// deixou. Por isso, ao editar, os campos das fases anteriores passam a leitura
+// e o selector só oferece os estados legais a partir do actual. Descanso conta
+// como Operação: não é um passo em frente, o meio volta de lá à operação.
+const MEIO_ETAPA = { previsto:0, transito:1, operacao:2, descanso:2, desmobilizado:3 };
+const MEIO_TRANSICOES = {
+  previsto:      ['transito'],
+  transito:      ['operacao'],
+  operacao:      ['descanso','desmobilizado'],
+  descanso:      ['operacao','desmobilizado'],
+  desmobilizado: [],
+};
+const MEIO_ESTADO_ROT = { previsto:'Previsto', transito:'Em Trânsito',
+  operacao:'Em Operação', descanso:'Em Descanso', desmobilizado:'Desmobilizado' };
+
+// Campos por fase. A chegada à base e os km ficam sempre editáveis: são
+// registados no regresso, depois de o meio já estar desmobilizado.
+const MEIO_CAMPOS_FASE = [
+  { etapa:0, campos:['team-previsto-data','team-previsto-hora'] },
+  { etapa:1, campos:['team-data-despacho','team-hora-despacho',
+                     'team-data-saida-entidade','team-hora-saida-entidade'] },
+  { etapa:2, campos:['team-data-chegada','team-hora-chegada',
+                     'team-horas-max','team-limite-op'] },
+  { etapa:3, campos:['team-data-demob','team-hora-demob'] },
+];
+// A identidade do meio fixa-se ao criar: o que muda é a situação, não o meio.
+// Responsável e contacto ficam de fora — o chefe de equipa muda ao longo de
+// uma ocorrência longa e o número pode ter de ser corrigido.
+const MEIO_CAMPOS_IDENTIDADE = ['team-preset','team-eq','team-tipo',
+                                'team-matricula','team-concelho'];
+
+const meioPodeTudo = () => currentRole==='admin';
+
+function bloquearCampo(id, bloquear, motivo){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(el.tagName==='SELECT') el.disabled = bloquear;
+  else el.readOnly = bloquear;
+  el.classList.toggle('campo-bloqueado', bloquear);
+  if(bloquear) el.title = motivo; else el.removeAttribute('title');
+}
+
 function toggleMobilizacaoFields(estado, isEdit){
   const s=(id,v)=>{const el=document.getElementById(id);if(el)el.style.display=v?'':'none';};
   const hasSaida  = isEdit || ['transito','operacao','descanso','desmobilizado'].includes(estado);
@@ -4802,10 +4857,62 @@ function toggleMobilizacaoFields(estado, isEdit){
   s('mob-fld-data-chegada-entidade', hasDmob);
   s('mob-fld-hora-chegada-entidade', hasDmob);
   s('mob-fld-km', hasDmob);
-  s('previsto-data-field', estado==='previsto');
-  s('previsto-hora-field', estado==='previsto');
+  // Em edição os campos de Previsto continuam visíveis, mas em leitura: se
+  // desaparecessem perdia-se o registo da data que chegou a ser prevista.
+  s('previsto-data-field', estado==='previsto' || (isEdit && temValor('team-previsto-data')));
+  s('previsto-hora-field', estado==='previsto' || (isEdit && temValor('team-previsto-hora')));
+  if(isEdit) aplicarBloqueiosEdicao(estado);
 }
+const temValor = id => !!(document.getElementById(id)||{}).value;
 function togglePrevistoFields(val){ toggleMobilizacaoFields(val, false); }
+
+// Aplica os bloqueios de edição em função do estado actual do meio.
+function aplicarBloqueiosEdicao(estado){
+  const livre = meioPodeTudo();
+  const etapa = MEIO_ETAPA[estado] ?? 0;
+
+  MEIO_CAMPOS_IDENTIDADE.forEach(id => bloquearCampo(id, !livre,
+    'A identificação do meio fixa-se ao adicioná-lo. Para trocar de meio, remova este e adicione outro.'));
+
+  MEIO_CAMPOS_FASE.forEach(({etapa:e, campos}) => {
+    const passou = e < etapa;
+    campos.forEach(id => bloquearCampo(id, passou && !livre,
+      `${MEIO_ESTADO_ROT[estado]}: os dados de fases anteriores já não se alteram.`));
+  });
+
+  const nota = document.getElementById('team-bloqueio-nota');
+  if(nota){
+    nota.style.display = '';
+    nota.innerHTML = livre
+      ? '<span style="color:var(--muted);">Perfil administrador: todos os campos editáveis, incluindo os de fases anteriores.</span>'
+      : `<span style="color:var(--muted);">Meio em <strong>${esc(MEIO_ESTADO_ROT[estado]||estado)}</strong>. A identificação e os dados das fases já cumpridas estão em leitura — o percurso de estados não regressa.</span>`;
+  }
+  meioEstadoOpts(estado);
+}
+
+// O selector passa a oferecer só o estado actual e os seus sucessores legais.
+function meioEstadoOpts(estadoActual){
+  const sel = document.getElementById('team-estado');
+  if(!sel) return;
+  const permitidos = meioPodeTudo()
+    ? Object.keys(MEIO_ESTADO_ROT)
+    : [estadoActual, ...(MEIO_TRANSICOES[estadoActual]||[])];
+  sel.innerHTML = permitidos.map(e =>
+    `<option value="${e}"${e===estadoActual?' selected':''}>${MEIO_ESTADO_ROT[e]||e}</option>`).join('');
+  sel.value = estadoActual;
+}
+
+// Ao adicionar não há transição — escolhe-se o estado inicial — por isso o
+// selector volta à lista completa e nada fica bloqueado.
+function meioEstadoOptsCompleto(){
+  const sel = document.getElementById('team-estado');
+  if(sel) sel.innerHTML = Object.entries(MEIO_ESTADO_ROT)
+    .map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  [...MEIO_CAMPOS_IDENTIDADE, ...MEIO_CAMPOS_FASE.flatMap(f=>f.campos)]
+    .forEach(id => bloquearCampo(id, false));
+  const nota = document.getElementById('team-bloqueio-nota');
+  if(nota) nota.style.display = 'none';
+}
 
 // ── Datetime ordering validation ──────────────────────────────────
 function parseDT(date, time){
@@ -4923,6 +5030,7 @@ function openAddTeam(){
   document.getElementById('team-pm-ops').value='';
   document.getElementById('pm-ops-list').innerHTML='';
   onTeamTipoChange();
+  meioEstadoOptsCompleto();
   document.getElementById('team-ops').value='';
   document.getElementById('team-estado').value='previsto';
   document.getElementById('team-previsto-data').value='';
@@ -5133,7 +5241,7 @@ function editTeam(id){
   document.getElementById('team-hora-chegada-entidade').value=t.horaChegadaEntidade||'';
   document.getElementById('team-km').value=t.km||'';
   document.getElementById('team-missao').value=t.missao||'';
-  document.getElementById('team-estado').value=t.estado||'transito';
+  meioEstadoOpts(t.estado||'transito');
   document.getElementById('team-previsto-data').value=t.previstoData||'';
   document.getElementById('team-previsto-hora').value=t.previstoHora||'';
   toggleMobilizacaoFields(t.estado||'transito', true);
