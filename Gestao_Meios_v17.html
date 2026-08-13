@@ -606,7 +606,9 @@
       <div class="nav-item active" data-page="ocorrencias" onclick="navTo('ocorrencias',this)">
         <span class="nav-icon">⬡</span><span>Ocorrências</span>
       </div>
-      <div class="nav-item auth-admin" data-page="pedidos" onclick="navTo('pedidos',this)" style="display:none;">
+      <!-- auth-ofligacao cobre admin + ofligacao + ofligacao_ccon: quem submete
+           os pedidos passa a poder acompanhá-los. Resolver continua só do admin. -->
+      <div class="nav-item auth-ofligacao" data-page="pedidos" onclick="navTo('pedidos',this)" style="display:none;">
         <span class="nav-icon">◧</span><span>Pedidos</span>
       </div>
       <div class="nav-item" id="nav-arquivo" data-page="arquivo" onclick="navTo('arquivo',this)">
@@ -913,7 +915,7 @@
         <div class="section-hdr">
           <div class="section-title">Pedidos de Remoção de Meios</div>
         </div>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Pedidos submetidos por oficiais de ligação para remoção de meios. Aprovar remove o meio definitivamente; rejeitar mantém o meio activo.</p>
+        <p id="pedidos-nota" style="font-size:12px;color:var(--muted);margin-bottom:16px;">Pedidos submetidos por oficiais de ligação para remoção de meios. Aprovar remove o meio definitivamente; rejeitar mantém o meio activo.</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -6126,6 +6128,13 @@ async function renderUsers(){
 function renderDeleteRequests(){
   const tbody=document.getElementById('delete-requests-tbody');
   if(!tbody) return;
+  // Aprovar e rejeitar são exclusivos do admin — o servidor impõe-no, isto só
+  // evita mostrar botões que dariam 403.
+  const podeResolver = currentRole==='admin';
+  const nota=document.getElementById('pedidos-nota');
+  if(nota) nota.textContent = podeResolver
+    ? 'Pedidos submetidos por oficiais de ligação para remoção de meios. Aprovar remove o meio definitivamente; rejeitar mantém o meio activo.'
+    : 'Pedidos de remoção submetidos. A decisão de aprovar ou rejeitar é do administrador; enquanto o pedido estiver pendente, o meio não pode ser editado nem mudar de estado.';
   const reqs=[...db.deleteRequests].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
   if(!reqs.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty"><span class="empty-icon">🗑</span><div class="empty-text">Sem pedidos de remoção.</div></div></td></tr>'; return; }
   const statusMap={pending:{l:'PENDENTE',cls:'badge-warn'},approved:{l:'APROVADO',cls:'badge-ok'},rejected:{l:'REJEITADO',cls:'badge-closed'}};
@@ -6139,10 +6148,13 @@ function renderDeleteRequests(){
       <td style="font-size:11px;color:var(--muted);max-width:200px">${esc(r.motivo||'—')}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(r.requested_nome||'—')}</td>
       <td><span class="badge ${st.cls}">${st.l}</span></td>
-      <td>${r.status==='pending'?`<div style="display:flex;gap:6px;">
-          <button class="btn btn-success btn-xs" onclick="resolveDeleteRequest('${r.id}','approve')">✓ Aprovar</button>
-          <button class="btn btn-ghost btn-xs" onclick="resolveDeleteRequest('${r.id}','reject')">✕ Rejeitar</button>
-        </div>`:`<span style="font-size:10px;color:var(--muted)">${esc(r.resolved_nome||'—')}</span>`}</td>
+      <td>${r.status==='pending'
+          ? (podeResolver ? `<div style="display:flex;gap:6px;">
+              <button class="btn btn-success btn-xs" onclick="resolveDeleteRequest('${r.id}','approve')">✓ Aprovar</button>
+              <button class="btn btn-ghost btn-xs" onclick="resolveDeleteRequest('${r.id}','reject')">✕ Rejeitar</button>
+            </div>`
+            : `<span style="font-size:10px;color:var(--muted)">aguarda decisão do administrador</span>`)
+          : `<span style="font-size:10px;color:var(--muted)">${esc(r.resolved_nome||'—')}</span>`}</td>
     </tr>`;
   }).join('');
 }
