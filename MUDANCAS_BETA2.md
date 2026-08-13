@@ -24,7 +24,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | por validar |
 | 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `a916cd8` | por validar |
 | 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `5675684` | por validar |
-| 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `pendente` | por validar |
+| 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `d87a025` | por validar |
+| 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `pendente` | por validar |
 
 ---
 
@@ -432,3 +433,72 @@ transferência. As quatro ocorrências fundidas não têm um único meio.
 5. Confirmar que `gestor_sf` e os restantes perfis de módulo continuam sem o
    separador, e que `ofligacao` continua sem **Meios**.
 6. Confirmar que as ocorrências fundidas continuam sem botão *Reabrir*.
+
+---
+
+## 6 — Reabrir ocorrência deixa de estar ao alcance do oficial de ligação
+
+**Data:** 13/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Reabrir uma ocorrência arquivada passa a ser acção do `admin` e do
+`ofligacao_ccon`. O oficial de ligação regional continua a **fechar** a sua
+ocorrência, mas já não a reabre.
+
+Decorre da alteração 5: ao ganhar acesso ao arquivo, o `ofligacao` passaria a
+poder reabrir qualquer ocorrência arquivada, de qualquer sub-região.
+
+| Perfil | Fechar | Reabrir |
+|---|---|---|
+| `admin` | sim | **sim** |
+| `ofligacao_ccon` | sim | **sim** |
+| `ofligacao` | sim | **não** (antes sim) |
+| `operacional`, `visualizador` | não | não |
+
+### Três caminhos, não um
+
+O botão do cartão do arquivo era o caminho óbvio, mas não o único:
+
+1. **Cartão do arquivo** — `↩ Reabrir`, condicionado ao perfil.
+2. **Ficha da ocorrência** — o botão `Fechar Ocorrência` transforma-se em
+   `↩ Reabrir Ocorrência` quando a ocorrência está fechada. É o mesmo elemento,
+   com a classe `auth-ofligacao`, pelo que continuava visível. Passa a ficar
+   escondido quando está no modo Reabrir e o perfil não o pode fazer.
+3. **A própria acção** — `reopenOcorrencia()` verifica antes de gravar, para o
+   caso de se lá chegar por outra via.
+
+### Imposição no servidor
+
+`PATCH /api/ocorrencias/:id` recusa com **403** quando o estado passa a `active`
+e o perfil não é `admin` nem `ofligacao_ccon`. A verificação só corre quando o
+estado **muda de facto** — regravar uma ocorrência já activa não é uma
+reabertura, e tratá-la como tal bloquearia edições correntes.
+
+### Verificação feita
+
+Contra a API do beta2, com uma ocorrência de teste fechada:
+
+| Perfil | Resposta | Estado na base |
+|---|---|---|
+| `ofligacao` | **403** | continua `closed` |
+| `ofligacao_ccon` | 200 | `active` |
+| `admin` | 200 | `active` |
+
+E `ofligacao` a gravar outro campo da mesma ocorrência: **200** — não afectado.
+A ocorrência de teste foi eliminada no fim.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `podeReabrir()`; cartão do arquivo, botão da ficha
+  de detalhe e `reopenOcorrencia()` condicionados.
+- `server.js` — guarda em `PATCH /api/ocorrencias/:id` para a transição para
+  `active`.
+- **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Como validar
+
+1. Como `ofligacao`, abrir o Arquivo: os cartões não têm `↩ Reabrir`.
+2. Abrir uma ocorrência arquivada: não há botão de reabrir na ficha.
+3. Confirmar que continua a poder **fechar** uma ocorrência activa sua.
+4. Como `ofligacao_ccon` e como `admin`, confirmar que reabrem normalmente.

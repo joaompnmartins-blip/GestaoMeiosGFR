@@ -172,6 +172,18 @@ app.patch('/api/ocorrencias/:id', requireAuth('ofligacao'), wrap(async (req, res
     if (ondeOF) return res.status(409).json({ error: `Oficial de ligação já atribuído a: ${ondeOF}.` });
   }
 
+  // Reabrir é reverter o arquivo: reservado ao admin e ao Oficial de Ligação
+  // CCON. O oficial de ligação regional fecha a sua ocorrência, mas não a
+  // reabre. Só se verifica quando o estado muda de facto — regravar uma
+  // ocorrência já activa não é uma reabertura.
+  if (b.status === 'active' && !['admin','ofligacao_ccon'].includes(req.user.role)) {
+    const { rows: [antes] } = await pool.query(
+      'SELECT status FROM ocorrencias WHERE id=$1', [req.params.id]);
+    if (antes && antes.status !== 'active')
+      return res.status(403).json({
+        error: 'Reabrir uma ocorrência é acção do administrador ou do Oficial de Ligação CCON.' });
+  }
+
   // Fechar exige que todos os meios estejam desmobilizados e com chegada à base.
   if (b.status === 'closed') {
     const pendentes = await meiosPendentes(req.params.id);
