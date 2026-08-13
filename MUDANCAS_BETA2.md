@@ -23,7 +23,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 1 | 13/08/2026 | Oficiais de ligação vêem os pedidos de remoção | `9af294c` + `51c905a` | por validar |
 | 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | por validar |
 | 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `a916cd8` | por validar |
-| 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `pendente` | por validar |
+| 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `5675684` | por validar |
+| 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `pendente` | por validar |
 
 ---
 
@@ -354,3 +355,80 @@ teste dedicado.
 4. Um meio em operação sem tempo máximo: cartão diz *Sem info — indicar Tempo
    máximo Op.*, sem barra.
 5. Confirmar que a lista de alertas deixa de incluir cartões sem informação.
+
+---
+
+## 5 — Arquivo aberto ao oficial de ligação, com filtros de data e sub-região
+
+**Data:** 13/08/2026 · **Estado:** por validar
+
+### O que estava
+
+O **Arquivo** partilhava a regra de visibilidade com o **Meios** (catálogo de
+predefinidos): uma única lista escondia ambas as páginas a `ofligacao` e aos
+quatro perfis de módulo, e o `navTo()` recusava o acesso ao `ofligacao` com
+*«Acesso não disponível para Oficiais de Ligação regionais»*. Na prática só
+`admin`, `ofligacao_ccon`, `operacional` e `visualizador` lá chegavam.
+
+O `renderArquivo()` tinha um ramo que recortava a lista à sub-região do oficial
+de ligação — código que **nunca podia correr**, porque esse perfil não chegava à
+página. Terá havido a intenção de lhe dar o arquivo da sua área, mais tarde
+fechada, e o filtro ficou pelo caminho.
+
+O filtro de sub-região existia mas era exclusivo do `admin`, com a classe
+`auth-admin` e `display:none`.
+
+### O que muda
+
+**As duas páginas deixam de partilhar a regra.** `ofligacao` passa a ver o
+Arquivo; continua sem o catálogo de Meios. Os perfis de módulo mantêm-se sem
+nenhuma das duas.
+
+| Perfil | Arquivo | Meios (catálogo) |
+|---|---|---|
+| `admin`, `ofligacao_ccon`, `operacional`, `visualizador` | sim | sim |
+| `ofligacao` | **sim** (antes não) | não |
+| `gestor_sf`, `gestor_fsbf`, `gestor_icnf`, `chefe_grupo_fsbf` | não | não |
+
+**O arquivo é completo para quem lá chega.** O recorte por sub-região do
+oficial de ligação foi removido — vê tudo, e usa o filtro se quiser restringir.
+
+**O filtro de sub-região deixa de ser exclusivo do admin** e é preenchido a
+partir das ocorrências arquivadas.
+
+**Novo filtro por data de início**, com *de* e *até*, mais um botão **Limpar
+filtros** que repõe pesquisa, sub-região e datas. Os filtros combinam-se.
+
+A comparação de datas é feita em texto `YYYY-MM-DD`, sobre o valor passado por
+`dataISO()`. Converter para `Date` reintroduziria o desvio de fuso que já causou
+o `NaNhNaNm` e o deslocamento de um dia noutros pontos. Ocorrências sem data de
+início ficam de fora de qualquer intervalo — não têm por onde ser comparadas.
+
+### Não alterado
+
+A **fusão continua irreversível**, como estava: o botão *Reabrir* aparece apenas
+em ocorrências `closed`, nunca em `merged`. Fundir transfere os meios para a
+ocorrência de destino e deixa a origem vazia com um apontador `merged_into`;
+reabri-la poria uma ocorrência activa e sem meios na lista, sem desfazer a
+transferência. As quatro ocorrências fundidas não têm um único meio.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — visibilidade de `equipas` e `arquivo` separada em
+  `applyRoleUI()`; `navTo()` deixa de barrar o arquivo ao `ofligacao`;
+  `renderArquivo()` sem o recorte por sub-região, com filtro de sub-região para
+  todos e novo filtro por data; `limparFiltrosArquivo()`; campos `arq-de` e
+  `arq-ate` no cabeçalho da página.
+- **Servidor:** nenhuma. `GET /api/ocorrencias` já exigia apenas `visualizador`,
+  pelo que nenhum perfil ganha acesso a dados que não pudesse já obter.
+- **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Como validar
+
+1. Entrar como `ofligacao`: **Arquivo** aparece na barra lateral e abre.
+2. Confirmar que mostra ocorrências de **todas** as sub-regiões, não só a sua.
+3. Filtrar por sub-região; depois por intervalo de datas; depois pelos dois.
+4. **Limpar filtros** repõe a lista completa.
+5. Confirmar que `gestor_sf` e os restantes perfis de módulo continuam sem o
+   separador, e que `ofligacao` continua sem **Meios**.
+6. Confirmar que as ocorrências fundidas continuam sem botão *Reabrir*.

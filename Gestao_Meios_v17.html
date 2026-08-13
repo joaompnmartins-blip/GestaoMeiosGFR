@@ -748,9 +748,16 @@
           <div class="section-title">Arquivo de Ocorrências <span id="arq-count"></span></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <input class="form-input" id="arq-search" style="padding:6px 10px;font-size:12px;width:200px;" placeholder="🔍 Pesquisar…" oninput="renderArquivo()"/>
-            <select class="form-select auth-admin" style="padding:6px 10px;font-size:12px;display:none;" onchange="renderArquivo()" id="arq-filter-subregiao">
+            <select class="form-select" style="padding:6px 10px;font-size:12px;" onchange="renderArquivo()" id="arq-filter-subregiao">
               <option value="">Todas as sub-regiões</option>
             </select>
+            <span style="display:inline-flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);">
+              <label for="arq-de">Início de</label>
+              <input class="form-input" type="date" id="arq-de" style="padding:6px 8px;font-size:12px;" onchange="renderArquivo()"/>
+              <label for="arq-ate">a</label>
+              <input class="form-input" type="date" id="arq-ate" style="padding:6px 8px;font-size:12px;" onchange="renderArquivo()"/>
+            </span>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick="limparFiltrosArquivo()">Limpar filtros</button>
           </div>
         </div>
         <div id="arq-grid">
@@ -2376,10 +2383,14 @@ function applyRoleUI(){
   document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
   document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
   // ofligacao e perfis de módulo: sem acesso a Meios (catálogo) e Arquivo
-  const hideNavPages = ['ofligacao','gestor_sf','gestor_fsbf','gestor_icnf','chefe_grupo_fsbf'].includes(currentRole);
-  ['equipas','arquivo'].forEach(p=>{
+  // Meios (catálogo) e Arquivo tinham a mesma regra. Passam a ser
+  // independentes: o oficial de ligação regional tem agora o arquivo completo,
+  // mas continua sem o catálogo de meios predefinidos.
+  const MODULOS = ['gestor_sf','gestor_fsbf','gestor_icnf','chefe_grupo_fsbf'];
+  const esconder = { equipas: [...MODULOS,'ofligacao'], arquivo: MODULOS };
+  Object.entries(esconder).forEach(([p,roles])=>{
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
-    if(navEl) navEl.style.display = hideNavPages ? 'none' : '';
+    if(navEl) navEl.style.display = roles.includes(currentRole) ? 'none' : '';
   });
   // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
   const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || currentRole==='chefe_grupo_fsbf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
@@ -2675,7 +2686,7 @@ function navTo(page,el){
   // A restrição de escrita está em renderDeleteRequests e no servidor.
   if(page==='pedidos'&&!['admin','ofligacao','ofligacao_ccon'].includes(currentRole)){
     toast('Acesso restrito a oficiais de ligação e administradores.','err'); return; }
-  if((page==='equipas'||page==='arquivo')&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação regionais.','err'); return; }
+  if(page==='equipas'&&currentRole==='ofligacao'){ toast('Acesso não disponível para Oficiais de Ligação regionais.','err'); return; }
   const _allowedMod = MODULE_PAGES[page];
   if(_allowedMod && currentRole!=='admin' && ![].concat(_allowedMod).includes(currentRole)){ toast('Acesso restrito ao gestor deste módulo.','err'); return; }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -3326,21 +3337,30 @@ function renderArquivo(){
   const isAdmin = currentRole==='admin';
   let list = db.ocorrencias.filter(o=>o.status==='closed'||o.status==='merged');
 
-  // OfLigacao: only their sub-região
-  if(currentRole==='ofligacao' && currentSubregiao){
-    list = list.filter(o=>o.subregiao===currentSubregiao);
+  // O arquivo é completo para todos os perfis que lhe chegam — inclusive o
+  // oficial de ligação regional, que antes só via a sua sub-região.
+  const todas = db.ocorrencias.filter(o=>o.status==='closed'||o.status==='merged');
+
+  const sel = document.getElementById('arq-filter-subregiao');
+  if(sel){
+    sel.style.display='';
+    const cur=sel.value;
+    const subs=[...new Set(todas.map(o=>o.subregiao).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt'));
+    sel.innerHTML='<option value="">Todas as sub-regiões</option>'+
+      subs.map(s=>`<option value="${esc(s)}"${s===cur?' selected':''}>${esc(s)}</option>`).join('');
+    if(cur) list=list.filter(o=>o.subregiao===cur);
   }
 
-  // Admin sub-região filter
-  if(isAdmin){
-    const sel = document.getElementById('arq-filter-subregiao');
-    if(sel){
-      sel.style.display='';
-      const cur=sel.value;
-      const subs=[...new Set(db.ocorrencias.filter(o=>o.status==='closed'||o.status==='merged').map(o=>o.subregiao).filter(Boolean))].sort();
-      sel.innerHTML='<option value="">Todas as sub-regiões</option>'+subs.map(s=>`<option value="${esc(s)}"${s===cur?' selected':''}>${esc(s)}</option>`).join('');
-      if(cur) list=list.filter(o=>o.subregiao===cur);
-    }
+  // Filtro por data de início. Comparação em texto YYYY-MM-DD: converter para
+  // Date reintroduziria o desvio de fuso que já mordeu noutros pontos.
+  const de  = document.getElementById('arq-de')?.value  || '';
+  const ate = document.getElementById('arq-ate')?.value || '';
+  if(de || ate){
+    list = list.filter(o=>{
+      const d = dataISO(o.inicio);
+      if(!d) return false;
+      return (!de || d >= de) && (!ate || d <= ate);
+    });
   }
 
   // Search filter
@@ -3382,6 +3402,12 @@ function renderArquivo(){
   } else {
     grid.innerHTML='<div class="occ-grid">'+list.map(arqCardHtml).join('')+'</div>';
   }
+}
+
+function limparFiltrosArquivo(){
+  ['arq-search','arq-filter-subregiao','arq-de','arq-ate']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  renderArquivo();
 }
 
 async function reopenOcorrencia(id){
