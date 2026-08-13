@@ -7916,15 +7916,35 @@ function fsbfForaDaBase(op, baseLinha){
   return !!(op && baseLinha && op.base && op.base !== baseLinha);
 }
 
+// O badge vive num contentor com id próprio para poder ser recalculado sem
+// redesenhar a linha: os lugares vêm da guarnição, que muda no ecrã antes de
+// ser gravada. Antes disto, escrever a guarnição numa linha nova não fazia
+// aparecer o botão — parecia que a secção não tinha guarnição nenhuma.
 function fsbfMembrosBtn(row, tipo){
-  const lugares = fsbfLugares(row, tipo);
   const preench = (row.membros||[]).filter(m=>!m.is_chefe).length;
+  return `<span id="fsbf-mem-badge-${tipo}-${row.id}">${
+    fsbfMembrosBadgeHtml(row.id, tipo, fsbfLugares(row, tipo), preench)}</span>`;
+}
+
+function fsbfMembrosBadgeHtml(id, tipo, lugares, preench){
   if(!lugares) return '';
   const completo = preench >= lugares;
   const cor = completo ? 'var(--accent3)' : 'var(--warn)';
   return `<button class="btn btn-xs" title="Identificar guarnição"
     style="background:color-mix(in srgb,${cor} 14%,transparent);color:${cor};border:1px solid ${cor};font-size:10px;padding:2px 6px;"
-    onclick="openFsbfMembros('${row.id}','${tipo}')">👥 ${preench}/${lugares}</button>`;
+    onclick="openFsbfMembros('${id}','${tipo}')">👥 ${preench}/${lugares}</button>`;
+}
+
+// Chamado ao escrever na guarnição: os lugares passam a refletir o que está no
+// ecrã, sem esperar pela gravação.
+function fsbfMembrosBadgeRefresh(id, tipo){
+  const cont = document.getElementById(`fsbf-mem-badge-${tipo}-${id}`);
+  if(!cont) return;
+  const el = document.getElementById(`fsbf-${tipo==='emr'?'e-top':'b-guar'}-${id}`);
+  const lugares = Math.max(0, (Number(el ? el.value : 0) || 0) - 1);
+  const row = (tipo==='emr' ? _fsbfEmrCache : _fsbfBsbfCache).find(r=>r.id===id);
+  const preench = ((row?.membros)||[]).filter(m=>!m.is_chefe).length;
+  cont.innerHTML = fsbfMembrosBadgeHtml(id, tipo, lugares, preench);
 }
 
 function openFsbfMembros(id, tipo){
@@ -7933,7 +7953,6 @@ function openFsbfMembros(id, tipo){
   const lugares = fsbfLugares(row, tipo);
   const membros = (row.membros||[]).filter(m=>!m.is_chefe)
                     .sort((a,b)=>(a.ordem??0)-(b.ordem??0));
-  const chefe   = (row.membros||[]).find(m=>m.is_chefe);
   const baseLinha = fsbfBaseDaLinha(id, tipo) || (row.base||'').trim();
   _fsbfMembrosCtx = { id, tipo, row, lugares, baseLinha };
 
@@ -7967,7 +7986,7 @@ function openFsbfMembros(id, tipo){
   document.getElementById('fsbf-mem-chefe').innerHTML = chefeNome
     ? `<span style="font-weight:600;">${esc(chefeNome)}</span>
        <span style="color:var(--muted);font-size:11px;">· chefe de equipa${
-         chefe ? ` · ${esc(chefe.companhia||'sem companhia')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>${
+         opChefe ? ` · ${esc(opChefe.base||'sem base')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>${
        chefeFora ? `<div style="color:var(--warn);font-size:11px;margin-top:2px;">⚠ base ${esc(opChefe.base)} — diferente da base da linha. Alterar na linha, na coluna Chefe de Equipa.</div>` : ''}`
     : `<span style="color:var(--warn);">Sem chefe de equipa definido — defina-o na linha para ocupar o 1.º lugar.</span>`;
 
@@ -7998,11 +8017,13 @@ function fsbfMembroOpts(selectedId, base){
   if(soBase && base) list = list.filter(o=>o.base===base || o.id===selectedId);
   return '<option value="">— por identificar —</option>' +
     list.map(o=>{
-      // Com o filtro desligado a base passa a ser a informação que importa:
-      // mostrá-la evita a escolha errada, em vez de a explicar depois.
+      // A etiqueta mostra a BASE, não a companhia: é a base que está a ser
+      // verificada, e ver "· Norte" ao lado de um nome fazia parecer que a
+      // comparação era por companhia.
       const fora = fsbfForaDaBase(o, base);
-      return `<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)}${
-        o.companhia?` · ${esc(o.companhia)}`:''}${fora?` · ⚠ ${esc(o.base)}`:''}</option>`;
+      const rotulo = o.base ? esc(o.base) : 'sem base';
+      return `<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)} · ${rotulo}${
+        fora?' ⚠':''}</option>`;
     }).join('');
 }
 
@@ -8139,6 +8160,10 @@ function num1Tecla(e){
 function num1Limpa(el){
   const limpo = el.value.replace(/\D/g,'').slice(0,1);
   if (limpo !== el.value) { el.value = limpo; num1Aviso(el); }
+  // Quando o campo é a guarnição de uma linha da carta, o badge de guarnição
+  // acompanha o valor escrito em vez de esperar pela gravação.
+  const m = /^fsbf-(b-guar|e-top)-(.+)$/.exec(el.id || '');
+  if (m) fsbfMembrosBadgeRefresh(m[2], m[1] === 'e-top' ? 'emr' : 'bsbf');
 }
 
 function fsbfBsbfRow(row, allViat, isCarta){
