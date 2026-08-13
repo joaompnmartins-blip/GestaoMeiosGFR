@@ -20,12 +20,17 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 
 | # | Data | Alteração | Commit | Estado |
 |---|---|---|---|---|
-| 1 | 13/08/2026 | Oficiais de ligação vêem os pedidos de remoção | `9af294c` + `51c905a` | por validar |
-| 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | por validar |
-| 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `a916cd8` | por validar |
-| 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `5675684` | por validar |
-| 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `d87a025` | por validar |
-| 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `pendente` | por validar |
+| 1 | 13/08/2026 | Oficiais de ligação vêem os pedidos de remoção | `9af294c` + `51c905a` | em beta1 e beta2 |
+| 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | em beta1 e beta2 |
+| 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `a916cd8` | em beta1 e beta2 |
+| 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `5675684` | em beta1 e beta2 |
+| 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `d87a025` | em beta1 e beta2 |
+| 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `1fa7098` | em beta1 e beta2 |
+| 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
+
+As sete foram promovidas ao beta1 em 13/08/2026 por `git merge --ff-only beta2`.
+O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
+repetir numa promoção — em nenhuma delas há alterações de base de dados.
 
 ---
 
