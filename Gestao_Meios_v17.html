@@ -7791,14 +7791,20 @@ async function copiarDiaAnteriorCarta(){
 
 // ── Carta de Meios ────────────────────────────────────────────────
 
-function fsbfOpOpts(selectedNome, cargo=null){
+// baseRef: base da linha. Quando indicada, os operacionais de outra base ficam
+// assinalados na própria opção — o chefe é escolhido aqui, e não no modal da
+// guarnição, pelo que é aqui que a divergência pode ser evitada em vez de
+// apenas comunicada depois.
+function fsbfOpOpts(selectedNome, cargo=null, baseRef=null){
   const list = cargo
     ? _fsbfOperacionaisCache.filter(o => o.cargo === cargo)
     : _fsbfOperacionaisCache;
   return '<option value="">— operacional —</option>' +
-    list.map(o=>
-      `<option value="${esc(o.nome)}"${o.nome===selectedNome?' selected':''}>${esc(o.nome)}</option>`
-    ).join('');
+    list.map(o=>{
+      const fora = fsbfForaDaBase(o, baseRef);
+      return `<option value="${esc(o.nome)}"${o.nome===selectedNome?' selected':''}>${esc(o.nome)}${
+        fora?` · ⚠ ${esc(o.base)}`:''}</option>`;
+    }).join('');
 }
 
 // Nº da ocorrência em que a equipa está empenhada. Enquanto o empenhamento não
@@ -7892,6 +7898,24 @@ let _fsbfMembrosCtx = null;
 const fsbfLugares = (row, tipo) =>
   Math.max(0, (Number(tipo==='emr' ? row.total_op : row.guarnicao) || 0) - 1);
 
+// A base da linha lê-se do ecrã e não de row.base: escolher uma base e abrir a
+// guarnição sem gravar antes deixava o filtro e o aviso a comparar contra a
+// base antiga — precisamente no momento em que a base está a ser definida.
+function fsbfBaseDaLinha(id, tipo){
+  const el = document.getElementById(`fsbf-${tipo==='emr'?'e':'b'}-base-${id}`);
+  return ((el ? el.value : '') || '').trim();
+}
+
+const fsbfOpPorId   = oid  => _fsbfOperacionaisCache.find(o => o.id === oid);
+const fsbfOpPorNome = nome => _fsbfOperacionaisCache.find(o => o.nome === nome);
+
+// Fora da base só se pode afirmar quando se conhecem as duas bases. Um
+// operacional sem base, ou uma base de linha que não exista no efectivo, é
+// desconhecido — não é divergência.
+function fsbfForaDaBase(op, baseLinha){
+  return !!(op && baseLinha && op.base && op.base !== baseLinha);
+}
+
 function fsbfMembrosBtn(row, tipo){
   const lugares = fsbfLugares(row, tipo);
   const preench = (row.membros||[]).filter(m=>!m.is_chefe).length;
@@ -7910,35 +7934,61 @@ function openFsbfMembros(id, tipo){
   const membros = (row.membros||[]).filter(m=>!m.is_chefe)
                     .sort((a,b)=>(a.ordem??0)-(b.ordem??0));
   const chefe   = (row.membros||[]).find(m=>m.is_chefe);
-  _fsbfMembrosCtx = { id, tipo, row, lugares };
+  const baseLinha = fsbfBaseDaLinha(id, tipo) || (row.base||'').trim();
+  _fsbfMembrosCtx = { id, tipo, row, lugares, baseLinha };
 
   const label = tipo==='emr'
     ? `Máquina de Rasto — ${esc(row.mr_cod||row.base||'')}`
     : `${esc(row.brigada==='Outros'?'Outros Meios':row.brigada)} — ${esc(row.viatura_cod||row.base||'')}`;
   document.getElementById('fsbf-mem-title').textContent = 'Guarnição';
-  document.getElementById('fsbf-mem-sub').innerHTML = label;
+  document.getElementById('fsbf-mem-sub').innerHTML = label +
+    (baseLinha ? ` <span style="color:var(--muted);">· base ${esc(baseLinha)}</span>` : '');
+
+  const semBase   = !baseLinha;
+  const temCrew   = membros.length > 0;
+  const corpo     = document.getElementById('fsbf-mem-corpo');
+  const semBaseEl = document.getElementById('fsbf-mem-sem-base');
+  const btnGuardar= document.getElementById('fsbf-mem-guardar');
+
+  // Sem base não há referência para comparar: identificar a guarnição não faz
+  // sentido. Se já houver guarnição gravada, deixa-se editar — de outro modo
+  // limpar uma base tornaria os membros impossíveis de corrigir ou remover.
+  const bloqueado = semBase && !temCrew;
+  semBaseEl.style.display = bloqueado ? '' : 'none';
+  corpo.style.display     = bloqueado ? 'none' : '';
+  btnGuardar.disabled     = bloqueado;
+  btnGuardar.style.opacity = bloqueado ? '.45' : '';
+  if(bloqueado){ openModal('modal-fsbf-membros'); return; }
 
   // Chefe: ocupa sempre o primeiro lugar e não é editável aqui
   const chefeNome = row.chefe_nome || '';
+  const opChefe   = fsbfOpPorNome(chefeNome);
+  const chefeFora = fsbfForaDaBase(opChefe, baseLinha);
   document.getElementById('fsbf-mem-chefe').innerHTML = chefeNome
     ? `<span style="font-weight:600;">${esc(chefeNome)}</span>
        <span style="color:var(--muted);font-size:11px;">· chefe de equipa${
-         chefe ? ` · ${esc(chefe.companhia||'sem companhia')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>`
+         chefe ? ` · ${esc(chefe.companhia||'sem companhia')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>${
+       chefeFora ? `<div style="color:var(--warn);font-size:11px;margin-top:2px;">⚠ base ${esc(opChefe.base)} — diferente da base da linha. Alterar na linha, na coluna Chefe de Equipa.</div>` : ''}`
     : `<span style="color:var(--warn);">Sem chefe de equipa definido — defina-o na linha para ocupar o 1.º lugar.</span>`;
 
   const rows = [];
   for(let i=0;i<lugares;i++){
     const m = membros[i];
-    rows.push(`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-      <span style="font-size:11px;color:var(--muted);width:18px;">${i+2}.</span>
-      <select class="form-select fsbf-mem-sel" style="flex:1;font-size:12px;" data-i="${i}">
-        ${fsbfMembroOpts(m?m.operacional_id:'', row.base)}
-      </select>
+    rows.push(`<div style="margin-bottom:6px;">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);width:18px;">${i+2}.</span>
+        <select class="form-select fsbf-mem-sel" style="flex:1;font-size:12px;" data-i="${i}"
+                onchange="fsbfMembrosAvisos()">
+          ${fsbfMembroOpts(m?m.operacional_id:'', baseLinha)}
+        </select>
+      </div>
+      <div class="fsbf-mem-aviso" data-i="${i}" style="font-size:11px;color:var(--warn);margin:2px 0 0 24px;"></div>
     </div>`);
   }
   document.getElementById('fsbf-mem-slots').innerHTML =
     rows.join('') || '<p style="color:var(--muted);font-size:12px;">Guarnição de 1 — só o chefe de equipa.</p>';
   document.getElementById('fsbf-mem-base-only').checked = true;
+  fsbfMembrosAvisos();
   openModal('modal-fsbf-membros');
 }
 
@@ -7947,16 +7997,49 @@ function fsbfMembroOpts(selectedId, base){
   let list = _fsbfOperacionaisCache;
   if(soBase && base) list = list.filter(o=>o.base===base || o.id===selectedId);
   return '<option value="">— por identificar —</option>' +
-    list.map(o=>`<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)}${
-      o.companhia?` · ${esc(o.companhia)}`:''}</option>`).join('');
+    list.map(o=>{
+      // Com o filtro desligado a base passa a ser a informação que importa:
+      // mostrá-la evita a escolha errada, em vez de a explicar depois.
+      const fora = fsbfForaDaBase(o, base);
+      return `<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)}${
+        o.companhia?` · ${esc(o.companhia)}`:''}${fora?` · ⚠ ${esc(o.base)}`:''}</option>`;
+    }).join('');
+}
+
+// Recalcula os avisos por lugar e o resumo. Corre ao abrir e a cada alteração,
+// pelo que também assinala linhas gravadas antes desta verificação existir.
+function fsbfMembrosAvisos(){
+  if(!_fsbfMembrosCtx) return;
+  const { baseLinha, row } = _fsbfMembrosCtx;
+  let fora = 0, preenchidos = 0;
+  document.querySelectorAll('.fsbf-mem-sel').forEach(sel=>{
+    const el = document.querySelector(`.fsbf-mem-aviso[data-i="${sel.dataset.i}"]`);
+    const op = fsbfOpPorId(sel.value);
+    if(op) preenchidos++;
+    const mau = fsbfForaDaBase(op, baseLinha);
+    if(mau) fora++;
+    if(el) el.textContent = mau ? `⚠ ${op.nome} é da base ${op.base}, não de ${baseLinha}.` : '';
+  });
+  const opChefe = fsbfOpPorNome(row.chefe_nome||'');
+  const chefeFora = fsbfForaDaBase(opChefe, baseLinha);
+  const total = preenchidos + (opChefe ? 1 : 0);
+  const totalFora = fora + (chefeFora ? 1 : 0);
+  const res = document.getElementById('fsbf-mem-resumo');
+  if(res){
+    res.style.display = totalFora ? '' : 'none';
+    res.innerHTML = totalFora
+      ? `⚠ <strong>${totalFora}</strong> de ${total} ${totalFora===1?'operacional é':'operacionais são'} de outra base que não <strong>${esc(baseLinha)}</strong>.`
+      : '';
+  }
 }
 
 function fsbfMembrosToggleBase(){
   if(!_fsbfMembrosCtx) return;
   document.querySelectorAll('.fsbf-mem-sel').forEach(sel=>{
     const cur = sel.value;
-    sel.innerHTML = fsbfMembroOpts(cur, _fsbfMembrosCtx.row.base);
+    sel.innerHTML = fsbfMembroOpts(cur, _fsbfMembrosCtx.baseLinha);
   });
+  fsbfMembrosAvisos();
 }
 
 async function saveFsbfMembros(){
@@ -8077,7 +8160,7 @@ function fsbfBsbfRow(row, allViat, isCarta){
       <input ${NUM1_ATTRS} style="width:38px;font-size:12px;" id="fsbf-b-guar-${id}" value="${row.guarnicao??''}" placeholder="0"/>
       ${fsbfMembrosBtn(row,'bsbf')}
     </td>
-    <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></td>
+    <td><select class="form-select" style="font-size:12px;width:160px;" id="fsbf-b-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-b-cont-${id}')">${fsbfOpOpts(row.chefe_nome, null, row.base)}</select></td>
     <td><input class="form-input" style="width:110px;font-size:12px;" id="fsbf-b-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></td>
     <td><select class="form-select" style="width:150px;font-size:12px;${row.ocorrencia_num?'border-color:var(--warn);':''}"
         id="fsbf-b-ocor-${id}" title="Equipa empenhada nesta ocorrência">${fsbfOcorrenciaOpts(row.ocorrencia_num)}</select></td>
@@ -8113,7 +8196,7 @@ function fsbfEmrCard(row, allViat){
         <select class="form-select" style="font-size:12px;" id="fsbf-e-vlci-${id}" onchange="fsbfEmrMat('${id}','vlci')">${vlciOpts}</select>
         <div class="mono" id="fsbf-e-vlci-mat-${id}" style="font-size:10px;color:var(--muted);margin-top:2px;">${esc(_mat(row.vlci_viatura_id))}</div></div>
       <div><label style="font-size:11px;color:var(--muted);">Chefe</label>
-        <select class="form-select" style="font-size:12px;" id="fsbf-e-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-e-cont-${id}')">${fsbfOpOpts(row.chefe_nome)}</select></div>
+        <select class="form-select" style="font-size:12px;" id="fsbf-e-chefe-${id}" onchange="fsbfAutoContacto(this,'fsbf-e-cont-${id}')">${fsbfOpOpts(row.chefe_nome, null, row.base)}</select></div>
       <div><label style="font-size:11px;color:var(--muted);">Contacto</label>
         <input class="form-input" style="font-size:12px;" id="fsbf-e-cont-${id}" value="${esc(row.contacto||'')}" placeholder="Contacto"/></div>
       <div><label style="font-size:11px;color:var(--muted);">Ocorrência</label>
@@ -10116,24 +10199,39 @@ async function mergeSaveConfirm(){
       <button class="modal-close" onclick="closeModal('modal-fsbf-membros')">✕</button>
     </div>
     <div class="modal-body">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;padding:8px 10px;
-                  background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:6px;">
-        <span style="font-size:11px;color:var(--muted);width:18px;">1.</span>
-        <div id="fsbf-mem-chefe" style="font-size:12px;"></div>
+      <!-- Sem base na linha não há referência para comparar as bases dos
+           operacionais, por isso não se identifica guarnição. -->
+      <div id="fsbf-mem-sem-base" style="display:none;font-size:13px;line-height:1.6;
+           background:var(--fsbf-ambar);border-left:3px solid var(--warn);
+           border-radius:0 4px 4px 0;padding:12px 14px;">
+        <strong>Selecione primeiro a base da linha.</strong><br>
+        A base é a referência que permite verificar se cada operacional pertence
+        à equipa. Escolha-a na coluna <em>Base</em>, grave a linha e volte a abrir
+        a guarnição.
       </div>
-      <div id="fsbf-mem-slots"></div>
-      <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);margin-top:10px;">
-        <input type="checkbox" id="fsbf-mem-base-only" checked onchange="fsbfMembrosToggleBase()"/>
-        Mostrar apenas operacionais da base da equipa
-      </label>
-      <p style="font-size:11px;color:var(--muted);margin-top:8px;">
-        Os nomes ficam apenas na aplicação. Os ficheiros exportados mostram só o
-        total de operacionais por companhia.
-      </p>
+      <div id="fsbf-mem-corpo">
+        <div id="fsbf-mem-resumo" style="display:none;font-size:12px;line-height:1.5;color:var(--warn);
+             background:var(--fsbf-ambar);border-left:3px solid var(--warn);
+             border-radius:0 4px 4px 0;padding:8px 12px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;padding:8px 10px;
+                    background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:6px;">
+          <span style="font-size:11px;color:var(--muted);width:18px;">1.</span>
+          <div id="fsbf-mem-chefe" style="font-size:12px;"></div>
+        </div>
+        <div id="fsbf-mem-slots"></div>
+        <label style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);margin-top:10px;">
+          <input type="checkbox" id="fsbf-mem-base-only" checked onchange="fsbfMembrosToggleBase()"/>
+          Mostrar apenas operacionais da base da equipa
+        </label>
+        <p style="font-size:11px;color:var(--muted);margin-top:8px;">
+          Os nomes ficam apenas na aplicação. Os ficheiros exportados mostram só o
+          total de operacionais por companhia.
+        </p>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-fsbf-membros')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveFsbfMembros()">Guardar</button>
+      <button class="btn btn-primary" id="fsbf-mem-guardar" onclick="saveFsbfMembros()">Guardar</button>
     </div>
   </div>
 </div>

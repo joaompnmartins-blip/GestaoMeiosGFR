@@ -2399,6 +2399,20 @@ app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(as
   const id  = fsbf_bsbf_id || fsbf_emr_id;
   const ids = [...new Set(operacional_ids.filter(Boolean))];
 
+  // A base da linha é a referência contra a qual se verifica a base de cada
+  // operacional. Sem ela não há nada a comparar, pelo que identificar a
+  // guarnição não faz sentido. Esvaziar continua permitido: se uma linha ficar
+  // sem base depois de ter guarnição, é preciso poder corrigi-la.
+  if (ids.length) {
+    const tabela = fsbf_bsbf_id ? 'fsbf_bsbf_equipa' : 'fsbf_emr_equipa';
+    const { rows: [linha] } = await pool.query(
+      `SELECT base FROM ${tabela} WHERE id=$1`, [id]);
+    if (!linha) return res.status(404).json({ error: 'Equipa não encontrada.' });
+    if (!(linha.base || '').trim())
+      return res.status(409).json({
+        error: 'Selecione a base da linha antes de identificar a guarnição.' });
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
