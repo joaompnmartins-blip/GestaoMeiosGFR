@@ -22,7 +22,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 |---|---|---|---|---|
 | 1 | 13/08/2026 | Oficiais de ligação vêem os pedidos de remoção | `9af294c` + `51c905a` | por validar |
 | 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | por validar |
-| 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `pendente` | por validar |
+| 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `a916cd8` | por validar |
+| 4 | 13/08/2026 | Datas da API normalizadas; fim do NaNhNaNm | `pendente` | por validar |
 
 ---
 
@@ -260,3 +261,96 @@ relação não são afectados.
 3. Como `admin`, ver em **Pedidos** a indicação `+3 agregados`.
 4. Aprovar: pai e filhos desaparecem da listagem sem recarregar a página.
 5. Rejeitar noutro caso: pai e filhos voltam a ser editáveis.
+
+---
+
+## 4 — Datas da API normalizadas; fim do `NaNhNaNm`
+
+**Data:** 13/08/2026 · **Estado:** por validar
+
+### A causa
+
+As colunas `DATE` chegavam ao cliente como instantes ISO completos. O
+node-postgres converte `DATE` num objecto `Date` e o `res.json()` serializa-o
+inteiro:
+
+```
+data_chegada: "2026-08-04T23:00:00.000Z"    ← e não "2026-08-05"
+hora_chegada: "16:15:00"
+new Date(`${data}T${hora}`)  →  Invalid Date
+```
+
+Reparar que o instante é do **dia anterior**: Lisboa está em UTC+1, e a meia-noite
+local do dia 5 é 23:00Z do dia 4. Cortar os 10 primeiros caracteres daria a data
+errada — é preciso ler as componentes **locais**.
+
+Daí vinha o `NaNhNaNm`: o `timeInfo()` passava a guarda (chegada preenchida),
+construía uma data inválida, e como `NaN` falha todas as comparações caía no
+último ramo — justamente o que imprime `${Math.floor(NaN/60)}h…`. A barra ficava
+com `width:NaN%`.
+
+**Não era um caso limite: afectava todos os meios com chegada registada.**
+
+### Alcance verificado
+
+O mesmo valor por tratar era usado em mais três sítios:
+
+| Onde | Efeito |
+|---|---|
+| `<input type="date">.value = t.dataChegada` (5 campos no Editar Meio) | campo em branco — a data existe mas não aparece |
+| `fmtDateShort()` faz `d.split('-')` | mostrava `04T23:00:00.000Z/08` |
+| `parseDT()` em `validateMeioDates()` | validações de cronologia a comparar `NaN` |
+
+### O que muda
+
+**Uma normalização única no ponto de entrada.** `dataISO()` converte para
+`YYYY-MM-DD` a partir das componentes locais, e é aplicada em `mapTeam()` aos
+oito campos de data do meio: `data_despacho`, `data_saida_entidade`,
+`data_chegada`, `data_demob`, `data_chegada_entidade`, `previsto_data`,
+`limite_op_date` e `egfr_data`. Todos os consumidores passam a receber a forma
+que esperavam.
+
+**Mensagem em vez de silêncio quando faltam dados.** O `timeInfo()` passava a
+devolver `null` e o cartão não mostrava nada. Passa a devolver um estado
+`semInfo` com o que é preciso indicar:
+
+| Situação | Texto no cartão |
+|---|---|
+| Sem chegada | *Sem info — indicar Chegada ao TO* |
+| Chegada, sem limite | *Sem info — indicar Tempo máximo Op.* |
+| Sem ambos | *Sem info — indicar Chegada ao TO + Tempo máximo Op.* |
+| Datas impossíveis de ler | *Sem info — datas por validar* |
+
+Sem barra de progresso e em cinzento discreto: falta de dados não é urgência.
+Estes cartões também deixam de contar para o alerta de 85% e de subir na
+ordenação por urgência, onde antes entravam com `pct` a zero ou `NaN`.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `dataISO()` novo; `mapTeam()` normaliza 8 campos;
+  `timeInfo()` devolve `semInfo` e ganha guarda final contra datas inválidas;
+  cartão e tabela mostram o texto sem barra; alerta e ordenação ignoram `semInfo`;
+  classe CSS `.right.sem-info`.
+- **Servidor:** nenhuma.
+- **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Por decidir — correcção na origem
+
+A alternativa de fundo é `require('pg').types.setTypeParser(1082, v => v)` no
+servidor, que faz o `DATE` chegar como texto a **toda** a aplicação. Resolveria
+o mesmo problema noutras tabelas que também têm colunas `DATE` e chegam ao
+cliente — `fsbf_carta`, `fsbf_bsbf_equipa`, `fsbf_emr_equipa`, `fsbf_gruata`,
+`egfr_escala`, `egfr_viatura`, `fsbf_empenhamento_diario`, `recursos.prontidao_ate`.
+Fica de fora desta alteração por ser de alcance largo: tudo o que hoje conte com
+receber um objecto `Date` mudaria de comportamento, e merece entrada própria e
+teste dedicado.
+
+### Como validar
+
+1. Um meio em operação com chegada e tempo máximo: o contador mostra `XhYYm` e a
+   barra enche — em vez de `NaNhNaNm`.
+2. Abrir esse meio em Editar: os campos de data aparecem preenchidos.
+3. Na tabela, a coluna de datas mostra `dd/mm` e não `04T23:00:00.000Z/08`.
+4. Um meio em operação sem tempo máximo: cartão diz *Sem info — indicar Tempo
+   máximo Op.*, sem barra.
+5. Confirmar que a lista de alertas deixa de incluir cartões sem informação.

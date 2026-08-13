@@ -281,6 +281,8 @@
     .time-remaining-label .left{color:var(--muted);}
     .time-remaining-label .right{font-weight:600;}
     .time-remaining-label .right.ok{color:var(--success);}
+    /* Falta de dados não é urgência: discreto, sem barra e sem cor de alarme. */
+    .time-remaining-label .right.sem-info{color:var(--muted);font-weight:400;font-size:10px;}
     .time-remaining-label .right.warn{color:var(--warn);}
     .time-remaining-label .right.danger{color:var(--danger);}
     .time-remaining-label .right.expired{color:var(--danger);}
@@ -2469,10 +2471,26 @@ async function loadAllData(){
 // ── Map Supabase snake_case → app camelCase ──────────────────────
 function mapOcorrencia(r){ return { id:r.id, nome:r.local_ignicao, ref:r.codigo_ocorrencia, concelho:r.concelho, subregiao:r.subregiao||'', obs:r.obs, inicio:r.inicio, status:r.status, mergedInto:r.merged_into||null, created:r.created_at, oficialLigacaoId:r.oficial_ligacao_id||null, oficialLigacaoNome:r.oficial_ligacao_nome||'' }; }
 
+// As colunas DATE chegam da API como instantes ISO completos: o node-postgres
+// converte DATE num objecto Date e o JSON serializa-o inteiro. "2026-08-05"
+// chega como "2026-08-04T23:00:00.000Z" — dia anterior em UTC, por Lisboa
+// estar em UTC+1. Cortar os 10 primeiros caracteres daria o dia errado; ler as
+// componentes locais recupera a data pretendida.
+//
+// Sem isto, `${data}T${hora}` produz Invalid Date, e daí vinham o NaNhNaNm do
+// contador, os campos <input type="date"> em branco e o fmtDateShort truncado.
+function dataISO(v){
+  if(!v) return '';
+  if(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const d = new Date(v);
+  if(isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:r.data_despacho, horaDespacho:r.hora_despacho, dataSaidaEntidade:r.data_saida_entidade, horaSaidaEntidade:r.hora_saida_entidade, dataChegada:r.data_chegada, horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:r.limite_op_date, dataDemob:r.data_demob, horaDemob:r.hora_demob, dataChegadaEntidade:r.data_chegada_entidade, horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:r.previsto_data, previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:r.egfr_data||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -2605,8 +2623,15 @@ function fmtDateShort(d){ if(!d)return''; try{const[y,m,day]=d.split('-');return
 function nowStr(){ return new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'}); }
 
 // Compute time remaining info for a team
+// Devolve { semInfo:true, label } quando faltam dados, para o cartão poder dizer
+// o que é preciso indicar em vez de não mostrar nada — ou, pior, mostrar NaN.
 function timeInfo(t){
-  if(!t.dataChegada||!t.horaChegada) return null;
+  const temChegada = !!(t.dataChegada && t.horaChegada);
+  const temLimite  = !!(t.limiteOp || t.horasMax);
+  if(!temChegada || !temLimite){
+    const falta = [!temChegada && 'Chegada ao TO', !temLimite && 'Tempo máximo Op.'].filter(Boolean);
+    return { semInfo:true, pct:0, cls:'sem-info', label:`Sem info — indicar ${falta.join(' + ')}` };
+  }
   const chegada = new Date(`${t.dataChegada}T${t.horaChegada}`);
   let limite = null;
   if(t.limiteOp){
@@ -2616,7 +2641,8 @@ function timeInfo(t){
   } else if(t.horasMax){
     limite = new Date(chegada.getTime() + t.horasMax*3600000);
   }
-  if(!limite) return null;
+  if(!limite || isNaN(limite.getTime()) || isNaN(chegada.getTime()))
+    return { semInfo:true, pct:0, cls:'sem-info', label:'Sem info — datas por validar' };
   const now = new Date();
   const total = limite - chegada;
   const elapsed = now - chegada;
@@ -3115,7 +3141,7 @@ function occCardHtml(o){
   const totalOps=mainTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
   const urgent=mainTeams.filter(t=>{
     if(t.estado!=='operacao') return false;
-    const ti=timeInfo(t); return ti&&ti.pct>=85;
+    const ti=timeInfo(t); return ti && !ti.semInfo && ti.pct>=85;
   }).length;
   const postos = db.postos.filter(p=>p.ocorrencia_id===o.id);
   return `<div>
@@ -4160,7 +4186,8 @@ function renderCardsView(teams, isClosed){
     const od=(order[a.estado]??9)-(order[b.estado]??9);
     if(od!==0) return od;
     const ta=timeInfo(a), tb=timeInfo(b);
-    const pa=ta?ta.pct:0, pb=tb?tb.pct:0;
+    const va=ta&&!ta.semInfo?ta:null, vb=tb&&!tb.semInfo?tb:null;
+    const pa=va?va.pct:0, pb=vb?vb.pct:0;
     return pb-pa; // higher urgency first
   });
   const grouped = sortWithChildren(sorted);
@@ -4179,10 +4206,13 @@ function renderTableView(teams, isClosed){
     const childCount = isParent ? active.filter(c=>c.meioPaiId===t.id).length : 0;
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
-    const timeCell=ti?`<div style="display:flex;flex-direction:column;gap:2px;">
+    const timeCell = !ti ? '—'
+      : ti.semInfo
+        ? `<span style="font-size:9px;color:var(--muted);">${esc(ti.label)}</span>`
+        : `<div style="display:flex;flex-direction:column;gap:2px;">
       <div class="time-bar-track" style="width:80px"><div class="time-bar-fill ${ti.cls}" style="width:${ti.pct}%"></div></div>
       <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}</span>
-    </div>`:'—';
+    </div>`;
     const gc = t.egfrEquipa?'#1d4ed8':t.fsbfEmrId?'#b91c1c':t.fsbfBsbfId?'#b45309':null;
     const parentGc = isChild ? (()=>{ const p=active.find(x=>x.id===t.meioPaiId); return p?.egfrEquipa?'#1d4ed8':p?.fsbfEmrId?'#b91c1c':p?.fsbfBsbfId?'#b45309':null; })() : null;
     const nameCell = isChild
@@ -4224,12 +4254,19 @@ function teamCardHtml(t, isClosed, _teams){
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
   const ti=(!isClosed && t.estado==='operacao')?timeInfo(t):null;
-  const urgent=ti&&ti.pct>=85;
+  const urgent=ti && !ti.semInfo && ti.pct>=85;
   const pendingDelete=hasPendingDelete(t.id);
 
   // Time bar HTML — suppressed for closed ocorrências
   let tiHtml='';
-  if(ti){
+  if(ti && ti.semInfo){
+    tiHtml=`<div class="time-remaining">
+      <div class="time-remaining-label">
+        <span class="left">Tempo restante op.</span>
+        <span class="right sem-info">${esc(ti.label)}</span>
+      </div>
+    </div>`;
+  } else if(ti){
     tiHtml=`<div class="time-remaining">
       <div class="time-remaining-label">
         <span class="left">Tempo restante op.</span>
