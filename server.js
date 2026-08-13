@@ -321,9 +321,16 @@ async function findViaturaConflict(viaturaId, estado, excludeId) {
 }
 
 // Indica se existe um pedido de remoção pendente para este meio
+// Um pedido pendente sobre um meio-pai protege também os seus filhos: como
+// meio_pai_id é ON DELETE CASCADE, aprovar o pedido remove-os, e não faz sentido
+// deixá-los editar ou mudar de estado enquanto estão à espera de desaparecer.
 async function hasPendingDeleteRequest(meioId) {
   const { rows } = await pool.query(
-    `SELECT 1 FROM meio_delete_requests WHERE meio_id = $1 AND status = 'pending'`,
+    `SELECT 1 FROM meio_delete_requests dr
+      WHERE dr.status = 'pending'
+        AND (dr.meio_id = $1
+             OR dr.meio_id = (SELECT meio_pai_id FROM meios WHERE id = $1))
+      LIMIT 1`,
     [meioId]
   );
   return rows.length > 0;

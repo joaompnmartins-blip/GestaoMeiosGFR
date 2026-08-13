@@ -21,7 +21,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | # | Data | Alteração | Commit | Estado |
 |---|---|---|---|---|
 | 1 | 13/08/2026 | Oficiais de ligação vêem os pedidos de remoção | `9af294c` + `51c905a` | por validar |
-| 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `pendente` | por validar |
+| 2 | 13/08/2026 | Editar Meio segue o percurso de estados | `42a447b` | por validar |
+| 3 | 13/08/2026 | Remoção de meio agregado mostra e protege os filhos | `pendente` | por validar |
 
 ---
 
@@ -195,3 +196,67 @@ fechados se leiam como fechados de propósito e não como avaria.
 Não executados — alteração exclusivamente de interface, sem toque no servidor.
 A matriz de bloqueios e o selector foram verificados por simulação directa das
 tabelas de estado.
+
+---
+
+## 3 — Remoção de meio agregado mostra e protege os filhos
+
+**Data:** 13/08/2026 · **Estado:** por validar
+
+### O ponto de partida
+
+O pedido de remoção de um meio-pai não oferecia a opção de aplicar aos meios
+agregados, ao contrário das mudanças de estado. Ao investigar percebeu-se que
+**não há opção a oferecer**: `meio_pai_id` é `ON DELETE CASCADE`, e aprovar o
+pedido faz `DELETE FROM meios WHERE id=$1` sobre o pai — a base remove os filhos
+sempre. A remoção de um pai leva os agregados, não é opcional.
+
+O que faltava não era a escolha, era dizê-lo. E três defeitos reais em volta.
+
+### O que muda
+
+**O modal do pedido nomeia os filhos.** Passa a indicar quantos meios agregados
+são removidos em conjunto, lista-os, e diz explicitamente que não é opcional.
+
+**Um pedido pendente sobre o pai protege os filhos.** Antes,
+`hasPendingDelete()` testava apenas o id do próprio meio: enquanto o pedido do
+pai aguardava decisão, os filhos continuavam editáveis e podiam mudar de estado —
+estando prestes a ser eliminados. Agora um pedido sobre o pai bloqueia também os
+filhos, no cliente e no servidor.
+
+**Ao aprovar, os filhos saem do ecrã.** O cliente removia só o pai de
+`db.teams`, pelo que os filhos ficavam visíveis a apontar para um pai
+inexistente até ao recarregamento seguinte. Se algum filho for um PM, o
+transporte do MR é libertado, como já acontecia para o pai.
+
+**A lista de Pedidos mostra a dimensão real.** Cada pedido pendente indica
+`+N agregados removidos em conjunto`, para que quem aprova — decisão
+irreversível — veja que não está a remover um meio mas quatro.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `filhosDe()`; `hasPendingDelete()` alargado ao pai;
+  aviso com a lista de agregados em `openDeleteRequestModal()`; limpeza dos
+  filhos em `resolveDeleteRequest()`; contagem na coluna Meio de
+  `renderDeleteRequests()`.
+- **Servidor** — `hasPendingDeleteRequest()` passa a considerar um pedido
+  pendente sobre o `meio_pai_id`. Protege os quatro pontos que já a usavam:
+  `PATCH /api/meios/:id`, `PATCH /api/meios/:id/estado`,
+  `PUT /api/meios/:id/operativos` e o próprio pedido de remoção.
+- **Base de dados:** nenhuma. *(Nada a repetir no beta1 na promoção.)*
+
+### Verificação feita
+
+Consulta nova testada contra dados reais do beta2, dentro de uma transacção
+revertida: com um pedido pendente sobre `BRIG 01-115`, o pai e os seus três
+filhos (`SF 39-115`, `SF 40-115`, `SF 41-115`) ficam bloqueados, e meios sem
+relação não são afectados.
+
+### Como validar
+
+1. Pedir a remoção de um meio com agregados: o aviso deve nomeá-los e dizer que
+   vão em conjunto.
+2. Com o pedido pendente, tentar editar um dos filhos — deve ser recusado.
+3. Como `admin`, ver em **Pedidos** a indicação `+3 agregados`.
+4. Aprovar: pai e filhos desaparecem da listagem sem recarregar a página.
+5. Rejeitar noutro caso: pai e filhos voltam a ser editáveis.

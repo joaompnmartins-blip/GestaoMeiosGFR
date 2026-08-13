@@ -5462,8 +5462,16 @@ async function saveTeam(){
   closeModal('modal-team'); toast('Meio guardado!','ok'); await cacheToIDB(); renderTeams();
 }
 
+const filhosDe = id => db.teams.filter(t=>t.meioPaiId===id);
+
+// Um pedido pendente sobre o pai protege também os filhos: meio_pai_id é
+// ON DELETE CASCADE, pelo que aprovar remove-os. Editá-los enquanto esperam
+// não faz sentido — e o servidor impõe o mesmo.
 function hasPendingDelete(meioId){
-  return db.deleteRequests.some(x=>x.meio_id===meioId && x.status==='pending');
+  const pend = x => x.status==='pending';
+  if(db.deleteRequests.some(x=>x.meio_id===meioId && pend(x))) return true;
+  const t = db.teams.find(x=>x.id===meioId);
+  return !!(t?.meioPaiId && db.deleteRequests.some(x=>x.meio_id===t.meioPaiId && pend(x)));
 }
 
 // Liberta o transporte de qualquer MR associado a este PM (ex.: ao remover o PM)
@@ -5511,6 +5519,16 @@ function openDeleteRequestModal(id){
       Vai ser submetido um pedido de remoção de <strong>${esc(t.eq)}</strong> para aprovação por um administrador.
       Enquanto o pedido estiver pendente, este meio fica bloqueado para edição.
     </p>
+    ${(()=>{ const f=filhosDe(id); return f.length ? `
+      <div style="font-size:12px;line-height:1.6;background:var(--fsbf-ambar);
+                  border-left:3px solid var(--warn);border-radius:0 4px 4px 0;padding:10px 12px;margin-top:10px;">
+        <strong>Remove também ${f.length} meio${f.length>1?'s':''} agregado${f.length>1?'s':''}.</strong>
+        A remoção de um meio-pai leva sempre os seus agregados — não é opcional.
+        <div style="margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;">
+          ${f.map(c=>esc(c.eq)).join('<br>')}
+        </div>
+        Ficam igualmente bloqueados para edição enquanto o pedido estiver pendente.
+      </div>` : ''; })()}
     <div class="form-field" style="margin-top:14px;"><label class="form-label">Motivo (opcional)</label><textarea class="form-textarea" id="dr-motivo" rows="3" placeholder="Motivo da remoção…"></textarea></div>`;
   document.getElementById('action-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
     <button class="btn btn-danger" onclick="submitDeleteRequest('${id}')">🗑 Enviar pedido</button>`;
@@ -6254,7 +6272,11 @@ function renderDeleteRequests(){
     const st=statusMap[r.status]||{l:r.status,cls:'badge-closed'};
     return `<tr>
       <td class="mono" style="font-size:10px;">${(r.created_at||'').slice(0,16).replace('T',' ')}</td>
-      <td><strong>${esc(r.meio_eq)}</strong></td>
+      <td><strong>${esc(r.meio_eq)}</strong>${(()=>{
+        const n=filhosDe(r.meio_id).length;
+        return n && r.status==='pending'
+          ? `<div style="font-size:10px;color:var(--warn);margin-top:2px;">+${n} agregado${n>1?'s':''} removido${n>1?'s':''} em conjunto</div>` : '';
+      })()}</td>
       <td><span class="badge badge-y" style="font-size:9px">${esc(r.meio_tipo||'—')}</span></td>
       <td style="font-size:11px;color:var(--muted)">${esc(r.local_ignicao||'—')}</td>
       <td style="font-size:11px;color:var(--muted);max-width:200px">${esc(r.motivo||'—')}</td>
@@ -6287,7 +6309,11 @@ async function resolveDeleteRequest(id, action){
   if(action==='approve'){
     const t=db.teams.find(x=>x.id===r.meio_id);
     if(t && t.tipo==='PM') await unlinkTransporte(t.id);
-    db.teams=db.teams.filter(x=>x.id!==r.meio_id);
+    // A base apaga os filhos em cascata; sem isto ficavam no ecrã a apontar
+    // para um pai que já não existe, até ao próximo recarregamento.
+    const ids=new Set([r.meio_id, ...filhosDe(r.meio_id).map(c=>c.id)]);
+    for(const c of filhosDe(r.meio_id)) if(c.tipo==='PM') await unlinkTransporte(c.id);
+    db.teams=db.teams.filter(x=>!ids.has(x.id));
   }
   await cacheToIDB();
   renderDeleteRequests(); renderTeams();
