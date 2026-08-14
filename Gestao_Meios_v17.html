@@ -8014,9 +8014,15 @@ async function copiarDiaAnteriorCarta(){
 // assinalados na própria opção — o chefe é escolhido aqui, e não no modal da
 // guarnição, pelo que é aqui que a divergência pode ser evitada em vez de
 // apenas comunicada depois.
+// Cargos que podem ocupar os lugares de comando da carta. O 2.º Comandante
+// Nacional não é Chefe de Grupo, e sem isto não aparecia em lista nenhuma.
+const CARGOS_COMANDO = ['Chefe de Grupo', '2º Comandante Nacional'];
+
+// cargo aceita uma string ou uma lista.
 function fsbfOpOpts(selectedNome, cargo=null, baseRef=null){
-  const list = cargo
-    ? _fsbfOperacionaisCache.filter(o => o.cargo === cargo)
+  const cargos = cargo ? [].concat(cargo) : null;
+  const list = cargos
+    ? _fsbfOperacionaisCache.filter(o => cargos.includes(o.cargo))
     : _fsbfOperacionaisCache;
   return '<option value="">— operacional —</option>' +
     list.map(o=>{
@@ -8547,7 +8553,7 @@ async function renderFsbfCarta(){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
             <select class="form-select" id="fsbf-coord-nome" onchange="fsbfAutoContacto(this,'fsbf-coord-cont')" style="font-size:12px;width:200px;">
-              ${fsbfOpOpts(carta.coord_nome,'Chefe de Grupo')}
+              ${fsbfOpOpts(carta.coord_nome, CARGOS_COMANDO)}
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Contacto</label>
             <input class="form-input" id="fsbf-coord-cont" value="${esc(carta.coord_contacto||'')}" placeholder="9XXXXXXXX" style="font-size:12px;width:120px;"/></div>
@@ -8560,7 +8566,7 @@ async function renderFsbfCarta(){
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
           <div><label class="form-label" style="font-size:11px;">Nome</label>
             <select class="form-select" id="fsbf-chefe-nome" onchange="fsbfAutoContacto(this,'fsbf-chefe-cont')" style="font-size:12px;width:190px;">
-              ${fsbfOpOpts(carta.chefe_nome,'Chefe de Grupo')}
+              ${fsbfOpOpts(carta.chefe_nome, CARGOS_COMANDO)}
             </select></div>
           <div><label class="form-label" style="font-size:11px;">Veículo (texto)</label>
             <input class="form-input" id="fsbf-chefe-viat-txt" value="${esc(carta.chefe_veiculo_texto||'')}" placeholder="ex: VM87" style="font-size:12px;width:80px;"/></div>

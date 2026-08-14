@@ -27,6 +27,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 5 | 13/08/2026 | Arquivo aberto ao ofligacao, com filtros de data e sub-região | `d87a025` | em beta1 e beta2 |
 | 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `1fa7098` | em beta1 e beta2 |
 | 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
+| 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `pendente` | em beta1 e beta2 |
 
 As sete foram promovidas ao beta1 em 13/08/2026 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -573,3 +574,63 @@ legitimamente repetir uma viatura.
    linha.
 5. Confirmar o mesmo para uma VFCI usada no Chefe de Grupo: não deve aparecer
    nas linhas de brigada.
+
+---
+
+## 8 — 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo
+
+**Data:** 13/08/2026 · **Estado:** aplicado a beta1 e beta2
+
+### O que muda
+
+Os dois selectores do cabeçalho da Carta de Meios — **Coordenador de Dia** e
+**Chefe de Grupo** — ofereciam apenas operacionais com `cargo = 'Chefe de
+Grupo'`. O efectivo tem um **2.º Comandante Nacional**, José Motaco, que não
+cabia nesse filtro e por isso não aparecia em lista nenhuma.
+
+Os dois lugares passam a aceitar ambos os cargos.
+
+| Cargo | Activos | Elegível para os dois lugares |
+|---|---:|---|
+| Chefe de Grupo | 6 | sim |
+| 2.º Comandante Nacional | 1 | **sim** (antes não) |
+| Sapador Bombeiro Florestal | 103 | não |
+| Sapador Bombeiro Florestal Estagiário | 56 | não |
+| (sem cargo) | 10 | não |
+
+O `fsbfOpOpts()` passa a aceitar uma lista de cargos além de uma string, e os
+cargos elegíveis ficam numa constante `CARGOS_COMANDO`, para não andarem
+repetidos por vários pontos.
+
+### Não alterado
+
+O **Comandante da Força** da Gruata continua restrito a `Chefe de Grupo`. Não
+foi pedido, e é um lugar distinto — se também dever aceitar o 2.º Comandante
+Nacional, é trocar o argumento por `CARGOS_COMANDO`.
+
+Os selectores de **chefe de equipa das linhas** continuam sem filtro de cargo:
+oferecem todo o efectivo, como antes.
+
+### Nota sobre o aviso de base
+
+José Motaco é o único operacional activo **sem base** registada. O aviso de base
+fora da linha não dispara para ele — sem base não há comparação possível, e é
+tratado como desconhecido, não como divergência. Os dois lugares do cabeçalho
+também não têm base de referência, pelo que a questão não se coloca aí.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `CARGOS_COMANDO`; `fsbfOpOpts()` aceita string ou
+  lista; os dois selectores do cabeçalho passam a usar a constante.
+- **Servidor:** nenhuma. `coord_nome` e `chefe_nome` são texto livre e nunca
+  foram validados contra o cargo.
+- **Base de dados:** nenhuma.
+
+### Como validar
+
+1. Na Carta de Meios, abrir **Coordenador de Dia**: José Motaco consta da lista.
+2. O mesmo em **Chefe de Grupo**.
+3. Escolher, gravar e validar o bloco — o nome persiste e o contacto é
+   preenchido automaticamente a partir do efectivo.
+4. Confirmar que os restantes 169 operacionais continuam fora destes dois
+   selectores.
