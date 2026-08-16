@@ -1208,6 +1208,24 @@ app.post('/api/ocorrencias/:id/meios/composicao', requireAuth('ofligacao'), wrap
   const errNac = await erroMeioNacional(null, composicao_id, req.user.role);
   if (errNac) return res.status(403).json({ error: errNac });
 
+  // Uma composição não se empenha duas vezes enquanto a primeira estiver activa.
+  // Os índices únicos sobre recurso_id e viatura_id cobrem apenas transito,
+  // operacao e descanso — não 'previsto' — pelo que uma brigada acabada de
+  // despachar não ocupava nada e podia ser despachada de novo. Aconteceu:
+  // BRIG 01-115 foi empenhada três vezes na mesma ocorrência em dois minutos,
+  // com os mesmos três sapadores em cada uma.
+  const { rows: [jaActiva] } = await pool.query(
+    `SELECT m.id, o.local_ignicao, m.estado
+       FROM meios m JOIN ocorrencias o ON o.id = m.ocorrencia_id
+      WHERE m.composicao_id = $1 AND m.meio_pai_id IS NULL
+        AND m.estado <> 'desmobilizado'
+      LIMIT 1`, [composicao_id]);
+  if (jaActiva) {
+    return res.status(409).json({
+      error: `Esta composição já está empenhada na ocorrência "${jaActiva.local_ignicao}" (${jaActiva.estado}).`,
+    });
+  }
+
   const { rows: [comp] } = await pool.query(
     `SELECT c.*, json_agg(json_build_object(
        'id', cm.id, 'papel', cm.papel, 'recurso_id', cm.recurso_id, 'viatura_id', cm.viatura_id,

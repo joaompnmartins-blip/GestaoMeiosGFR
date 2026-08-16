@@ -31,7 +31,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `ef9fc7b` | em beta1 e beta2 |
 | 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `02d7157` | **por validar (só beta2)** |
 | 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `7638704` | **por validar (só beta2)** |
-| 12 | 16/08/2026 | Editar Meio passa a propagar o estado ao conjunto composto | `pendente` | **por validar (só beta2)** |
+| 12 | 16/08/2026 | Editar Meio passa a propagar o estado ao conjunto composto | `40e2312` | **por validar (só beta2)** |
+| 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -922,3 +923,74 @@ Com o conjunto de M01 (pai + VAOP 03, VLCI 11, VTTP 02) e um meio solto:
 3. Repetir com a caixa desligada: só o meio aberto muda.
 4. Num meio sem agregados, confirmar que a caixa não aparece.
 5. Confirmar que alterar só o contacto ou as observações não mexe nos agregados.
+
+---
+
+## 13 — Uma composição não pode ser empenhada duas vezes
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### O que aconteceu
+
+`BRIG 01-115` foi empenhada **três vezes na mesma ocorrência**, com um minuto de
+intervalo, cada uma com os mesmos três sapadores:
+
+```
+14:16:14  BRIG 01-115  transito   SF 39-115, SF 40-115, SF 41-115
+14:17:13  BRIG 01-115  transito   SF 39-115, SF 40-115, SF 41-115
+14:18:09  BRIG 01-115  operacao   SF 39-115, SF 40-115, SF 41-115
+```
+
+Nove filhos, para três recursos.
+
+### Porque nada o impediu
+
+A exclusividade assenta em índices únicos parciais sobre `recurso_id` e
+`viatura_id`, mas cobrem apenas três estados:
+
+```sql
+WHERE recurso_id IS NOT NULL AND estado IN ('transito','operacao','descanso')
+```
+
+Falta `previsto` — e é nesse estado que os filhos de uma composição nascem.
+Uma brigada acabada de despachar **não ocupava nada**, e o `23505` que o deploy
+apanha nunca chegava a disparar.
+
+A aplicação, essa, considera `previsto` ocupado:
+`OCUPADO_ESTADOS = ['previsto','transito','operacao','descanso']`. O índice e a
+regra da aplicação discordavam, e a discordância era exactamente a brecha.
+
+### O que muda
+
+O deploy de composição passa a recusar, com **409**, quando a composição já tem
+um empenhamento não desmobilizado, nomeando onde está:
+
+> Esta composição já está empenhada na ocorrência "Faro, Loulé, Salir" (operacao).
+
+### Verificação
+
+| Caso | Resultado |
+|---|---|
+| Empenhar uma composição já activa | **409**, com a ocorrência nomeada |
+| Empenhar uma composição livre (`BRIG 02-16C`) | 200, pai e filhos criados |
+
+O empenhamento de teste foi removido, e os filhos foram com ele por cascata.
+
+### Por fazer — a correcção de fundo
+
+O ideal é alinhar os índices com `OCUPADO_ESTADOS`, acrescentando `previsto`:
+fecharia a brecha para **todos** os meios, não só para composições. Não pode ser
+feito já: os duplicados existentes violam a restrição e a criação do índice
+falharia. Exige limpar os dados primeiro, e fica como entrada própria.
+
+### Alterações
+
+- `server.js` — verificação no `POST /api/ocorrencias/:id/meios/composicao`.
+- **Base de dados:** nenhuma *(a alteração aos índices fica por decidir)*.
+
+### Como validar
+
+1. Empenhar uma brigada BSF numa ocorrência.
+2. Tentar empenhar a mesma outra vez, na mesma ou noutra ocorrência: deve
+   recusar, nomeando onde já está.
+3. Desmobilizá-la e confirmar que volta a poder ser empenhada.
