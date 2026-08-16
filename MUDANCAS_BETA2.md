@@ -28,9 +28,9 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `1fa7098` | em beta1 e beta2 |
 | 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
 | 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `7baf34b` | em beta1 e beta2 |
-| 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `pendente` | em beta1 e beta2 |
+| 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `ef9fc7b` | em beta1 e beta2 |
 
-As oito foram promovidas ao beta1 em 13/08/2026 por `git merge --ff-only beta2`.
+As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
 repetir numa promoção — em nenhuma delas há alterações de base de dados.
 
