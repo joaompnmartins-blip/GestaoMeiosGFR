@@ -30,7 +30,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `7baf34b` | em beta1 e beta2 |
 | 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `ef9fc7b` | em beta1 e beta2 |
 | 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `02d7157` | **por validar (só beta2)** |
-| 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `pendente` | **por validar (só beta2)** |
+| 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `7638704` | **por validar (só beta2)** |
+| 12 | 16/08/2026 | Editar Meio passa a propagar o estado ao conjunto composto | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -846,3 +847,78 @@ inteiro, e um filho cujo pai não esteja no conjunto conta, em vez de se perder.
 3. Num cartão EMR, o total deve igualar o Total Op. do cartão.
 4. Confirmar que ocorrências sem meios compostos mantêm exactamente o mesmo
    número de antes.
+
+---
+
+## 12 — Editar Meio passa a propagar o estado ao conjunto composto
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### O sintoma
+
+Passar a MR **M01** a *Em Operação* deixou os seus três meios agregados —
+VAOP 03, VLCI 11 e VTTP 02 — em *Em Trânsito*. Nada foi perguntado sobre o
+resto do conjunto.
+
+### A causa
+
+As **acções rápidas** já tratam disto: quando o meio pertence a um conjunto,
+mostram a caixa *«aplicar a todos»*, ligada por omissão, e propagam. São oito —
+trânsito, operação, descanso, desmobilização, chegada à base, sector, posto e
+transferência.
+
+O **Editar Meio** não tinha nada disso. O `saveTeam()` nunca chama
+`compositeGroupSiblings()`: gravava apenas o meio aberto. Mudar o estado por ali
+movia o pai e deixava os filhos para trás, sem aviso.
+
+### O que muda
+
+Quando o meio pertence a um conjunto, o modal de edição passa a mostrar, por
+baixo do selector de estado, a mesma opção das acções rápidas:
+
+> ☑ Aplicar a mudança de estado aos **3** meios de *Máquina de Rasto M01*
+
+Ligada por omissão, e só visível quando há conjunto. Ao gravar, se o estado
+mudou e a opção estiver ligada, a alteração é aplicada aos restantes.
+
+A propagação **reutiliza os aplicadores das acções rápidas** —
+`applyTransitToTeam`, `applyOpToTeam`, `applyRestToTeam`, `applyDemobToTeam` —
+para que o resultado seja idêntico venha a alteração de onde vier: as mesmas
+datas e horas da fase, o mesmo sector e missão, o mesmo recálculo do limite
+operacional por meio. Um meio que já esteja no estado de destino é ignorado.
+
+### Âmbito
+
+Propaga-se a **mudança de estado**. Os restantes campos da edição continuam a
+aplicar-se só ao meio aberto — designação, matrícula, contacto e observações são
+próprios de cada um, e copiá-los ao conjunto seria errado.
+
+O conjunto resolve-se nos dois sentidos, como já acontecia nas acções rápidas:
+a partir do pai dá os filhos; a partir de um filho dá o pai e os irmãos.
+
+### Verificação
+
+Com o conjunto de M01 (pai + VAOP 03, VLCI 11, VTTP 02) e um meio solto:
+
+| A partir de | Conjunto encontrado |
+|---|---|
+| M01 (pai) | VAOP 03, VLCI 11, VTTP 02 |
+| VAOP 03 (filho) | M01, VLCI 11, VTTP 02 |
+| SF 5VN05 (solto) | nenhum — sem caixa |
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `propagarEstadoAoGrupo()`; caixa `team-aplicar-grupo`
+  desenhada pelo `editTeam()` no novo contentor `team-grupo-nota`; chamada no
+  `saveTeam()` onde a mudança de estado já era detectada.
+- **Servidor:** nenhuma. **Base de dados:** nenhuma.
+
+### Como validar
+
+1. Numa MR com agregados, abrir **Editar Meio**: a caixa aparece com a contagem
+   correcta, ligada.
+2. Mudar o estado e gravar: os agregados acompanham, e surge o aviso *«Estado
+   aplicado a mais N meio(s) do conjunto.»*
+3. Repetir com a caixa desligada: só o meio aberto muda.
+4. Num meio sem agregados, confirmar que a caixa não aparece.
+5. Confirmar que alterar só o contacto ou as observações não mexe nos agregados.

@@ -1643,6 +1643,7 @@
           <option value="descanso">Em Descanso</option>
           <option value="desmobilizado">Desmobilizado</option>
         </select>
+        <div id="team-grupo-nota" style="display:none;margin-top:6px;"></div>
       </div>
       <div class="form-field" id="previsto-data-field" style="display:none;">
         <label class="form-label">Data prevista disponibilidade</label>
@@ -4660,6 +4661,31 @@ function compositeGroupLabel(t){
 }
 
 // ── Per-team apply helpers (reused by doQuick* and sibling loops) ─
+// Propaga a mudança de estado feita na edição aos restantes meios do conjunto,
+// pelos mesmos aplicadores que as acções rápidas usam — para que o resultado
+// seja idêntico, venha a alteração de onde vier.
+async function propagarEstadoAoGrupo(meio, novoEstado){
+  const cb = document.getElementById('team-aplicar-grupo');
+  if(!cb || !cb.checked) return;
+  const irmaos = compositeGroupSiblings(meio);
+  if(!irmaos.length) return;
+  const v = id => document.getElementById(id)?.value || '';
+  for(const s of irmaos){
+    if(s.estado === novoEstado) continue;
+    if(novoEstado==='transito')
+      await applyTransitToTeam(s, v('team-data-saida-entidade'), v('team-hora-saida-entidade'),
+                                  v('team-obs'), v('team-data-despacho'), v('team-hora-despacho'));
+    else if(novoEstado==='operacao')
+      await applyOpToTeam(s, v('team-data-chegada'), v('team-hora-chegada'),
+                             parseInt(v('team-horas-max'))||12, v('team-setor'), v('team-missao'));
+    else if(novoEstado==='descanso')
+      await applyRestToTeam(s, v('team-obs'));
+    else if(novoEstado==='desmobilizado')
+      await applyDemobToTeam(s, v('team-data-demob'), v('team-hora-demob'), v('team-obs'));
+  }
+  toast(`Estado aplicado a mais ${irmaos.length} meio(s) do conjunto.`,'info');
+}
+
 async function applyTransitToTeam(t, saidaDate, saidaTime, obs, despDate, despTime){
   t.estado='transito';
   t.dataSaidaEntidade=saidaDate||null; t.horaSaidaEntidade=saidaTime||null;
@@ -5371,6 +5397,25 @@ function editTeam(id){
   if(singleEd) singleEd.style.display = '';
   document.getElementById('team-bsf-id').value = '';
 
+  // Um meio composto move-se em conjunto. As acções rápidas já perguntam; a
+  // edição não perguntava nada e mexia só neste meio, deixando os restantes
+  // para trás — foi o que aconteceu ao passar uma MR a Em Operação com os
+  // seus VAOP/VLCI/VTTP ainda em trânsito.
+  const grupoNota = document.getElementById('team-grupo-nota');
+  const irmaos = compositeGroupSiblings(t);
+  if(grupoNota){
+    grupoNota.style.display = irmaos.length ? '' : 'none';
+    grupoNota.innerHTML = irmaos.length
+      ? `<label style="display:flex;gap:8px;align-items:center;cursor:pointer;font-size:11px;
+                 background:color-mix(in srgb,var(--accent3) 8%,transparent);
+                 border:1px solid var(--border);border-radius:4px;padding:7px 10px;">
+           <input type="checkbox" id="team-aplicar-grupo" checked/>
+           <span>Aplicar a mudança de estado aos <strong>${irmaos.length}</strong> meios de
+           <strong>${esc(compositeGroupLabel(t))}</strong></span>
+         </label>`
+      : '';
+  }
+
   meioEstadoOpts(t.estado||'transito');
   document.getElementById('team-previsto-data').value=t.previstoData||'';
   document.getElementById('team-previsto-hora').value=t.previstoHora||'';
@@ -5562,6 +5607,7 @@ async function saveTeam(){
         await persistOccEvento(currentOccId,'ops',`${eq} — operacionais actualizados: ${opNames}`,eq);
       }
       if(payload.estado!==old.estado){
+        await propagarEstadoAoGrupo(old, payload.estado);
         changes.push(`Estado: ${old.estado} → ${payload.estado}`);
         await persistOccEvento(currentOccId,'estado',`${eq} — estado alterado: ${old.estado} → ${payload.estado}`,eq);
       }
