@@ -28,6 +28,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 6 | 13/08/2026 | Reabrir ocorrência deixa de estar ao alcance do ofligacao | `1fa7098` | em beta1 e beta2 |
 | 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
 | 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `7baf34b` | em beta1 e beta2 |
+| 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `pendente` | em beta1 e beta2 |
 
 As oito foram promovidas ao beta1 em 13/08/2026 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -634,3 +635,54 @@ também não têm base de referência, pelo que a questão não se coloca aí.
    preenchido automaticamente a partir do efectivo.
 4. Confirmar que os restantes 169 operacionais continuam fora destes dois
    selectores.
+
+---
+
+## 9 — Editar Meio de composições BSF já não herda o estado do modal de Adicionar
+
+**Data:** 16/08/2026 · **Estado:** aplicado a beta1 e beta2
+
+### O sintoma
+
+Ao editar o meio-pai de uma composição BSF, o modal aparecia sem os campos de
+identificação e com a lista *«Os seguintes recursos serão adicionados
+individualmente à ocorrência»* — texto que só faz sentido ao **criar**. Os
+bloqueios da alteração 2 pareciam não estar a funcionar.
+
+### A causa
+
+O modal tem dois blocos alternativos: `single-meio-fields`, com Designação,
+Tipo, Matrícula, Concelho, Responsável e Contacto, e `bsf-members-section`, a
+pré-visualização dos membros de uma composição. O `applyPreset()` alterna entre
+eles e o `openAddTeam()` repõe-nos — **mas o `editTeam()` nunca lhes tocava**.
+
+Bastava abrir *Adicionar Meio*, escolher uma composição BSF e fechar: o modal
+ficava com a pré-visualização visível e os campos de identificação escondidos.
+Abrir *Editar Meio* a seguir herdava esse estado. Os campos de identificação
+continuavam bloqueados pela alteração 2 — só que **escondidos**, e portanto os
+bloqueios não se viam.
+
+Editar um meio existente nunca deve mostrar a pré-visualização: os filhos já
+existem, não vão ser criados.
+
+### O que muda
+
+O `editTeam()` repõe os dois blocos e limpa `team-bsf-id`, tal como o
+`openAddTeam()` já fazia. As três funções que mexem nestes blocos ficam
+coerentes.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — reposição de `bsf-members-section`,
+  `single-meio-fields` e `team-bsf-id` no início do `editTeam()`.
+- **Servidor:** nenhuma. **Base de dados:** nenhuma.
+
+### Como validar
+
+1. Abrir **Adicionar Meio**, escolher uma composição BSF, **Cancelar**.
+2. Abrir **Editar Meio** num meio qualquer: devem aparecer Designação, Tipo,
+   Matrícula e Concelho — a cinzento tracejado — e **não** a lista de membros.
+3. Editar o pai de uma composição: idem, com os campos de identificação
+   bloqueados e os das fases já cumpridas em leitura.
+4. Confirmar que Adicionar continua a mostrar a pré-visualização ao escolher uma
+   composição BSF.

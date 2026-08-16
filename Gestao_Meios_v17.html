@@ -5310,6 +5310,19 @@ function editTeam(id){
   document.getElementById('team-hora-chegada-entidade').value=t.horaChegadaEntidade||'';
   document.getElementById('team-km').value=t.km||'';
   document.getElementById('team-missao').value=t.missao||'';
+  // A pré-visualização de membros BSF e o bloco de campos individuais são
+  // alternados pelo applyPreset e repostos pelo openAddTeam — mas nunca aqui.
+  // Abrir Adicionar, escolher uma composição BSF e depois abrir Editar deixava
+  // a lista de membros da composição anterior no ecrã e os campos de
+  // identificação escondidos, pelo que os bloqueios de edição não se viam.
+  // Editar um meio existente nunca mostra a pré-visualização: os filhos já
+  // existem, não vão ser criados.
+  const bsfSecEd = document.getElementById('bsf-members-section');
+  const singleEd = document.getElementById('single-meio-fields');
+  if(bsfSecEd) bsfSecEd.style.display = 'none';
+  if(singleEd) singleEd.style.display = '';
+  document.getElementById('team-bsf-id').value = '';
+
   meioEstadoOpts(t.estado||'transito');
   document.getElementById('team-previsto-data').value=t.previstoData||'';
   document.getElementById('team-previsto-hora').value=t.previstoHora||'';
