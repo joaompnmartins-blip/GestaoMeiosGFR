@@ -29,7 +29,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
 | 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `7baf34b` | em beta1 e beta2 |
 | 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `ef9fc7b` | em beta1 e beta2 |
-| 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `pendente` | **por validar (só beta2)** |
+| 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `02d7157` | **por validar (só beta2)** |
+| 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -771,3 +772,77 @@ O evento de teste foi removido no fim.
 2. Confirmar que operações legítimas continuam a sincronizar.
 3. Provocar um erro conhecido — por exemplo gravar guarnição 10 pela API — e
    confirmar que devolve 409 com mensagem legível, e não 500.
+
+---
+
+## 11 — Operacionais deixam de ser contados a dobrar em meios compostos
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### O problema
+
+Num meio composto, pai e filhos guardam **ambos** um número de operacionais, e
+todos os totais somavam os dois. Medido no beta2: `BRIG 01-115` contava **30**
+operacionais quando são **15**.
+
+| Via | Pai | Filhos | Duplicava |
+|---|---|---|---|
+| **BSF** (composição) | soma dos membros | `num_elementos` de cada | sim |
+| **BSBF** (deploy) | soma das guarnições da carta | `guarnicao` de cada | sim |
+| **EMR** (deploy) | `total_op` do cartão | coluna não preenchida | não |
+
+### A regra adoptada
+
+Cada tipo tem a sua fonte de verdade, e é essa que conta:
+
+- **BSF** — contam os **filhos**. O pai é um contentor com a soma; os filhos são
+  o detalhe real, um por membro.
+- **BSBF** — conta o **pai**. O seu número é a soma das guarnições das linhas da
+  **Carta de Meios** dessa brigada.
+- **EMR** — conta o **pai**. O seu número é o `total_op` do cartão da **Carta de
+  Meios**; os filhos (VAOP, piloto, VLCI) não trazem número nenhum.
+
+Um pai de composição **sem filhos** continua a contar: de outro modo uma
+composição por completar desaparecia da contagem.
+
+### Onde se aplica
+
+Um só par de funções — `meioContaOperacionais()` e `somaOperacionais()` — e
+**20 somatórios** passaram a usá-lo: resumo da ocorrência, cartões de posto de
+comando, estatísticas por tipologia (ESF, BSF, FSBF, EMR, EGFR), totais das
+listas de ocorrências, arquivo, cabeçalho da listagem de meios e agrupamento por
+sector.
+
+### Verificação
+
+| Caso | Total | Esperado |
+|---|---:|---:|
+| BSF: pai 15 + 3 filhos de 5 | 15 | 15 |
+| BSBF: pai 15 + 3 filhos de 5 | 15 | 15 |
+| EMR: pai 6 + 3 filhos sem número | 6 | 6 |
+| Dois meios simples (4+7) | 11 | 11 |
+| Composição BSF sem filhos | 12 | 12 |
+| Subconjunto só com o filho | 5 | 5 |
+| Filho com o pai fora do conjunto | 5 | 5 |
+
+Os dois últimos importam porque há somatórios sobre subconjuntos — por posto de
+comando, por sector. Nesses casos a procura do pai é feita sobre `db.teams`
+inteiro, e um filho cujo pai não esteja no conjunto conta, em vez de se perder.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `meioContaOperacionais()`, `somaOperacionais()`, e
+  os 20 somatórios.
+- **Servidor:** nenhuma. Os dois números continuam gravados: o do pai é o
+  resumo, o dos filhos o detalhe. Só a leitura mudou.
+- **Base de dados:** nenhuma.
+
+### Como validar
+
+1. Numa ocorrência com uma composição BSF, confirmar que o total de operacionais
+   passa a ser metade do que mostrava.
+2. Conferir contra a Carta de Meios: numa brigada BSBF, o total deve igualar a
+   soma das guarnições das linhas desse dia.
+3. Num cartão EMR, o total deve igualar o Total Op. do cartão.
+4. Confirmar que ocorrências sem meios compostos mantêm exactamente o mesmo
+   número de antes.

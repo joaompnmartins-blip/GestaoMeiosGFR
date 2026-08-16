@@ -2769,7 +2769,7 @@ function postoCardHtml(p){
   const postoTeams = db.teams.filter(t=>t.postoComandoId===p.id && t.estado!=='desmobilizado');
   const ops   = postoTeams.filter(t=>t.estado==='operacao').length;
   const rest  = postoTeams.filter(t=>t.estado==='descanso').length;
-  const totalOps = postoTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps = somaOperacionais(postoTeams);
   const tipoCls  = p.tipo==='PCF' ? 'badge-info' : 'badge-warn';
   return `<div class="occ-card" style="margin-top:6px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};" onclick="event.stopPropagation();openPostoDetalhe('${p.id}')">
     <div class="occ-card-header" style="padding:10px 14px 8px 16px;">
@@ -2839,8 +2839,8 @@ function tipologiaBreakdownOthers(teams){
 function esfBsfBlock(teams, compact=false){
   const esfT=teams.filter(t=>categorizeMeio(t)==='ESF');
   const bsfT=teams.filter(t=>categorizeMeio(t)==='BSF');
-  const esfOps=esfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  const bsfOps=bsfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const esfOps=somaOperacionais(esfT);
+  const bsfOps=somaOperacionais(bsfT);
   const sz=compact?'22px':'32px';
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="sf-esf-block">
@@ -2881,8 +2881,8 @@ function tipologiaBreakdownNonFSBF(teams){
 function fsbfEmrBlock(teams, compact=false){
   const fsbfT=teams.filter(t=>t.fsbfBsbfId&&!t.fsbfEmrId);
   const emrT =teams.filter(t=>!!t.fsbfEmrId);
-  const fsbfOps=fsbfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  const emrOps =emrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const fsbfOps=somaOperacionais(fsbfT);
+  const emrOps =somaOperacionais(emrT);
   const sz=compact?'22px':'32px';
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="fsbf-bsbf-block">
@@ -2963,7 +2963,7 @@ function occCardHtmlGestorFSBF(o){
 
 function egfrBlock(teams, compact=false){
   const egfrT=teams.filter(t=>categorizeMeio(t)==='EGFR');
-  const egfrOps=egfrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const egfrOps=somaOperacionais(egfrT);
   const sz=compact?'22px':'32px';
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="egfr-block">
@@ -3106,7 +3106,7 @@ function occCardHtmlGestorSF(o){
 
 function postoCardHtmlViz(p){
   const pt=db.teams.filter(t=>t.postoComandoId===p.id&&t.estado!=='desmobilizado');
-  const totalOps=pt.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps=somaOperacionais(pt);
   const tipoCls=p.tipo==='PCF'?'badge-info':'badge-warn';
   return `<div class="occ-card occ-card-viz" style="margin-top:4px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};">
     <div class="occ-card-header" style="padding:8px 14px 6px 16px;">
@@ -3128,8 +3128,8 @@ function occCardHtmlViz(o){
   const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado');
   const mainTeams=activeT.filter(t=>!t.postoComandoId);
-  const mainOps=mainTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
-  const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const mainOps=somaOperacionais(mainTeams);
+  const totalOps=somaOperacionais(activeT);
   const postos=db.postos.filter(p=>p.ocorrencia_id===o.id);
   return `<div>
     <div class="occ-card occ-card-viz">
@@ -3169,7 +3169,7 @@ function occCardHtml(o){
   const mainTeams = activeT.filter(t=>!t.postoComandoId);
   const ops=mainTeams.filter(t=>t.estado==='operacao').length;
   const rest=mainTeams.filter(t=>t.estado==='descanso').length;
-  const totalOps=mainTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps=somaOperacionais(mainTeams);
   const urgent=mainTeams.filter(t=>{
     if(t.estado!=='operacao') return false;
     const ti=timeInfo(t); return ti && !ti.semInfo && ti.pct>=85;
@@ -3273,7 +3273,7 @@ function updateStats(){
   document.getElementById('s-active').textContent=activeOccIds.size;
   const activeTeams=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado!=='desmobilizado');
   document.getElementById('s-teams').textContent=activeTeams.length;
-  document.getElementById('s-operacionais').textContent=activeTeams.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  document.getElementById('s-operacionais').textContent=somaOperacionais(activeTeams);
   document.getElementById('s-ops').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='operacao').length;
   document.getElementById('s-rest').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='descanso').length;
   document.getElementById('s-demob').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='desmobilizado').length;
@@ -3284,9 +3284,9 @@ function updateStats(){
     document.getElementById('sf-s-esf-op').textContent=esfT.filter(t=>t.estado==='operacao').length;
     document.getElementById('sf-s-esf-rest').textContent=esfT.filter(t=>t.estado==='descanso').length;
     document.getElementById('sf-s-esf-meios').textContent=esfT.length;
-    document.getElementById('sf-s-esf-opn').textContent=esfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('sf-s-esf-opn').textContent=somaOperacionais(esfT);
     document.getElementById('sf-s-bsf-meios').textContent=bsfT.length;
-    document.getElementById('sf-s-bsf-opn').textContent=bsfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('sf-s-bsf-opn').textContent=somaOperacionais(bsfT);
   }
   const fsbfRow=document.getElementById('fsbf-stats-row');
   if(fsbfRow&&fsbfRow.style.display!=='none'){
@@ -3295,9 +3295,9 @@ function updateStats(){
     document.getElementById('fsbf-s-fsbf-op').textContent=fsbfT.filter(t=>t.estado==='operacao').length;
     document.getElementById('fsbf-s-fsbf-rest').textContent=fsbfT.filter(t=>t.estado==='descanso').length;
     document.getElementById('fsbf-s-fsbf-meios').textContent=fsbfT.length;
-    document.getElementById('fsbf-s-fsbf-opn').textContent=fsbfT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('fsbf-s-fsbf-opn').textContent=somaOperacionais(fsbfT);
     document.getElementById('fsbf-s-emr-meios').textContent=emrT.length;
-    document.getElementById('fsbf-s-emr-opn').textContent=emrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('fsbf-s-emr-opn').textContent=somaOperacionais(emrT);
   }
   const egfrRow=document.getElementById('egfr-stats-row');
   if(egfrRow&&egfrRow.style.display!=='none'){
@@ -3305,7 +3305,7 @@ function updateStats(){
     document.getElementById('egfr-s-op').textContent=egfrT.filter(t=>t.estado==='operacao').length;
     document.getElementById('egfr-s-rest').textContent=egfrT.filter(t=>t.estado==='descanso').length;
     document.getElementById('egfr-s-meios').textContent=egfrT.length;
-    document.getElementById('egfr-s-opn').textContent=egfrT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+    document.getElementById('egfr-s-opn').textContent=somaOperacionais(egfrT);
   }
 }
 
@@ -3315,7 +3315,7 @@ function updateStats(){
 function arqCardHtml(o){
   const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado');
-  const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps=somaOperacionais(activeT);
   const desmob=teams.filter(t=>t.estado==='desmobilizado').length;
   // Try to find close date from occ eventos or fall back to updated_at
   const closeEvt=(db_occEventos[o.id]||[]).find(e=>e.msg&&e.msg.includes('fechada'));
@@ -3394,7 +3394,7 @@ function renderArquivo(){
 
   // Stats
   const arqMeios=list.reduce((s,o)=>s+db.teams.filter(t=>t.ocorrencia_id===o.id).length,0);
-  const arqOps=list.reduce((s,o)=>s+db.teams.filter(t=>t.ocorrencia_id===o.id).reduce((ss,t)=>ss+(parseInt(t.operacionais)||0),0),0);
+  const arqOps=list.reduce((s,o)=>s+somaOperacionais(db.teams.filter(t=>t.ocorrencia_id===o.id)),0);
   document.getElementById('arq-total').textContent=list.length;
   document.getElementById('arq-meios').textContent=arqMeios;
   document.getElementById('arq-ops').textContent=arqOps;
@@ -3985,7 +3985,7 @@ function renderTeams(){
   const activeT=teams.filter(t=>t.estado!=='desmobilizado'&&t.estado!=='previsto');
   document.getElementById('team-count-label').textContent=`${activeT.length} meios`;
   document.getElementById('d-total').textContent=activeT.length;
-  const totalOps=activeT.reduce((s,t)=>s+(parseInt(t.operacionais)||0),0);
+  const totalOps=somaOperacionais(activeT);
   document.getElementById('d-total-ops').textContent=totalOps;
   document.getElementById('d-ops2').textContent=teams.filter(t=>t.estado==='operacao').length;
   document.getElementById('d-rest2').textContent=teams.filter(t=>t.estado==='descanso').length;
@@ -4148,7 +4148,7 @@ function renderSectorGroups(ativos, isClosed){
     const st=sectors[s];
     const ops=st.filter(t=>t.estado==='operacao').length;
     const rest=st.filter(t=>t.estado==='descanso').length;
-    const totalOps=st.filter(t=>t.estado!=='desmobilizado').reduce((acc,t)=>acc+(parseInt(t.operacionais)||0),0);
+    const totalOps=somaOperacionais(st.filter(t=>t.estado!=='desmobilizado'));
     return `<div class="sector-group">
       <div class="sector-header">
         <span class="sector-label">${esc(s)}</span>
@@ -4606,6 +4606,34 @@ function quickAction(type, teamId){
 }
 
 // ── Composite team helpers ────────────────────────────────────────
+// ── Contagem de operacionais em meios compostos ──────────────────────────
+// Pai e filhos guardam ambos um número, e somar tudo contava a dobrar. Cada
+// tipo de composição tem a sua fonte de verdade:
+//
+//   BSF   — o pai traz a soma dos membros e cada filho a sua parte: contam
+//           os FILHOS, que são o detalhe real.
+//   BSBF  — o pai traz a soma das guarnições das linhas da Carta de Meios;
+//           os filhos repetem cada guarnição: conta o PAI.
+//   EMR   — o pai traz o total_op do cartão da carta e os filhos (VAOP,
+//           piloto, VLCI) não trazem número nenhum: conta o PAI.
+//
+// Um pai sem filhos conta sempre — de outro modo uma composição por
+// completar desaparecia da contagem.
+function meioContaOperacionais(t){
+  if(t.meioPaiId){
+    const pai = db.teams.find(x => x.id === t.meioPaiId);
+    if(!pai) return true;              // pai fora do conjunto: contar o filho
+    return !!pai.composicaoId;         // só os filhos de composições BSF contam
+  }
+  if(t.composicaoId && db.teams.some(x => x.meioPaiId === t.id)) return false;
+  return true;
+}
+
+function somaOperacionais(teams){
+  return (teams||[]).reduce((s,t) =>
+    s + (meioContaOperacionais(t) ? (parseInt(t.operacionais)||0) : 0), 0);
+}
+
 function compositeGroupSiblings(t){
   const all = db.teams.filter(x => x.ocorrencia_id === currentOccId && x.id !== t.id);
   // Parent meio: return its children
