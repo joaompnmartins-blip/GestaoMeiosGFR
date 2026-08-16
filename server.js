@@ -581,7 +581,59 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
 }));
 
 // Remoção directa — apenas admin. Oficiais de ligação têm de submeter um pedido (ver /delete-request).
+// ── Destacar / reagrupar um meio do seu conjunto ─────────────────────────
+// O contentor (BSBF, EMR) guarda o efectivo vindo da Carta de Meios, pelo que
+// destacar um membro obriga a descontá-lo — de outro modo passaria a ser
+// contado duas vezes, uma no contentor e outra por si. Voltar a agrupar repõe.
+async function moverEfectivoDoPai(client, filho, sinal) {
+  if (!filho.meio_pai_id) return;
+  const n = Number(filho.operacionais) || 0;
+  if (!n) return;
+  await client.query(
+    `UPDATE meios SET operacionais = GREATEST(0, COALESCE(operacionais,0) + $2), updated_at = now()
+      WHERE id = $1`, [filho.meio_pai_id, sinal * n]);
+}
+
+app.post('/api/meios/:id/destacar', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [m] } = await client.query(
+      'SELECT id, meio_pai_id, destacado, operacionais, eq FROM meios WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!m) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Meio não encontrado.' }); }
+    if (!m.meio_pai_id) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este meio não pertence a um conjunto.' }); }
+    if (m.destacado)   { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este meio já está destacado.' }); }
+    await moverEfectivoDoPai(client, m, -1);
+    await client.query('UPDATE meios SET destacado=true, updated_at=now() WHERE id=$1', [m.id]);
+    await client.query('COMMIT');
+    res.json({ ok: true, destacado: true });
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}));
+
+app.post('/api/meios/:id/reagrupar', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [m] } = await client.query(
+      'SELECT id, meio_pai_id, destacado, operacionais, eq FROM meios WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!m) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Meio não encontrado.' }); }
+    if (!m.meio_pai_id) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este meio não tem conjunto de origem.' }); }
+    if (!m.destacado)  { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Este meio já está no conjunto.' }); }
+    const { rows: [pai] } = await client.query('SELECT id, estado FROM meios WHERE id=$1', [m.meio_pai_id]);
+    if (!pai) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'O conjunto de origem já não existe.' }); }
+    await moverEfectivoDoPai(client, m, +1);
+    await client.query('UPDATE meios SET destacado=false, updated_at=now() WHERE id=$1', [m.id]);
+    await client.query('COMMIT');
+    res.json({ ok: true, destacado: false, estado_do_conjunto: pai.estado });
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}));
+
+// Um meio destacado sobrevive à remoção do contentor: o elo é cortado antes,
+// para que o ON DELETE CASCADE não o leve consigo.
 app.delete('/api/meios/:id', requireAuth('admin'), wrap(async (req, res) => {
+  await pool.query('UPDATE meios SET meio_pai_id=NULL WHERE meio_pai_id=$1 AND destacado', [req.params.id]);
   await pool.query('DELETE FROM meios WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
 }));
@@ -3350,6 +3402,10 @@ async function runMigrations() {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_postos_ocorrencia ON postos_comando(ocorrencia_id)`,
     `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
+    // Um meio pode ser destacado do seu conjunto e voltar a ele. Guarda-se um
+    // sinalizador em vez de anular meio_pai_id: sem o elo perdia-se a origem e
+    // não haveria a que voltar.
+    `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS destacado BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS viaturas ADD COLUMN IF NOT EXISTS dispositivo BOOLEAN DEFAULT false`,

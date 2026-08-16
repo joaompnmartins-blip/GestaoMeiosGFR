@@ -2522,7 +2522,7 @@ function dataISO(v){
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, destacado:!!r.destacado, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -3984,8 +3984,8 @@ function renderTeams(){
   // When viewing a posto, show only its meios
   if(currentPostoId) teams=teams.filter(t=>t.postoComandoId===currentPostoId);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado'&&t.estado!=='previsto');
-  document.getElementById('team-count-label').textContent=`${activeT.length} meios`;
-  document.getElementById('d-total').textContent=activeT.length;
+  document.getElementById('team-count-label').textContent=`${somaMeios(activeT)} meios`;
+  document.getElementById('d-total').textContent=somaMeios(activeT);
   const totalOps=somaOperacionais(activeT);
   document.getElementById('d-total-ops').textContent=totalOps;
   document.getElementById('d-ops2').textContent=teams.filter(t=>t.estado==='operacao').length;
@@ -4256,7 +4256,7 @@ function renderTableView(teams, isClosed){
   tbody.innerHTML=sorted.map(t=>{
     const isChild  = !!t.meioPaiId;
     const isParent = !isChild && active.some(c=>c.meioPaiId===t.id);
-    const childCount = isParent ? active.filter(c=>c.meioPaiId===t.id).length : 0;
+    const childCount = isParent ? meiosDoConjunto(t) : 0;
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
     const ti=(!isClosed)?timeInfo(t):null;
     const timeCell = !ti ? '—'
@@ -4302,7 +4302,7 @@ function teamCardHtml(t, isClosed, _teams){
   const teams = _teams || (window.db?.teams||[]).filter(x=>x.ocorrencia_id===t.ocorrencia_id);
   const isChild  = !!t.meioPaiId;
   const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
-  const childCount = isParent ? teams.filter(c=>c.meioPaiId===t.id).length : 0;
+  const childCount = isParent ? meiosDoConjunto(t) : 0;
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
@@ -4360,21 +4360,28 @@ function teamCardHtml(t, isClosed, _teams){
 
   // Action buttons — hidden for closed ocorrências, or replaced by lock notice if a delete request is pending
   const _canAct=['admin','ofligacao','operacional'].includes(currentRole);
+  // Num conjunto, o estado, o sector, o posto e a remoção são do grupo — não de
+  // cada membro. Ficam no cartão do conjunto; aqui só o que é próprio deste
+  // meio. Destacar devolve-lhe as acções individuais.
+  const _agrupado = meioAgrupado(t);
+  const _podeAgir = _canAct && !_agrupado;
   const _canEdit=['admin','ofligacao'].includes(currentRole);
   const actionsHtml = isClosed ? '' : pendingDelete ? `<div class="team-card-actions">
       <span class="badge badge-warn" style="font-size:10px">🔒 Pedido de remoção pendente — edição bloqueada</span>
     </div>` : `<div class="team-card-actions">
-      ${_canAct&&t.estado==='previsto'?`<button class="btn btn-info btn-card" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
-      ${_canAct&&t.estado==='transito'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Entrada TO</button>`:''}
-      ${_canAct&&t.estado==='operacao'?`<button class="btn btn-warn btn-card" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
-      ${_canAct&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
-      ${_canAct&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
-      ${_canAct&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
-      ${_canAct&&occPostos().length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
-      ${_canAct&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('obs','${t.id}')">📝 Evento</button>`:''}
+      ${_podeAgir&&t.estado==='previsto'?`<button class="btn btn-info btn-card" onclick="quickAction('transit','${t.id}')" style="border-color:rgba(152,112,208,.4);color:#b890e8">▶ Activar Trânsito</button>`:''}
+      ${_podeAgir&&t.estado==='transito'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Entrada TO</button>`:''}
+      ${_podeAgir&&t.estado==='operacao'?`<button class="btn btn-warn btn-card" onclick="quickAction('rest','${t.id}')">⏸ Descanso</button>`:''}
+      ${_podeAgir&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
+      ${_podeAgir&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
+      ${_podeAgir&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${_podeAgir&&occPostos().length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
+      ${_podeAgir&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('obs','${t.id}')">📝 Evento</button>`:''}
       <button class="btn btn-ghost btn-card" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">Ficha Meio</button>
       ${_canEdit?`<button class="btn btn-ghost btn-card" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
-      ${_canEdit?`<button class="btn btn-danger btn-card" onclick="deleteTeam('${t.id}')">✕ Remover</button>`:''}
+      ${_canEdit&&!_agrupado?`<button class="btn btn-danger btn-card" onclick="deleteTeam('${t.id}')">✕ Remover</button>`:''}
+      ${_canEdit&&_agrupado?`<button class="btn btn-ghost btn-card" onclick="destacarMeio('${t.id}')" title="Retirar do conjunto para o mover sozinho">⇤ Destacar</button>`:''}
+      ${_canEdit&&t.meioPaiId&&t.destacado?`<button class="btn btn-ghost btn-card" onclick="reagruparMeio('${t.id}')" title="Voltar a juntar ao conjunto de origem">⇥ Reagrupar</button>`:''}
     </div>`;
 
   const natBadge = isParent ? nationalBadge(t) : '';
@@ -4387,10 +4394,17 @@ function teamCardHtml(t, isClosed, _teams){
     : isParent && groupColor
       ? `border-left:3px solid ${groupColor};`
       : '';
+  // A vista por estado separa o conjunto quando os estados divergem, e o "└"
+  // sozinho não diz a que conjunto pertence. O rótulo vai no próprio cartão.
+  const chipGrupo = t.meioPaiId
+    ? `<span class="badge" style="font-size:8px;background:color-mix(in srgb,${groupColor||'var(--muted)'} 18%,transparent);
+             color:${groupColor||'var(--muted)'};border:1px solid ${groupColor||'var(--border)'};"
+             title="${t.destacado?'Destacado do conjunto':'Pertence a este conjunto'}">⬡ ${esc(compositeGroupLabel(t))}${t.destacado?' · destacado':''}</span>`
+    : '';
   const nameHtml = isChild
-    ? `<span style="color:${groupColor||'var(--muted)'};font-size:10px">└</span> ${esc(t.eq)}`
+    ? `<span style="color:${groupColor||'var(--muted)'};font-size:10px">└</span> ${esc(t.eq)} ${chipGrupo}`
     : isParent
-      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} componentes">⬡ ${childCount}</span> ${natBadge}`
+      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} meios neste conjunto">⬡ ${childCount}</span> ${natBadge}`
       : esc(t.eq);
   return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}" style="${cardStyle}">
     <div class="team-card-head">
@@ -4620,19 +4634,79 @@ function quickAction(type, teamId){
 //
 // Um pai sem filhos conta sempre — de outro modo uma composição por
 // completar desaparecia da contagem.
+// Agrupado = tem pai e não está destacado. Um meio destacado passa a valer por
+// si: o contentor já foi descontado do seu efectivo ao destacá-lo.
+const meioAgrupado = t => !!(t.meioPaiId && !t.destacado);
+const filhosAgrupados = id => db.teams.filter(x => x.meioPaiId === id && !x.destacado);
+
+// O contentor de uma BSF ou de uma BSBF não é um meio: é o rótulo do conjunto.
+// O de uma EMR é — a própria máquina de rasto. Distingue-se pela origem, e não
+// pelo tipo (que a edição podia apagar) nem pela viatura (que nem sempre existe).
+function meioEhContentor(t){
+  if(t.meioPaiId) return false;
+  if(!db.teams.some(x => x.meioPaiId === t.id)) return false;   // sem filhos, é um meio
+  return !!(t.composicaoId || t.fsbfBsbfId);
+}
+
+// Quantos meios reais tem o conjunto: os filhos agrupados, mais o próprio pai
+// quando é um meio (EMR).
+function meiosDoConjunto(pai){
+  return filhosAgrupados(pai.id).length + (meioEhContentor(pai) ? 0 : 1);
+}
+
 function meioContaOperacionais(t){
-  if(t.meioPaiId){
+  if(meioAgrupado(t)){
     const pai = db.teams.find(x => x.id === t.meioPaiId);
     if(!pai) return true;              // pai fora do conjunto: contar o filho
     return !!pai.composicaoId;         // só os filhos de composições BSF contam
   }
-  if(t.composicaoId && db.teams.some(x => x.meioPaiId === t.id)) return false;
+  if(t.meioPaiId) return true;         // destacado: vale por si
+  if(t.composicaoId && filhosAgrupados(t.id).length) return false;
   return true;
+}
+
+// Contagem de meios: o contentor não é um meio e não entra.
+function somaMeios(teams){
+  return (teams||[]).filter(t => !meioEhContentor(t)).length;
 }
 
 function somaOperacionais(teams){
   return (teams||[]).reduce((s,t) =>
     s + (meioContaOperacionais(t) ? (parseInt(t.operacionais)||0) : 0), 0);
+}
+
+// O contentor guarda o efectivo vindo da Carta de Meios; o servidor desconta-o
+// ao destacar e repõe-no ao reagrupar, para que ninguém seja contado duas vezes.
+async function destacarMeio(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const pai=db.teams.find(x=>x.id===t.meioPaiId);
+  if(!confirm(`Destacar ${t.eq} de ${pai?compositeGroupLabel(t):'o conjunto'}?\n\nPassa a mover-se sozinho e o efectivo do conjunto é reduzido em ${parseInt(t.operacionais)||0}.`)) return;
+  const { error } = await apiFetch(`/api/meios/${id}/destacar`,{method:'POST'});
+  if(error){ toast(error.message||'Não foi possível destacar.','err'); return; }
+  t.destacado=true;
+  if(pai) pai.operacionais=Math.max(0,(parseInt(pai.operacionais)||0)-(parseInt(t.operacionais)||0));
+  await persistOccEvento(t.ocorrencia_id,'meio',`${t.eq} — destacado do conjunto.`,t.eq);
+  await cacheToIDB(); renderTeams();
+  toast(`${t.eq} destacado.`,'ok');
+}
+
+async function reagruparMeio(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const { data, error } = await apiFetch(`/api/meios/${id}/reagrupar`,{method:'POST'});
+  if(error){ toast(error.message||'Não foi possível reagrupar.','err'); return; }
+  const pai=db.teams.find(x=>x.id===t.meioPaiId);
+  t.destacado=false;
+  if(pai) pai.operacionais=(parseInt(pai.operacionais)||0)+(parseInt(t.operacionais)||0);
+  await persistOccEvento(t.ocorrencia_id,'meio',`${t.eq} — reagrupado no conjunto.`,t.eq);
+  // O conjunto move-se junto: se o meio ficou noutro estado, propõe-se alinhá-lo.
+  const alvo=data?.estado_do_conjunto;
+  if(alvo && alvo!==t.estado &&
+     confirm(`O conjunto está em "${MEIO_ESTADO_ROT[alvo]||alvo}" e ${t.eq} está em "${MEIO_ESTADO_ROT[t.estado]||t.estado}".\n\nAlinhar ${t.eq} com o conjunto?`)){
+    await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:alvo}},t.id,`Alinhar: ${t.eq}`);
+    t.estado=alvo;
+  }
+  await cacheToIDB(); renderTeams();
+  toast(`${t.eq} reagrupado.`,'ok');
 }
 
 function compositeGroupSiblings(t){
@@ -6275,7 +6349,7 @@ function exportLog(){
   }
 
   lines.push(sep2);
-  lines.push(`  RESUMO: ${teams.length} meios · ${teams.filter(t=>t.estado==='operacao').length} em op. · ${teams.filter(t=>t.estado==='descanso').length} descanso · ${teams.filter(t=>t.estado==='desmobilizado').length} desmob.`);
+  lines.push(`  RESUMO: ${somaMeios(teams)} meios · ${teams.filter(t=>t.estado==='operacao').length} em op. · ${teams.filter(t=>t.estado==='descanso').length} descanso · ${teams.filter(t=>t.estado==='desmobilizado').length} desmob.`);
   lines.push(sep2);
   lines.push('');
 

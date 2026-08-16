@@ -32,7 +32,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `02d7157` | **por validar (só beta2)** |
 | 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `7638704` | **por validar (só beta2)** |
 | 12 | 16/08/2026 | Editar Meio passa a propagar o estado ao conjunto composto | `40e2312` | **por validar (só beta2)** |
-| 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `pendente` | **por validar (só beta2)** |
+| 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `9d83044` | **por validar (só beta2)** |
+| 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -994,3 +995,99 @@ falharia. Exige limpar os dados primeiro, e fica como entrada própria.
 2. Tentar empenhar a mesma outra vez, na mesma ou noutra ocorrência: deve
    recusar, nomeando onde já está.
 3. Desmobilizá-la e confirmar que volta a poder ser empenhada.
+
+---
+
+## 14 — Conjuntos compostos: contentor, acções de grupo, destacar e reagrupar
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### O contentor não é um meio
+
+Numa **BSF** e numa **BSBF**, o pai é o rótulo do conjunto — não uma viatura nem
+uma equipa. Numa **EMR**, o pai *é* um meio: a própria máquina de rasto.
+
+A distinção é feita pela origem — `composicao_id` ou `fsbf_bsbf_id` indicam
+contentor, `fsbf_emr_id` indica meio — e não pelo `tipo`, que a edição pode
+apagar, nem pela viatura, que só 1 dos 3 pais EMR tem.
+
+| | Conta como meio | Conta operacionais |
+|---|---|---|
+| Contentor BSF | não | não (contam os filhos) |
+| Contentor BSBF | não | sim (número da carta) |
+| MR de uma EMR | **sim** | sim (`total_op`) |
+
+O crachá do conjunto passa a contar **meios**, não filhos: uma EMR mostra
+**⬡ 4** — MR, VAOP, VTTP e VLCI — onde antes mostrava 3. Um contentor mostra o
+número das suas viaturas.
+
+Na ocorrência de Faro a contagem passa de **18 para 16** meios.
+
+### Pertença visível no cartão
+
+A vista por estado separa o conjunto quando os estados divergem, e o `└`
+sozinho não diz a que conjunto o meio pertence. Cada membro passa a mostrar um
+crachá com o nome do conjunto — `⬡ BSBF Sul` — na cor do grupo, visível onde
+quer que o cartão apareça.
+
+### As acções são do conjunto
+
+Num membro agrupado desaparecem **Estado**, **Setor**, **Posto** e **Remover**:
+essas acções pertencem ao cartão do conjunto, onde já propagam. Continuam
+disponíveis **Ficha Meio**, **✎ Editar** e observações — o que é próprio de cada
+viatura.
+
+### Destacar e reagrupar
+
+- **⇤ Destacar** retira o meio do conjunto. Recupera as suas acções
+  individuais, passa a contar por si, e o crachá indica *destacado*.
+- **⇥ Reagrupar** devolve-o. Se estiver noutro estado, é proposto alinhá-lo com
+  o conjunto.
+
+Guarda-se um sinalizador `destacado` em vez de anular `meio_pai_id`: sem o elo
+perdia-se a origem e não haveria a que voltar. *Agrupado* passa a ser
+`meio_pai_id IS NOT NULL AND NOT destacado`.
+
+**O efectivo acompanha.** O contentor guarda o número vindo da Carta de Meios,
+pelo que destacar desconta o membro e reagrupar repõe — de outro modo passaria a
+ser contado duas vezes. Verificado no beta2, ida e volta:
+
+```
+inicial   BSBF Sul = 12 op.   filho = 2 op.   destacado=false
+destacar  200 → contentor = 10 op.            destacado=true
+repetir   409 · Este meio já está destacado.
+reagrupar 200 → contentor = 12 op.            destacado=false
+```
+
+Um meio destacado **sobrevive à remoção do contentor**: o elo é cortado antes,
+para que o `ON DELETE CASCADE` não o leve.
+
+### Alterações
+
+- `server.js` — coluna `destacado`; `POST /api/meios/:id/destacar` e
+  `/reagrupar`, em transacção e com `FOR UPDATE`; corte do elo dos destacados
+  antes de eliminar o contentor.
+- `Gestao_Meios_v17.html` — `meioAgrupado()`, `filhosAgrupados()`,
+  `meioEhContentor()`, `meiosDoConjunto()`, `somaMeios()`; contagens de meios;
+  crachá do conjunto; acções de grupo escondidas nos membros; `destacarMeio()` e
+  `reagruparMeio()`.
+- **Base de dados:** a coluna é criada pelas migrações no arranque. Ao promover
+  ao beta1, o mesmo acontece automaticamente — nada a correr à mão.
+
+### Por decidir
+
+A caixa **«aplicar a todos»** das acções rápidas perde sentido agora que os
+membros não têm acções próprias: desligá-la separa o conjunto sem forma de o
+voltar a juntar pelos cartões dos membros. Proponho retirá-la e propagar sempre,
+ficando **destacar** como a forma deliberada de mover um meio sozinho.
+
+### Como validar
+
+1. Numa EMR, confirmar **⬡ 4**; numa BSF/BSBF, o número de viaturas.
+2. Confirmar que o total de meios da ocorrência desce (Faro: 18 → 16).
+3. Num membro agrupado: sem Estado/Setor/Posto/Remover, com Ficha e Editar.
+4. **Destacar** um membro: recupera as acções, o contentor perde o seu efectivo,
+   e o crachá diz *destacado*.
+5. **Reagrupar**: o efectivo volta e é proposto alinhar o estado.
+6. Confirmar que o crachá do conjunto aparece nos membros em qualquer secção de
+   estado, mesmo com o conjunto dividido.
