@@ -77,10 +77,31 @@ function requireCCON(req, res, next) {
   return res.status(403).json({ error: 'Reservado ao Oficial de Ligação CCON.' });
 }
 
+// Violações de restrição são dados do pedido que não servem — não avaria do
+// servidor. Devolvê-las como 500 fazia com que a fila de sincronização as
+// tratasse como falha temporária e as repetisse indefinidamente: um evento a
+// apontar para um meio já eliminado bloqueava toda a fila. Com um 4xx, o
+// cliente descarta a operação e prossegue.
+const ERROS_PG = {
+  '23503': { status: 409, msg: 'O registo a que esta operação se refere já não existe.' },
+  '23505': { status: 409, msg: 'Já existe um registo com estes valores.' },
+  '23514': { status: 409, msg: 'Valor fora do permitido para este campo.' },
+  '23502': { status: 400, msg: 'Falta um campo obrigatório.' },
+  '22P02': { status: 400, msg: 'Identificador ou valor com formato inválido.' },
+};
+
 function wrap(fn) {
   return async (req, res) => {
     try { await fn(req, res); }
-    catch (e) { console.error(e.message); res.status(500).json({ error: e.message }); }
+    catch (e) {
+      const conhecido = ERROS_PG[e.code];
+      if (conhecido) {
+        console.warn(`${e.code} em ${req.method} ${req.originalUrl}: ${e.message}`);
+        return res.status(conhecido.status).json({ error: conhecido.msg, code: e.code });
+      }
+      console.error(e.message);
+      res.status(500).json({ error: e.message });
+    }
   };
 }
 

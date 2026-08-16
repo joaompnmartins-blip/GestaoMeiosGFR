@@ -29,6 +29,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 7 | 13/08/2026 | MR seleccionáveis nas linhas de brigada; exclusão do que já está na carta | `da98420` | em beta1 e beta2 |
 | 8 | 13/08/2026 | 2.º Comandante Nacional elegível para Coordenador de Dia e Chefe de Grupo | `7baf34b` | em beta1 e beta2 |
 | 9 | 16/08/2026 | Editar Meio de composições BSF já não herda o estado do modal de Adicionar | `ef9fc7b` | em beta1 e beta2 |
+| 10 | 16/08/2026 | Violações de restrição deixam de ser 500 e de bloquear a fila de sincronização | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -686,3 +687,87 @@ coerentes.
    bloqueados e os das fases já cumpridas em leitura.
 4. Confirmar que Adicionar continua a mostrar a pré-visualização ao escolher uma
    composição BSF.
+
+---
+
+## 10 — Violações de restrição deixam de ser 500 e de bloquear a fila
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### O sintoma
+
+A sincronização falhava em ciclo, sempre com o mesmo erro:
+
+```
+POST /api/meios_eventos 500 (Internal Server Error)
+syncNow failed op: meios_eventos insert
+  violates foreign key constraint "meios_eventos_meio_id_fkey"
+```
+
+### A causa
+
+Um evento em fila apontava para um meio que já não existe — por ter sido
+eliminado entretanto, directamente ou por cascata ao remover o meio-pai. A
+inserção viola a chave estrangeira `meios_eventos.meio_id → meios(id)`.
+
+O `wrap()` do servidor devolvia **500** para qualquer excepção. E o `syncNow()`
+descarta a operação em **4xx**, mas trata tudo o resto como falha temporária e
+volta a tentar. Um 500 permanente tornava-se assim um ciclo infinito: a operação
+nunca saía da fila e **bloqueava a sincronização de tudo o resto**.
+
+O erro estava do lado certo — os dados do pedido é que não servem — mas era
+comunicado como avaria do servidor.
+
+### O que muda
+
+**No servidor**, o `wrap()` passa a traduzir os códigos de erro do PostgreSQL:
+
+| Código | Resposta | Mensagem |
+|---|---|---|
+| `23503` chave estrangeira | **409** | O registo a que esta operação se refere já não existe. |
+| `23505` unicidade | 409 | Já existe um registo com estes valores. |
+| `23514` restrição CHECK | 409 | Valor fora do permitido para este campo. |
+| `23502` NOT NULL | 400 | Falta um campo obrigatório. |
+| `22P02` formato inválido | 400 | Identificador ou valor com formato inválido. |
+
+Tudo o resto continua a ser 500. Os pontos que já tratavam `23505` com mensagem
+própria continuam a apanhá-lo primeiro, e mantêm o seu texto.
+
+Isto fecha também um caso que ficara assinalado antes: uma violação de `CHECK` —
+como o limite de guarnição — saía como 500 com o texto cru da restrição.
+
+**No cliente**, cada operação em fila passa a contar tentativas e é descartada
+ao fim de **8**. Um 4xx continua a ser descartado logo; o contador existe para
+que nenhum erro imprevisto volte a poder bloquear a fila indefinidamente.
+
+### Efeito nas operações já presas
+
+Assim que o beta2 servir esta versão, a próxima sincronização recebe 409 nessas
+operações e descarta-as, com aviso de *«operações rejeitadas e descartadas»*.
+Não é preciso limpar a fila à mão.
+
+### Verificação feita
+
+Contra a API do beta2:
+
+| Pedido | Antes | Agora |
+|---|---|---|
+| Evento para um meio inexistente | 500, repetido sem fim | **409**, descartado |
+| `meio_id` sem formato de UUID | 500 | **400** |
+| Evento válido | 200 | 200 |
+
+O evento de teste foi removido no fim.
+
+### Alterações
+
+- `server.js` — `ERROS_PG` e tradução no `wrap()`.
+- `Gestao_Meios_v17.html` — `QUEUE_MAX_TENTATIVAS`, contador em `pushToQueue()`,
+  `updateQueueItem()`, e desistência no `catch` do `syncNow()`.
+- **Base de dados:** nenhuma.
+
+### Como validar
+
+1. Confirmar que a sincronização deixa de repetir o erro e a fila esvazia.
+2. Confirmar que operações legítimas continuam a sincronizar.
+3. Provocar um erro conhecido — por exemplo gravar guarnição 10 pela API — e
+   confirmar que devolve 409 com mensagem legível, e não 500.

@@ -2002,13 +2002,25 @@ async function getQueue(){
   return (await idbGet('idb_queue','ops')) || [];
 }
 
+// Limite de tentativas por operação. Um 4xx é descartado logo, mas um erro
+// que se repita sem fim — servidor em baixo, ou um caso não previsto —
+// bloqueava a fila e impedia tudo o resto de sincronizar.
+const QUEUE_MAX_TENTATIVAS = 8;
+
 async function pushToQueue(op){
   const q = await getQueue();
+  op.tentativas = 0;
   op.queuedAt = new Date().toISOString();
   op.id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   q.push(op);
   await idbSet('idb_queue','ops', q);
   updateSyncBadge();
+}
+
+async function updateQueueItem(op){
+  const q = await getQueue();
+  const i = q.findIndex(x=>x.id===op.id);
+  if(i>=0){ q[i] = op; await idbSet('idb_queue','ops', q); }
 }
 
 async function clearQueueItem(opId){
@@ -2134,8 +2146,16 @@ async function syncNow(){
         await clearQueueItem(op.id);
         discarded++;
       } else {
-        console.warn('syncNow failed op:', op.table, op.op, e.message);
-        failed++;
+        op.tentativas = (op.tentativas || 0) + 1;
+        if(op.tentativas >= QUEUE_MAX_TENTATIVAS){
+          console.warn(`syncNow: ${op.table} ${op.op} falhou ${op.tentativas}× — a descartar para não bloquear a fila:`, e.message);
+          await clearQueueItem(op.id);
+          discarded++;
+        } else {
+          await updateQueueItem(op);
+          console.warn(`syncNow failed op (tentativa ${op.tentativas}/${QUEUE_MAX_TENTATIVAS}):`, op.table, op.op, e.message);
+          failed++;
+        }
       }
     }
   }
