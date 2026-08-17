@@ -4380,6 +4380,7 @@ function teamCardHtml(t, isClosed, _teams){
       <button class="btn btn-ghost btn-card" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">Ficha Meio</button>
       ${_canEdit?`<button class="btn btn-ghost btn-card" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${_canEdit&&!_agrupado?`<button class="btn btn-danger btn-card" onclick="deleteTeam('${t.id}')">✕ Remover</button>`:''}
+      ${_canEdit&&t.egfrEquipa?`<button class="btn btn-ghost btn-card" onclick="abrirViaturaEgfr('${t.id}')" title="${t.viaturaId?'Trocar ou retirar a viatura':'Atribuir a viatura que faltava no despacho'}">🚗 ${t.viaturaId?'Viatura':'Atribuir viatura'}</button>`:''}
       ${_canEdit&&_agrupado?`<button class="btn btn-ghost btn-card" onclick="destacarMeio('${t.id}')" title="Retirar do conjunto para o mover sozinho">⇤ Destacar</button>`:''}
       ${_canEdit&&t.meioPaiId&&t.destacado?`<button class="btn btn-ghost btn-card" onclick="reagruparMeio('${t.id}')" title="Voltar a juntar ao conjunto de origem">⇥ Reagrupar</button>`:''}
     </div>`;
@@ -4401,11 +4402,17 @@ function teamCardHtml(t, isClosed, _teams){
              color:${groupColor||'var(--muted)'};border:1px solid ${groupColor||'var(--border)'};"
              title="${t.destacado?'Destacado do conjunto':'Pertence a este conjunto'}">⬡ ${esc(compositeGroupLabel(t))}${t.destacado?' · destacado':''}</span>`
     : '';
+  // A viatura ao lado do nome, sem o substituir. Um EGFR sem viatura fica dito.
+  const chipViat = t.egfrEquipa
+    ? (t.viaturaId
+        ? `<span class="badge badge-y" style="font-size:8px" title="Viatura atribuída">🚗 ${esc(t.matricula||'viatura')}</span>`
+        : `<span class="badge badge-warn" style="font-size:8px" title="Despachado sem viatura — a escala EGFR do dia não a tinha">🚗 sem viatura</span>`)
+    : '';
   const nameHtml = isChild
     ? `<span style="color:${groupColor||'var(--muted)'};font-size:10px">└</span> ${esc(t.eq)} ${chipGrupo}`
     : isParent
       ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} meios neste conjunto">⬡ ${childCount}</span> ${natBadge}`
-      : esc(t.eq);
+      : `${esc(t.eq)} ${chipViat}`;
   return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}" style="${cardStyle}">
     <div class="team-card-head">
       <div class="team-card-name">${nameHtml}</div>
@@ -4677,6 +4684,69 @@ function somaOperacionais(teams){
 
 // O contentor guarda o efectivo vindo da Carta de Meios; o servidor desconta-o
 // ao destacar e repõe-no ao reagrupar, para que ninguém seja contado duas vezes.
+// Um EGFR despachado sem viatura (a escala não a tinha) pode recebê-la depois.
+// eq mantém-se — é o nome da equipa e já está na Fita do Tempo — e a viatura
+// aparece ao lado.
+async function abrirViaturaEgfr(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const { data: viats, error } = await apiFetch('/api/viaturas/egfr');
+  if(error){ toast('Não foi possível obter a lista de viaturas EGFR.','err'); return; }
+  const livres=(viats||[]).filter(v=>(!v.em_uso && v.prontidao!=='inoperacional') || v.id===t.viaturaId);
+  const ocultas=(viats||[]).length-livres.length;
+  document.getElementById('modal-action-box').style.width='460px';
+  document.getElementById('action-team-id').value=id;
+  document.getElementById('modal-action-title').textContent=`Viatura — ${t.eq}`;
+  document.getElementById('action-body').innerHTML=`
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">
+      Este meio foi despachado sem viatura, porque a escala EGFR do dia não a
+      tinha. A designação <strong>${esc(t.eq)}</strong> mantém-se; a viatura passa
+      a aparecer ao lado.
+    </p>
+    <div class="form-field" style="margin-top:14px;">
+      <label class="form-label">Viatura</label>
+      <select class="form-select" id="egfr-viat">
+        <option value="">— selecionar —</option>
+        ${livres.map(v=>`<option value="${v.id}"${v.id===t.viaturaId?' selected':''}>${esc(v.viatura_cod)}${v.matricula?' · '+esc(v.matricula):''}${v.classe?' · '+esc(v.classe):''}</option>`).join('')}
+      </select>
+      ${ocultas?`<div style="font-size:11px;color:var(--muted);margin-top:6px;">${ocultas} viatura(s) não listada(s): em uso noutra ocorrência ou inoperacional(is).</div>`:''}
+      <label style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted);margin-top:10px;cursor:pointer;">
+        <input type="checkbox" id="egfr-viat-escala" checked/>
+        Gravar também na escala EGFR de ${esc(t.egfrData||'—')}, para os próximos despachos
+      </label>
+    </div>`;
+  document.getElementById('action-footer').innerHTML=
+    `<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+     ${t.viaturaId?`<button class="btn btn-danger" onclick="retirarViaturaEgfr('${id}')">Retirar viatura</button>`:''}
+     <button class="btn btn-primary" onclick="atribuirViaturaEgfr('${id}')">✓ Atribuir</button>`;
+  openModal('modal-action');
+}
+
+async function atribuirViaturaEgfr(id){
+  const sel=document.getElementById('egfr-viat');
+  if(!sel.value){ toast('Selecione uma viatura.','err'); return; }
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const { data, error } = await apiFetch(`/api/meios/${id}/viatura`,{method:'POST',
+    body:JSON.stringify({ viatura_id: sel.value,
+      gravar_na_escala: document.getElementById('egfr-viat-escala')?.checked !== false })});
+  if(error){ toast(error.message||'Não foi possível atribuir a viatura.','err'); return; }
+  t.viaturaId=data.viatura_id; t.matricula=data.matricula||''; t.tipo=data.tipo||t.tipo;
+  const cod=sel.options[sel.selectedIndex].textContent.split(' · ')[0];
+  await persistOccEvento(t.ocorrencia_id,'meio',`${t.eq} — viatura atribuída: ${cod}.`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast('Viatura atribuída.','ok');
+}
+
+async function retirarViaturaEgfr(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  if(!confirm(`Retirar a viatura de ${t.eq}?`)) return;
+  const { data, error } = await apiFetch(`/api/meios/${id}/viatura`,{method:'DELETE'});
+  if(error){ toast(error.message||'Não foi possível retirar a viatura.','err'); return; }
+  t.viaturaId=null; t.matricula=''; t.tipo=data.tipo||'EGFR';
+  await persistOccEvento(t.ocorrencia_id,'meio',`${t.eq} — viatura retirada.`,t.eq);
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast('Viatura retirada.','info');
+}
+
 async function destacarMeio(id){
   const t=db.teams.find(x=>x.id===id); if(!t) return;
   const pai=db.teams.find(x=>x.id===t.meioPaiId);

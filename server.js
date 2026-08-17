@@ -581,6 +581,77 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
 }));
 
 // Remoção directa — apenas admin. Oficiais de ligação têm de submeter um pedido (ver /delete-request).
+// ── Viatura de um meio EGFR, atribuída depois do despacho ────────────────
+// O despacho lê a viatura da escala (egfr_viatura). Quando a escala não a tem,
+// o meio nasce sem viatura nem matrícula — é o caso de todos os EGFR
+// empenhados até agora. Estes dois pontos permitem atribuí-la e retirá-la
+// depois, sem mexer na identificação bloqueada do Editar Meio.
+//
+// Lista própria porque /api/gestao/viaturas exige um perfil de módulo e o
+// ofligacao não o tem. Sem filtro de dispositivo: nenhuma viatura EGFR está
+// marcada como tal, e exigi-lo daria uma lista vazia.
+app.get('/api/viaturas/egfr', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT v.id, v.viatura_cod, v.matricula, v.classe, v.prontidao,
+           EXISTS (SELECT 1 FROM meios m
+                    WHERE m.viatura_id = v.id AND m.estado = ANY($1)) AS em_uso
+      FROM viaturas v
+     WHERE v.ativo AND v.megfr = 'EGFR'
+     ORDER BY v.viatura_cod`, [OCUPADO_ESTADOS]);
+  res.json(rows);
+}));
+
+app.post('/api/meios/:id/viatura', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { viatura_id, gravar_na_escala = true } = req.body;
+  if (!viatura_id) return res.status(400).json({ error: 'viatura_id obrigatório.' });
+  const { rows: [m] } = await pool.query(
+    'SELECT id, estado, egfr_equipa, egfr_data FROM meios WHERE id=$1', [req.params.id]);
+  if (!m) return res.status(404).json({ error: 'Meio não encontrado.' });
+  if (!m.egfr_equipa)
+    return res.status(409).json({ error: 'Só um meio EGFR recebe viatura por esta via.' });
+
+  const { rows: [v] } = await pool.query(
+    'SELECT id, viatura_cod, matricula, classe, prontidao FROM viaturas WHERE id=$1 AND ativo', [viatura_id]);
+  if (!v) return res.status(404).json({ error: 'Viatura não encontrada.' });
+  if (v.prontidao === 'inoperacional')
+    return res.status(409).json({ error: `${v.viatura_cod} está inoperacional.` });
+
+  // A exclusividade era garantida no despacho; atribuir mais tarde tem de a
+  // verificar também, ou passa a ser uma via para empenhar a mesma viatura duas vezes.
+  const conflito = await findViaturaConflict(viatura_id, m.estado, m.id);
+  if (conflito)
+    return res.status(409).json({ error: `${v.viatura_cod} já está em uso na ocorrência "${conflito.local_ignicao}".` });
+
+  // eq mantém-se: é o nome da equipa e já está na Fita do Tempo. A viatura
+  // aparece ao lado, não em vez dele.
+  const { rows: [upd] } = await pool.query(
+    `UPDATE meios SET viatura_id=$2, matricula=$3, tipo=COALESCE($4, tipo), updated_at=now()
+      WHERE id=$1 RETURNING *`, [m.id, v.id, v.matricula || null, v.classe || null]);
+
+  if (gravar_na_escala && m.egfr_data && m.egfr_equipa) {
+    await pool.query(
+      `INSERT INTO egfr_viatura (data, equipa, viatura_id, updated_by)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (data, equipa) DO UPDATE SET viatura_id=EXCLUDED.viatura_id, updated_by=EXCLUDED.updated_by`,
+      [m.egfr_data, m.egfr_equipa, v.id, req.user.id]);
+  }
+  res.json(upd);
+}));
+
+app.delete('/api/meios/:id/viatura', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rows: [m] } = await pool.query(
+    'SELECT id, egfr_equipa, viatura_id FROM meios WHERE id=$1', [req.params.id]);
+  if (!m) return res.status(404).json({ error: 'Meio não encontrado.' });
+  if (!m.egfr_equipa)
+    return res.status(409).json({ error: 'Só um meio EGFR perde a viatura por esta via.' });
+  if (!m.viatura_id) return res.status(409).json({ error: 'Este meio não tem viatura atribuída.' });
+  // tipo volta ao que o despacho usa quando não há viatura.
+  const { rows: [upd] } = await pool.query(
+    `UPDATE meios SET viatura_id=NULL, matricula=NULL, tipo='EGFR', updated_at=now()
+      WHERE id=$1 RETURNING *`, [m.id]);
+  res.json(upd);
+}));
+
 // ── Destacar / reagrupar um meio do seu conjunto ─────────────────────────
 // O contentor (BSBF, EMR) guarda o efectivo vindo da Carta de Meios, pelo que
 // destacar um membro obriga a descontá-lo — de outro modo passaria a ser

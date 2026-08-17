@@ -33,7 +33,8 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 11 | 16/08/2026 | Operacionais deixam de ser contados a dobrar em meios compostos | `7638704` | **por validar (só beta2)** |
 | 12 | 16/08/2026 | Editar Meio passa a propagar o estado ao conjunto composto | `40e2312` | **por validar (só beta2)** |
 | 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `9d83044` | **por validar (só beta2)** |
-| 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `pendente` | **por validar (só beta2)** |
+| 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `1299668` | **por validar (só beta2)** |
+| 15 | 16/08/2026 | Viatura de um meio EGFR atribuível depois do despacho | `pendente` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1091,3 +1092,97 @@ ficando **destacar** como a forma deliberada de mover um meio sozinho.
 5. **Reagrupar**: o efectivo volta e é proposto alinhar o estado.
 6. Confirmar que o crachá do conjunto aparece nos membros em qualquer secção de
    estado, mesmo com o conjunto dividido.
+
+---
+
+## 15 — Viatura de um meio EGFR atribuível depois do despacho
+
+**Data:** 16/08/2026 · **Estado:** por validar — **apenas no beta2**
+
+### Porque nasciam sem viatura
+
+O despacho EGFR não pergunta a viatura: lê-a da escala.
+
+```sql
+SELECT ev.viatura_id, v.viatura_cod, v.matricula, v.classe
+  FROM egfr_viatura ev LEFT JOIN viaturas v ON v.id = ev.viatura_id
+ WHERE ev.data=$1 AND ev.equipa=$2
+```
+
+Não encontrando nada, recorre a valores por omissão: `eq` fica o nome da equipa,
+`tipo` fica `EGFR`, e `viatura_id` e `matricula` ficam nulos.
+
+**Os cinco meios EGFR já empenhados estão todos assim**, porque a tabela
+`egfr_viatura` tem 3 linhas e **as três têm `viatura_id` nulo** — a escala de
+viaturas nunca foi preenchida. Não era um passo saltado no despacho: não havia
+viatura para encontrar.
+
+### O que muda
+
+Um meio EGFR passa a ter, no cartão, **🚗 Atribuir viatura** quando não a tem, e
+**🚗 Viatura** quando tem — para trocar ou retirar. Sem viatura, o cartão mostra
+o crachá **🚗 sem viatura**; com ela, a matrícula ao lado do nome.
+
+**A designação não muda.** `eq` continua a ser o nome da equipa — já está na
+Fita do Tempo — e a viatura aparece ao lado, não em vez dele.
+
+Ao atribuir, é oferecido **gravar também na escala EGFR do dia**, para que os
+despachos seguintes já a levem. É a correcção na origem, e fica a um clique.
+
+### Decisões aplicadas
+
+- **Sem filtro de dispositivo.** Não existe uma única viatura de classe `EGFR` ou
+  `VGFR`; o que há são **76 VCOT e 6 sem classe com `megfr='EGFR'`**, e **nenhuma
+  marcada como dispositivo**. Exigi-lo daria uma lista vazia.
+- **Podem atribuir:** `ofligacao`, `ofligacao_ccon` e `admin`.
+- **Retirar** existe, e devolve o `tipo` a `EGFR`, como o despacho faz sem viatura.
+
+### Lista própria, e porquê
+
+`/api/gestao/viaturas` exige um perfil de módulo — um `ofligacao` recebe 403.
+Foi criado `GET /api/viaturas/egfr`, restrito a `megfr='EGFR'` e legível a partir
+de `ofligacao`, em vez de alargar o acesso a toda a frota.
+
+### A exclusividade é verificada na atribuição
+
+Os índices únicos e o `findViaturaConflict` protegiam o despacho, não uma
+atribuição posterior. Sem esta verificação, isto seria uma nova via para
+empenhar a mesma viatura duas vezes. Também se recusa uma viatura inoperacional.
+
+### Verificação no beta2, com o `EGFR 03` real
+
+| Passo | Resultado |
+|---|---|
+| Lista para `ofligacao` | 200 · 82 viaturas |
+| Lista para `operacional` | **403** |
+| Atribuir | 200 · `eq` mantém-se `EGFR 03`, matrícula `04-74-UM`, viatura ligada |
+| Escala do dia | gravada |
+| Atribuir a mesma outra vez | 200 (é a própria — o conflito exclui-se a si) |
+| Retirar | 200 · `tipo` volta a `EGFR`, matrícula limpa |
+| Retirar de novo | **409** · «não tem viatura atribuída» |
+
+A escala de teste foi revertida no fim.
+
+### Consequência visível a confirmar
+
+Ao atribuir, o `tipo` passa a ser a classe da viatura — `VCOT` no teste. É
+exactamente o que o despacho faz quando a escala **tem** viatura, pelo que é
+coerente; mas o crachá de tipo deixa de dizer `EGFR`. Se preferir que o tipo se
+mantenha `EGFR`, é retirar `tipo` do `UPDATE`.
+
+### Alterações
+
+- `server.js` — `GET /api/viaturas/egfr`, `POST /api/meios/:id/viatura`,
+  `DELETE /api/meios/:id/viatura`.
+- `Gestao_Meios_v17.html` — `abrirViaturaEgfr()`, `atribuirViaturaEgfr()`,
+  `retirarViaturaEgfr()`; botão no cartão; crachás de viatura.
+- **Base de dados:** nenhuma alteração de esquema. Atribuir escreve em
+  `egfr_viatura`, que é dado corrente.
+
+### Como validar
+
+1. No `EGFR 03`, confirmar o crachá **🚗 sem viatura** e o botão de atribuir.
+2. Atribuir: a matrícula aparece ao lado do nome, a designação não muda.
+3. Confirmar na escala EGFR do dia que a viatura ficou gravada.
+4. Tentar atribuir a mesma viatura a outro meio activo: deve recusar.
+5. Retirar e confirmar que volta a **sem viatura**.
