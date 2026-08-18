@@ -35,7 +35,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `9d83044` | **por validar (só beta2)** |
 | 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `1299668` | **por validar (só beta2)** |
 | 15 | 16/08/2026 | Viatura de um meio EGFR atribuível depois do despacho | `f6b00a0` | **por validar (só beta2)** |
-| 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `PENDENTE` | **por validar (só beta2)** |
+| 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `2d6889f` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
