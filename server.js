@@ -3011,6 +3011,30 @@ app.delete('/api/fsbf/operacionais/:id', requireAuth('visualizador'), requireMod
   res.json({ ok: true });
 }));
 
+// ── Guarnição da Carta de Meios → operativos do meio ─────────────
+// A guarnição escolhida na Carta de Meios vive em fsbf_equipa_membros. Sem a
+// copiar, o meio nascia com o número de operacionais certo e os nomes todos em
+// branco: a Ficha do Meio e o Editar Meio abriam com N caixas vazias. Só o
+// despacho EGFR copiava a escala toda; o EMR e a BSBF levavam apenas o chefe.
+const GUARNICAO_COLS = ['fsbf_bsbf_id', 'fsbf_emr_id'];
+async function lerGuarnicao(client, col, escalaId, contactoChefe) {
+  if (!GUARNICAO_COLS.includes(col) || !escalaId) return [];
+  const { rows } = await client.query(
+    `SELECT o.nome, m.is_chefe
+       FROM fsbf_equipa_membros m
+       JOIN operacionais_fsbf o ON o.id = m.operacional_id
+      WHERE m.${col} = $1
+      ORDER BY m.is_chefe DESC, m.ordem, o.nome`, [escalaId]);
+  return rows.map(r => (r.is_chefe && contactoChefe) ? `${r.nome} (${contactoChefe})` : r.nome);
+}
+async function gravarOperativos(client, meioId, nomes) {
+  for (let i = 0; i < nomes.length; i++) {
+    await client.query(
+      `INSERT INTO meios_operativos (meio_id, nome, ordem) VALUES ($1,$2,$3)`, [meioId, nomes[i], i]);
+  }
+  return nomes.length;
+}
+
 // ── POST /api/ocorrencias/:occId/deploy/fsbf-emr ───────────────
 // Creates MR as primary meio (fsbf_emr_id), secondary vehicles as children (meio_pai_id).
 // No container card — each vehicle appears as its own card, grouped by colour in the UI.
@@ -3087,13 +3111,13 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
       ]
     );
 
-    // Chefe as operative on MR
-    if (emr.chefe_nome) {
-      const nomeOp = emr.contacto ? `${emr.chefe_nome} (${emr.contacto})` : emr.chefe_nome;
-      await client.query(
-        `INSERT INTO meios_operativos (meio_id, nome, ordem) VALUES ($1,$2,0)`, [mrMeio.id, nomeOp]
-      );
+    // Guarnição da EMR no MR — o efectivo da EMR conta no pai, e é lá que os
+    // nomes têm de ficar. Sem guarnição registada, resta o chefe.
+    let nomesEmr = await lerGuarnicao(client, 'fsbf_emr_id', team_id, emr.contacto);
+    if (!nomesEmr.length && emr.chefe_nome) {
+      nomesEmr = [emr.contacto ? `${emr.chefe_nome} (${emr.contacto})` : emr.chefe_nome];
     }
+    await gravarOperativos(client, mrMeio.id, nomesEmr);
 
     // Secondary vehicles as children of MR (no fsbf_emr_id — tracked via meio_pai_id)
     const meios = [mrMeio];
@@ -3177,6 +3201,7 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
 
     // One child per vehicle
     const meios = [parent];
+    const nomesBrigada = [];
     for (const v of vehicles) {
       const { rows: [child] } = await client.query(
         `INSERT INTO meios
@@ -3197,15 +3222,19 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
           today, v.id, req.user.id,
         ]
       );
-      // Chefe as operative chip (with contact)
-      if (v.chefe_nome) {
-        const nomeOp = v.contacto ? `${v.chefe_nome} (${v.contacto})` : v.chefe_nome;
-        await client.query(
-          `INSERT INTO meios_operativos (meio_id, nome, ordem) VALUES ($1,$2,0)`, [child.id, nomeOp]
-        );
+      // Guarnição da linha da Carta de Meios; sem ela, resta o chefe.
+      let nomes = await lerGuarnicao(client, 'fsbf_bsbf_id', v.id, v.contacto);
+      if (!nomes.length && v.chefe_nome) {
+        nomes = [v.contacto ? `${v.chefe_nome} (${v.contacto})` : v.chefe_nome];
       }
+      await gravarOperativos(client, child.id, nomes);
+      nomesBrigada.push(...nomes);
       meios.push(child);
     }
+    // O contentor da BSBF é quem guarda o efectivo da brigada (ver
+    // meioContaOperacionais), pelo que também é lá que a lista toma sentido:
+    // sem isto, editar a BSBF abria com o número certo e os nomes em branco.
+    await gravarOperativos(client, parent.id, nomesBrigada);
 
     await client.query('COMMIT');
     res.json({ meios });

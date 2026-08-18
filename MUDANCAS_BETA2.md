@@ -38,6 +38,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `2d6889f` | **por validar (só beta2)** |
 | 17 | 18/08/2026 | Nomes dos operacionais legíveis no tema claro | `b82d25d` | **por validar (só beta2)** |
 | 18 | 18/08/2026 | Conjuntos compostos recolhidos dentro do cartão do pai | `a88a182` | **por validar (só beta2)** |
+| 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1414,3 +1415,110 @@ reais do beta2:
 5. Destacar um membro: sai da caixa e passa a cartão próprio.
 6. Confirmar o efectivo do cabeçalho na BSBF (não pode aparecer 0).
 7. Repetir na vista por **Sector**.
+
+---
+
+## 19 — A guarnição da Carta de Meios passa a chegar ao meio (BSBF e EMR)
+
+**Data:** 18/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Abrir **Editar Meio** numa BSBF mostrava `N.º Operacionais = 12` e doze caixas
+de nome **vazias**. O mesmo na Ficha do Meio e nos crachás do cartão.
+
+A causa não estava na leitura: estava no despacho. A guarnição escolhida na
+Carta de Meios vive em `fsbf_equipa_membros`, e o despacho nunca a copiava para
+`meios_operativos`. Copiava só o **chefe**, tirado de `chefe_nome`:
+
+| Despacho | O que gravava antes |
+|---|---|
+| EGFR | a escala toda — **o único que estava certo** |
+| EMR | só o chefe (1 nome) |
+| BSBF | só o chefe de cada viatura (1 nome); o contentor, nenhum |
+| Gruata / composições SF | nada |
+
+Passa a copiar a guarnição inteira, chefe primeiro, mantendo o contacto ao lado
+do nome do chefe como antes. Se não houver guarnição registada, mantém-se o
+chefe — nunca fica pior do que estava.
+
+O contentor da BSBF recebe a união das guarnições das suas viaturas: é ele que
+guarda o efectivo da brigada (ver `meioContaOperacionais`), pelo que é nele que
+a lista de nomes faz sentido — e era exactamente o cartão que aparecia vazio.
+
+### Alterações
+
+- `server.js`
+  - `lerGuarnicao()` e `gravarOperativos()` — a coluna de ligação é validada
+    contra uma lista fixa (`GUARNICAO_COLS`), por ser interpolada na consulta.
+  - `POST /deploy/fsbf-emr` — guarnição da EMR no MR, com recurso ao chefe.
+  - `POST /deploy/fsbf-bsbf` — guarnição por viatura em cada filho, e a união no
+    contentor.
+- **Base de dados:** sem alteração de esquema, mas **com correcção de dados**
+  (ver abaixo) — esta parte **não viaja com o ramo** e teria de ser repetida no
+  beta1.
+
+### Correcção de dados aplicada ao beta2
+
+Os meios já despachados não se corrigem sozinhos. Correu-se, numa transacção,
+sobre os meios **activos** cuja lista tinha **no máximo um nome** (ou seja, os
+que só tinham o chefe posto pelo despacho — não se tocou em nada escrito à mão):
+
+```sql
+BEGIN;
+CREATE TEMP TABLE alvo AS
+  SELECT m.id, m.fsbf_bsbf_id, e.contacto
+  FROM meios m JOIN fsbf_bsbf_equipa e ON e.id = m.fsbf_bsbf_id
+  WHERE m.meio_pai_id IS NOT NULL AND m.estado <> 'desmobilizado'
+    AND (SELECT count(*) FROM meios_operativos o WHERE o.meio_id=m.id) <= 1;
+DELETE FROM meios_operativos WHERE meio_id IN (SELECT id FROM alvo);
+INSERT INTO meios_operativos (meio_id, nome, ordem)
+SELECT a.id,
+       CASE WHEN em.is_chefe AND a.contacto IS NOT NULL
+            THEN op.nome||' ('||a.contacto||')' ELSE op.nome END,
+       row_number() OVER (PARTITION BY a.id
+                          ORDER BY em.is_chefe DESC, em.ordem, op.nome)-1
+FROM alvo a
+JOIN fsbf_equipa_membros em ON em.fsbf_bsbf_id = a.fsbf_bsbf_id
+JOIN operacionais_fsbf op   ON op.id = em.operacional_id;
+-- contentor = união das guarnições dos filhos
+CREATE TEMP TABLE pais AS
+  SELECT p.id FROM meios p
+  WHERE p.fsbf_bsbf_id IS NOT NULL AND p.meio_pai_id IS NULL
+    AND p.estado <> 'desmobilizado'
+    AND (SELECT count(*) FROM meios_operativos o WHERE o.meio_id=p.id)=0;
+INSERT INTO meios_operativos (meio_id, nome, ordem)
+SELECT p.id, x.nome, row_number() OVER (PARTITION BY p.id ORDER BY f.eq, x.ordem)-1
+FROM pais p JOIN meios f ON f.meio_pai_id=p.id
+JOIN meios_operativos x ON x.meio_id=f.id;
+COMMIT;
+```
+
+Resultado: 3 filhos actualizados (8 nomes) e 1 contentor preenchido (8 nomes).
+
+| Meio | Declarado | Nomes antes | Nomes depois |
+|---|---|---|---|
+| BSBF Sul (contentor) | 12 | 0 | 8 |
+| VFCI 04 | 5 | 1 | 5 |
+| VAOP 12 | 2 | 1 | 2 |
+| VFCI 03 | 5 | 1 | 1 |
+
+### O que continua por resolver
+
+- **A BSBF Sul declara 12 operacionais e só há 8 nomes na escala.** Não é
+  defeito do código: a guarnição do VFCI 03 tem 1 membro registado para 5
+  declarados. Falta preencher a Carta de Meios.
+- **Composições SF (BSF) e Gruata não têm de onde copiar.** `composicao_membros`
+  liga a **recursos e viaturas**, não a pessoas; o módulo SF não regista quem
+  vai em cada equipa. Enquanto assim for, uma BSF nasce sempre sem nomes. Era
+  preciso decidir primeiro onde é que essa guarnição passaria a ser registada.
+- **Meios soltos**: 60 dos 63 não têm nome nenhum — são preenchidos à mão na
+  ficha, e ninguém os preencheu.
+
+### Como validar
+
+1. Abrir **Editar Meio** na `BSBF Sul`: as caixas de nome devem vir preenchidas.
+2. Confirmar os nomes nos crachás do cartão e na Ficha do Meio.
+3. Despachar uma BSBF nova com guarnição registada e confirmar que já nasce com
+   os nomes, sem correcção de dados nenhuma.
+4. Despachar uma EMR e confirmar o mesmo no MR.
