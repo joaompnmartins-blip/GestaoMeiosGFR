@@ -1575,62 +1575,6 @@
       </div>
     </div>
 
-    <div class="modal-section">Mobilização</div>
-    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
-      <div class="form-field" id="mob-fld-data-despacho">
-        <label class="form-label">Data Despacho</label>
-        <input class="form-input" type="date" id="team-data-despacho"/>
-      </div>
-      <div class="form-field" id="mob-fld-hora-despacho">
-        <label class="form-label">Hora Despacho</label>
-        <input class="form-input" type="time" id="team-hora-despacho"/>
-      </div>
-      <div class="form-field" id="mob-fld-data-saida" style="display:none;">
-        <label class="form-label">Data Saída Entidade</label>
-        <input class="form-input" type="date" id="team-data-saida-entidade"/>
-      </div>
-      <div class="form-field" id="mob-fld-hora-saida" style="display:none;">
-        <label class="form-label">Hora Saída Entidade</label>
-        <input class="form-input" type="time" id="team-hora-saida-entidade"/>
-      </div>
-      <div class="form-field" id="mob-fld-data-chegada" style="display:none;">
-        <label class="form-label">Data Chegada TO</label>
-        <input class="form-input" type="date" id="team-data-chegada"/>
-      </div>
-      <div class="form-field" id="mob-fld-hora-chegada" style="display:none;">
-        <label class="form-label">Hora Chegada TO</label>
-        <input class="form-input" type="time" id="team-hora-chegada"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Tempo máximo op.</label>
-        <input class="form-input" type="number" id="team-horas-max" min="1" max="24" placeholder="Ex: 12" title="Horas máximas de operação contínua antes de descanso obrigatório"/>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Limite Op. (hora)</label>
-        <input class="form-input" type="time" id="team-limite-op" placeholder="Calculado automaticamente"/>
-      </div>
-      <div class="form-field" id="mob-fld-data-demob" style="display:none;">
-        <label class="form-label">Data Saída TO</label>
-        <input class="form-input" type="date" id="team-data-demob"/>
-      </div>
-      <div class="form-field" id="mob-fld-hora-demob" style="display:none;">
-        <label class="form-label">Hora Saída TO</label>
-        <input class="form-input" type="time" id="team-hora-demob"/>
-      </div>
-      <div class="form-field" id="mob-fld-data-chegada-entidade" style="display:none;">
-        <label class="form-label">Data Chegada Entidade</label>
-        <input class="form-input" type="date" id="team-data-chegada-entidade"/>
-      </div>
-      <div class="form-field" id="mob-fld-hora-chegada-entidade" style="display:none;">
-        <label class="form-label">Hora Chegada Entidade</label>
-        <input class="form-input" type="time" id="team-hora-chegada-entidade"/>
-      </div>
-      <div class="form-field span2" id="mob-fld-km" style="display:none;">
-        <label class="form-label">Km Percorridos</label>
-        <input class="form-input" type="number" id="team-km" min="0" placeholder="Ex: 120" title="Quilómetros percorridos pelo meio"/>
-      </div>
-    </div>
-
     <div class="modal-section">Operação</div>
     <div class="form-grid">
       <div class="form-field">
@@ -1665,9 +1609,61 @@
         <label class="form-label">Missão / Posição</label>
         <input class="form-input" id="team-missao" placeholder="Ex: EGFR, OF LIG, PF Barão…"/>
       </div>
-      <div class="form-field span2">
-        <label class="form-label">Observações / Evento</label>
-        <textarea class="form-textarea" id="team-obs" rows="2" placeholder="Notas, situação especial, evento relevante…"></textarea>
+    </div>
+
+    <div class="modal-section">Mobilização</div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="form-field" id="mob-fld-data-despacho">
+        <label class="form-label">Data Despacho</label>
+        <input class="form-input" type="date" id="team-data-despacho"/>
+      </div>
+      <div class="form-field" id="mob-fld-hora-despacho">
+        <label class="form-label">Hora Despacho</label>
+        <input class="form-input" type="time" id="team-hora-despacho"/>
+      </div>
+      <div class="form-field" id="mob-fld-data-saida" style="display:none;">
+        <label class="form-label">Data Saída Entidade</label>
+        <input class="form-input" type="date" id="team-data-saida-entidade"/>
+      </div>
+      <div class="form-field" id="mob-fld-hora-saida" style="display:none;">
+        <label class="form-label">Hora Saída Entidade</label>
+        <input class="form-input" type="time" id="team-hora-saida-entidade"/>
+      </div>
+      <div class="form-field" id="mob-fld-data-chegada" style="display:none;">
+        <label class="form-label">Data Chegada TO</label>
+        <input class="form-input" type="date" id="team-data-chegada"/>
+      </div>
+      <div class="form-field" id="mob-fld-hora-chegada" style="display:none;">
+        <label class="form-label">Hora Chegada TO</label>
+        <input class="form-input" type="time" id="team-hora-chegada"/>
+      </div>
+      <div class="form-field" id="mob-fld-horas-max" style="display:none;">
+        <label class="form-label">Tempo máximo op.</label>
+        <input class="form-input" type="number" id="team-horas-max" min="1" max="24" placeholder="Ex: 12" title="Horas máximas de operação contínua antes de descanso obrigatório"/>
+      </div>
+      <div class="form-field" id="mob-fld-limite-op" style="display:none;">
+        <label class="form-label">Limite Op. (hora)</label>
+        <input class="form-input" type="time" id="team-limite-op" placeholder="Calculado automaticamente"/>
+      </div>
+      <div class="form-field" id="mob-fld-data-demob" style="display:none;">
+        <label class="form-label">Data Saída TO</label>
+        <input class="form-input" type="date" id="team-data-demob"/>
+      </div>
+      <div class="form-field" id="mob-fld-hora-demob" style="display:none;">
+        <label class="form-label">Hora Saída TO</label>
+        <input class="form-input" type="time" id="team-hora-demob"/>
+      </div>
+      <div class="form-field" id="mob-fld-data-chegada-entidade" style="display:none;">
+        <label class="form-label">Data Chegada Entidade</label>
+        <input class="form-input" type="date" id="team-data-chegada-entidade"/>
+      </div>
+      <div class="form-field" id="mob-fld-hora-chegada-entidade" style="display:none;">
+        <label class="form-label">Hora Chegada Entidade</label>
+        <input class="form-input" type="time" id="team-hora-chegada-entidade"/>
+      </div>
+      <div class="form-field span2" id="mob-fld-km" style="display:none;">
+        <label class="form-label">Km Percorridos</label>
+        <input class="form-input" type="number" id="team-km" min="0" placeholder="Ex: 120" title="Quilómetros percorridos pelo meio"/>
       </div>
     </div>
 
@@ -1678,6 +1674,13 @@
     </div>
     <div class="ops-list" id="ops-list"></div>
     <button class="btn btn-ghost btn-sm ops-add" onclick="addOpsField()">+ Adicionar operacional</button>
+
+    <div class="modal-section">Observações / Eventos</div>
+    <div class="form-grid" style="grid-template-columns:1fr;">
+      <div class="form-field">
+        <textarea class="form-textarea" id="team-obs" rows="2" placeholder="Notas, situação especial, evento relevante…"></textarea>
+      </div>
+    </div>
 
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-team')">Cancelar</button>
@@ -2649,6 +2652,27 @@ document.addEventListener('click', e => {
   const th = e.target.closest('thead th');
   if(th && th.textContent.trim()) sortTable(th);
 });
+// ── Intervalo aceite pelos campos de data ────────────────────────
+// Um <input type="date"> aceita anos até 275760: escrever 20266 em vez de 2026
+// passa despercebido e só se nota mais tarde, nos cálculos de duração e na
+// ordenação. Limitamos o intervalo no selector (min/max) e corrigimos o que
+// ainda assim for escrito à mão.
+const DATA_MIN='2000-01-01', DATA_MAX='2100-12-31';
+const _ehCampoData = el => el && el.tagName==='INPUT' && el.type==='date';
+document.addEventListener('focusin', e => {
+  if(!_ehCampoData(e.target)) return;
+  if(!e.target.min) e.target.min=DATA_MIN;
+  if(!e.target.max) e.target.max=DATA_MAX;
+});
+document.addEventListener('change', e => {
+  const el=e.target;
+  if(!_ehCampoData(el) || !el.value) return;
+  const ano=parseInt(el.value.slice(0,4),10);
+  if(ano>=2000 && ano<=2100) return;
+  el.value='';
+  toast('Data inválida: o ano tem de ter 4 dígitos, entre 2000 e 2100.','err');
+});
+
 function fmtDate(d){ if(!d)return'—'; try{return new Date(d).toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d;} }
 function fmtDateTime(d){ if(!d)return'—'; try{return new Date(d).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return d;} }
 function fmtDateShort(d){ if(!d)return''; try{const[y,m,day]=d.split('-');return`${day}/${m}`;}catch(e){return d;} }
@@ -5139,6 +5163,9 @@ function toggleMobilizacaoFields(estado, isEdit){
   s('mob-fld-hora-saida', hasSaida);
   s('mob-fld-data-chegada', hasChegad);
   s('mob-fld-hora-chegada', hasChegad);
+  // Os limites de operação só fazem sentido depois de o meio chegar ao TO.
+  s('mob-fld-horas-max', hasChegad);
+  s('mob-fld-limite-op', hasChegad);
   s('mob-fld-data-demob', hasDmob);
   s('mob-fld-hora-demob', hasDmob);
   s('mob-fld-data-chegada-entidade', hasDmob);
@@ -5229,17 +5256,6 @@ function validateMeioDates(p, occInicio){
   return null;
 }
 
-function _updateOpsAddBtn(){
-  const limit=parseInt(document.getElementById('team-ops')?.value)||0;
-  const current=document.getElementById('ops-list')?.querySelectorAll('.ops-item').length||0;
-  const btn=document.querySelector('.ops-add');
-  if(!btn) return;
-  const atLimit=limit>0&&current>=limit;
-  btn.disabled=atLimit;
-  btn.style.opacity=atLimit?'0.4':'';
-  btn.style.cursor=atLimit?'not-allowed':'';
-}
-
 function syncOpsFields(n){
   const count=parseInt(n)||0;
   const list=document.getElementById('ops-list');
@@ -5251,24 +5267,23 @@ function syncOpsFields(n){
     const items=list.querySelectorAll('.ops-item');
     for(let i=items.length-1;i>=count;i--) items[i].remove();
   }
-  _updateOpsAddBtn();
 }
 
+// O botão acrescenta sempre uma linha e o Nº Operacionais acompanha a lista,
+// como já acontecia no PM. Antes o campo era tratado como tecto: o primeiro
+// clique punha-o a 1 e a partir daí bloqueava todos os cliques seguintes.
 function addOpsField(){
   const list=document.getElementById('ops-list');
   if(!document.getElementById('ops-datalist')) list.insertAdjacentHTML('beforebegin',getOpsDatalist());
-  const limit=parseInt(document.getElementById('team-ops').value)||0;
   const current=list.querySelectorAll('.ops-item').length;
-  if(limit&&current>=limit){ toast(`Limite de ${limit} operacionais atingido.`,'err'); return; }
   list.appendChild(makeOpsItem('',current));
-  if(!limit) document.getElementById('team-ops').value=current+1;
-  _updateOpsAddBtn();
+  const campo=document.getElementById('team-ops');
+  if((parseInt(campo.value)||0) < current+1) campo.value=current+1;
 }
 
 function recountOps(){
   const current=document.getElementById('ops-list').querySelectorAll('.ops-item').length;
   document.getElementById('team-ops').value=current;
-  _updateOpsAddBtn();
 }
 
 // ── Operacionais do PM (criado a par do MR) ──────────────────────
@@ -5329,7 +5344,6 @@ function openAddTeam(){
   document.getElementById('team-data-demob').value='';
   const opsDl=document.getElementById('ops-datalist'); if(opsDl) opsDl.remove();
   document.getElementById('ops-list').innerHTML='';
-  _updateOpsAddBtn();
   // Reset filter dropdowns so they repopulate with fresh data (including new BSF entries)
   const pfTe = document.getElementById('preset-filter-te');
   const pfSr = document.getElementById('preset-filter-sr');

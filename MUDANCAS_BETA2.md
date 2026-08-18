@@ -35,6 +35,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 13 | 16/08/2026 | Uma composição não pode ser empenhada duas vezes | `9d83044` | **por validar (só beta2)** |
 | 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `1299668` | **por validar (só beta2)** |
 | 15 | 16/08/2026 | Viatura de um meio EGFR atribuível depois do despacho | `f6b00a0` | **por validar (só beta2)** |
+| 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1186,3 +1187,89 @@ mantenha `EGFR`, é retirar `tipo` do `UPDATE`.
 3. Confirmar na escala EGFR do dia que a viatura ficou gravada.
 4. Tentar atribuir a mesma viatura a outro meio activo: deve recusar.
 5. Retirar e confirmar que volta a **sem viatura**.
+
+---
+
+## 16 — Modais de Adicionar/Editar Meio: ordem das caixas, limites de operação e botão de operacionais
+
+**Data:** 18/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Três correcções ao modal de meio, pedidas depois de o usar a sério.
+
+**a) Ordem das caixas.** Estava *Identificação → Mobilização → Operação*, o que
+obrigava a saltar para baixo para escolher o estado e voltar acima para as
+datas que esse estado destranca. Passa a *Identificação → Operação →
+Mobilização*: escolhe-se primeiro o estado, e a Mobilização abre já com os
+campos certos à vista.
+
+**b) Tempo máximo op. e Limite Op. (hora) só a partir da chegada ao TO.**
+Apareciam sempre, mesmo num meio ainda *Previsto* — pedia-se um limite de
+operação a um meio que nem tinha saído. Passam a seguir a mesma regra dos
+campos de Chegada ao TO: aparecem quando o estado é **Em Operação**, Em
+Descanso ou Desmobilizado, logo a seguir a esses campos. Em modo de edição
+continuam visíveis, como os restantes campos de mobilização.
+
+**c) Observações / Eventos passa a grupo próprio.** Era um campo perdido no fim
+da caixa Operação. Passa a secção com título, depois de Operacionais.
+
+**d) O botão «+ Adicionar operacional» deixa de funcionar uma só vez.** Era o
+defeito mais incómodo: com o Nº Operacionais vazio, o primeiro clique
+acrescentava a linha **e escrevia 1 no campo** — e esse 1 passava a ser tratado
+como tecto, pelo que todos os cliques seguintes só produziam *«Limite de 1
+operacionais atingido»*. O campo passa a acompanhar a lista em vez de a travar,
+que é o que o botão equivalente do PM (`addPMOpsField`) já fazia.
+
+Ao remover o tecto desapareceu também `_updateOpsAddBtn()`, que tinha um
+segundo defeito: `document.querySelector('.ops-add')` devolve o **primeiro**
+botão com essa classe no documento — o do PM, que está mais acima no modal.
+Ou seja, desactivava visualmente o botão errado.
+
+**e) Anos de mais de 4 dígitos nos campos de data.** Um `<input type="date">`
+aceita anos até 275760: escrever `20266` em vez de `2026` passava despercebido
+e só se notava depois, nas durações e na ordenação. Todos os campos de data da
+aplicação (21) passam a ter `min`/`max` e a recusar, com aviso, um ano fora de
+2000–2100.
+
+### Alterações
+
+- `Gestao_Meios_v17.html`
+  - Modal `modal-team`: bloco **Operação** movido para antes de **Mobilização**;
+    `Tempo máximo op.` e `Limite Op. (hora)` embrulhados em
+    `mob-fld-horas-max` / `mob-fld-limite-op`; `team-obs` movido para uma
+    secção **Observações / Eventos** depois de Operacionais.
+  - `toggleMobilizacaoFields()` — passa a comandar os dois novos invólucros
+    pela condição `hasChegad`.
+  - `addOpsField()` — acrescenta sempre; `team-ops` acompanha a lista.
+  - `_updateOpsAddBtn()` — removida, com as suas 4 chamadas.
+  - Novo guarda global de datas (`DATA_MIN`/`DATA_MAX` + `focusin`/`change`).
+- **Base de dados:** nenhuma alteração. Nada a repetir à mão numa promoção.
+
+### Verificação feita
+
+`addOpsField` e `syncOpsFields` foram extraídas do ficheiro e corridas em Node
+contra um DOM mínimo:
+
+| Cenário | Resultado |
+|---|---|
+| Lista vazia, 5 cliques seguidos | 5 linhas, Nº Operacionais = 5 |
+| Escrever 3, depois 2 cliques | 5 linhas, Nº = 5 |
+| Escrever 2 tendo 5 linhas | reduz a 2 linhas |
+
+O ficheiro passa à verificação de sintaxe do bloco `<script>`.
+
+### Como validar
+
+1. Abrir **Adicionar Meio**: a caixa **Operação** aparece logo depois de
+   Identificação.
+2. Com o estado em *Previsto*, confirmar que **Tempo máximo op.** e **Limite
+   Op. (hora)** não aparecem; escolher **Em Operação** e confirmar que surgem a
+   seguir a Data/Hora Chegada TO.
+3. Confirmar **Observações / Eventos** como secção, depois de Operacionais.
+4. Com o Nº Operacionais vazio, clicar **+ Adicionar operacional** quatro ou
+   cinco vezes: deve acrescentar sempre, e o número deve acompanhar.
+5. Num campo de data, tentar escrever um ano de 5 dígitos: o campo limpa-se e
+   avisa.
+6. Editar um meio já em operação e confirmar que os bloqueios por fase se
+   mantêm (os campos de fases anteriores continuam trancados).
