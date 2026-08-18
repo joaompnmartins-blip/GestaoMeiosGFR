@@ -37,6 +37,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 15 | 16/08/2026 | Viatura de um meio EGFR atribuível depois do despacho | `f6b00a0` | **por validar (só beta2)** |
 | 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `2d6889f` | **por validar (só beta2)** |
 | 17 | 18/08/2026 | Nomes dos operacionais legíveis no tema claro | `b82d25d` | **por validar (só beta2)** |
+| 18 | 18/08/2026 | Conjuntos compostos recolhidos dentro do cartão do pai | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1317,3 +1318,99 @@ era usada para `.badge-closed` e `.schema-block`.
 defeito, embora menos gritante: fundo escuro fixo com `color:var(--muted)`, o
 que no tema claro dá **1.61:1**. Não foi mexido por estar fora do que foi
 pedido.
+
+---
+
+## 18 — Conjuntos compostos recolhidos dentro do cartão do pai
+
+**Data:** 18/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Nas vistas de **Cartões** e de **Sector**, os meios de um conjunto composto
+deixam de ocupar cartões soltos ao lado do pai. O conjunto passa a ser **um
+único item da grelha**: o cartão do pai, com um botão `⬡ N meios` que abre e
+fecha os membros. Por omissão vem **fechado** — quatro cartões passam a um.
+
+Antes os filhos eram irmãos na mesma grelha CSS, apenas indentados 20 px com um
+`└`. Não havia contenção nenhuma; agora há.
+
+Isto resolve também uma questão que estava em aberto: o contentor de uma BSF ou
+BSBF, que não é um meio, deixa de ser um quarto cartão estranho e passa a ser o
+cabeçalho do conjunto — que era o que sempre foi.
+
+### O que o cartão fechado mostra
+
+Recolher não pode esconder o que interessa, por isso o cabeçalho passa a dizer:
+
+- **quantos meios** estão neste cartão (`⬡ 3 meios`);
+- **em que estados** — `2 em op. · 1 trânsito`;
+- **o efectivo do conjunto**;
+- **o membro mais perto do limite de operação**, com a barra de tempo — e o
+  cartão acende a vermelho (`.urgent`) se algum membro estiver acima de 85%.
+  Sem isto, recolher escondia o aviso e era perigoso;
+- 🔒 se algum membro tiver pedido de remoção pendente.
+
+### Decisões
+
+- **Fechado por omissão**, memorizado por conjunto em `localStorage`.
+- **Aberto ocupa a linha toda** (`grid-column:1/-1`), para os membros caberem
+  lado a lado em vez de espremidos numa coluna.
+- **Vista de tabela não muda** — tem o seu próprio esquema de indentação.
+
+### Armadilhas tratadas
+
+1. **`renderTeams()` reconstrói o `innerHTML` de 60 em 60 segundos.** Um
+   `<details>` fechava-se sozinho a cada minuto enquanto alguém o lia. O estado
+   aberto/fechado vive em `_conjuntosAbertos`, fora do DOM, e é reaplicado a
+   cada desenho.
+2. **Um meio destacado não recolhe.** Usa-se `filhosAgrupados()`, que exclui os
+   `destacado` — um meio destacado está deliberadamente sozinho.
+3. **Um conjunto pode estar repartido por blocos.** Na vista por sector há
+   blocos separados para previstos, trânsito e cada sector; três conjuntos
+   antigos (criados a 14/08, antes da alteração 12) têm o pai num estado e os
+   filhos noutro. Recolhe-se só o que está no mesmo bloco, e o cabeçalho avisa
+   `+N noutro bloco`. Nunca se muda um meio de bloco para o pôr ao pé do pai:
+   seria dizer que está num estado em que não está.
+4. **O efectivo soma-se sobre o conjunto todo, contentor incluído.** Quem
+   guarda o número muda com a origem — na BSF são os filhos, na BSBF e na EMR é
+   o pai. Somar só os meios daria **zero numa BSBF**.
+
+### Alterações
+
+- `Gestao_Meios_v17.html`
+  - CSS `.conjunto`, `.conjunto.aberto`, `.conjunto-filhos`, `.conjunto-toggle`.
+  - `_conjuntosAbertos`, `toggleConjunto()`, `resumoConjunto()`,
+    `gridConjuntos()`, `conjuntoCardHtml()`.
+  - `teamCardHtml()` — novo 4.º argumento `opts` (`conjunto` para o cabeçalho,
+    `semIndent` para os filhos já dentro da caixa); a urgência passa a incluir a
+    do pior membro.
+  - Os 4 pontos que emitiam `<div class="teams-grid">` passam por
+    `gridConjuntos()`.
+- **Base de dados:** nenhuma alteração.
+
+### Verificação feita
+
+Funções extraídas do ficheiro e corridas em Node com dados com a forma dos
+reais do beta2:
+
+| Cenário | Resultado |
+|---|---|
+| Conjunto uniforme, fechado | 1 item de grelha, filhos não desenhados, `aqui=3` |
+| Expandido | caixa de filhos com os 3, sem indentação, classe `aberto` |
+| Pai em trânsito e filhos previstos (caso real) | não agrupa; cada bloco desenha o que tem |
+| 2 dos 3 filhos no bloco | `aqui=2 · total=3` → avisa `+1 noutro bloco` |
+| Filho destacado | fica fora do conjunto e desenha-se à parte |
+| Efectivo BSF / BSBF / EMR | 15 / 12 / 6 — certos nos três |
+| Filho a 93% com o conjunto fechado | cabeçalho marcado urgente |
+
+### Como validar
+
+1. Abrir uma ocorrência com uma BSF: deve ver **um** cartão `BRIG …` com
+   `⬡ 3 meios`, e não quatro cartões.
+2. Clicar no botão: o conjunto abre a toda a largura com os três meios dentro.
+3. Esperar mais de um minuto com o conjunto aberto — deve continuar aberto.
+4. Recarregar a página: deve continuar aberto (fica memorizado).
+5. Destacar um membro: sai da caixa e passa a cartão próprio.
+6. Confirmar o efectivo do cabeçalho na BSBF (não pode aparecer 0).
+7. Repetir na vista por **Sector**.

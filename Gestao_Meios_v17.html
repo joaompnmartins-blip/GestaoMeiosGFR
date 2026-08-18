@@ -248,6 +248,23 @@
 
     /* TEAM CARDS (card view in sector groups) */
     .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;}
+
+    /* CONJUNTOS COMPOSTOS — os meios do conjunto recolhem dentro do cartão do pai */
+    .conjunto{min-width:0;}
+    .conjunto.aberto{grid-column:1/-1;}
+    .conjunto-filhos{
+      display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;
+      padding:10px;background:var(--s-alpha);
+      border:1px solid var(--border);border-top:none;border-radius:0 0 2px 2px;
+    }
+    .conjunto-toggle{
+      display:inline-flex;align-items:center;gap:4px;cursor:pointer;
+      background:none;border:1px solid var(--border);border-radius:10px;padding:1px 7px;
+      color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.04em;
+    }
+    .conjunto-toggle:hover{color:var(--accent);border-color:rgba(140,150,28,.4);}
+    .conjunto-seta{display:inline-block;transition:transform .15s;}
+    .conjunto.aberto .conjunto-seta{transform:rotate(90deg);}
     .team-card{
       background:var(--surface);border:1px solid var(--border);border-radius:2px;
       position:relative;overflow:hidden;transition:border-color .15s;
@@ -4107,6 +4124,71 @@ function sortWithChildren(teams){
   return result;
 }
 
+// ── Conjuntos compostos recolhidos no cartão do pai ──────────────
+// renderTeams() reconstrói o innerHTML de 60 em 60 segundos, pelo que o estado
+// aberto/fechado não pode viver no DOM — fechar-se-ia sozinho a cada refresco.
+// Fica aqui, e é reaplicado a cada desenho. Por omissão o conjunto vem fechado.
+const _conjuntosAbertos = (() => {
+  try { return new Set(JSON.parse(localStorage.getItem('conjuntosAbertos') || '[]')); }
+  catch(e){ return new Set(); }
+})();
+function toggleConjunto(id){
+  if(_conjuntosAbertos.has(id)) _conjuntosAbertos.delete(id); else _conjuntosAbertos.add(id);
+  try { localStorage.setItem('conjuntosAbertos', JSON.stringify([..._conjuntosAbertos])); } catch(e){}
+  renderTeams();
+}
+
+// O que o cartão fechado tem de dizer para que recolher não esconda nada de
+// importante: quantos meios, em que estados, e o mais perto do limite de operação.
+const _ESTADO_CURTO = {operacao:'em op.',descanso:'descanso',transito:'trânsito',previsto:'previsto',desmobilizado:'desmob.'};
+function resumoConjunto(cj){
+  const membros = cj.membros;                 // os meios: é sobre estes que se contam estados
+  const cont = {};
+  membros.forEach(m => { cont[m.estado] = (cont[m.estado]||0) + 1; });
+  const estados = Object.keys(cont).map(e => `${cont[e]} ${_ESTADO_CURTO[e]||e}`).join(' · ');
+  let pior = null;
+  membros.filter(m => m.estado === 'operacao').forEach(m => {
+    const ti = timeInfo(m);
+    if(ti && !ti.semInfo && (!pior || ti.pct > pior.pct)) pior = {...ti, eq:m.eq};
+  });
+  // O efectivo soma-se sobre o conjunto todo, contentor incluído: quem guarda o
+  // número muda com a origem — na BSF são os filhos, na BSBF e na EMR é o pai —
+  // e meioContaOperacionais() já decide isso meio a meio. Deixar o contentor de
+  // fora daria zero numa BSBF.
+  return { estados, pior, ops: somaOperacionais(cj.todos),
+           bloqueado: cj.todos.some(m => hasPendingDelete(m.id)) };
+}
+
+// Emite a grelha de cartões agrupando cada conjunto num único item. Só recolhe
+// os filhos que estão neste bloco: um meio cujo estado divirja do pai cai noutro
+// bloco da vista por sector, e movê-lo para junto do pai seria dizer que está
+// num estado em que não está.
+function gridConjuntos(list, isClosed){
+  const ordenada = sortWithChildren(list);
+  const nesteBloco = new Set(ordenada.map(t => t.id));
+  const consumidos = new Set();
+  const partes = [];
+  for(const t of ordenada){
+    if(consumidos.has(t.id)) continue;
+    const filhos = t.meioPaiId ? [] : filhosAgrupados(t.id).filter(f => nesteBloco.has(f.id));
+    if(!filhos.length){ partes.push(teamCardHtml(t, isClosed, list)); continue; }
+    filhos.forEach(f => consumidos.add(f.id));
+    partes.push(conjuntoCardHtml(t, filhos, isClosed, list));
+  }
+  return `<div class="teams-grid">${partes.join('')}</div>`;
+}
+
+function conjuntoCardHtml(pai, filhos, isClosed, list){
+  const aberto = _conjuntosAbertos.has(pai.id);
+  // No BSF e no BSBF o pai é um contentor e não conta como meio; no EMR conta.
+  const membros = meioEhContentor(pai) ? filhos : [pai, ...filhos];
+  const cj = { aberto, membros, todos: [pai, ...filhos], aqui: membros.length, total: meiosDoConjunto(pai) };
+  return `<div class="conjunto${aberto?' aberto':''}">
+    ${teamCardHtml(pai, isClosed, list, { conjunto: cj })}
+    ${aberto ? `<div class="conjunto-filhos">${filhos.map(f => teamCardHtml(f, isClosed, list, { semIndent:true })).join('')}</div>` : ''}
+  </div>`;
+}
+
 // ── Alert suppress state (in-memory; resets on page reload) ─────
 const _alertSuppress={};
 function _isAlertSuppressed(key){ return !!(_alertSuppress[key] && Date.now()<_alertSuppress[key]); }
@@ -4185,7 +4267,7 @@ function renderSectorGroups(ativos, isClosed){
           <span class="sector-stat">👥 ${totalOps} op.ais</span>
         </div>
       </div>
-      <div class="teams-grid">${sortWithChildren(st).map(t=>teamCardHtml(t,isClosed,st)).join('')}</div>
+      ${gridConjuntos(st,isClosed)}
     </div>`;
   }).join('');
 }
@@ -4206,7 +4288,7 @@ function renderSectorView(teams, isClosed){
         <span class="previsto-section-label">⏳ Previstos</span>
         <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
       </div>
-      <div class="teams-grid">${sortWithChildren(previstos).map(t=>teamCardHtml(t,isClosed,previstos)).join('')}</div>
+      ${gridConjuntos(previstos,isClosed)}
     </div>`;
   }
 
@@ -4217,7 +4299,7 @@ function renderSectorView(teams, isClosed){
         <span class="transito-section-label">🚒 Em Trânsito</span>
         <div class="sector-stats"><span class="sector-stat" style="color:var(--icnf-blue-light)">${transitos.length} meio${transitos.length!==1?'s':''} a caminho do TO</span></div>
       </div>
-      <div class="teams-grid">${sortWithChildren(transitos).map(t=>teamCardHtml(t,isClosed,transitos)).join('')}</div>
+      ${gridConjuntos(transitos,isClosed)}
     </div>`;
   }
 
@@ -4270,7 +4352,7 @@ function renderCardsView(teams, isClosed){
     return pb-pa; // higher urgency first
   });
   const grouped = sortWithChildren(sorted);
-  container.innerHTML=`<div class="teams-grid">${grouped.map(t=>teamCardHtml(t,isClosed,grouped)).join('')}</div>`;
+  container.innerHTML=gridConjuntos(grouped,isClosed);
 }
 
 function renderTableView(teams, isClosed){
@@ -4324,16 +4406,23 @@ function renderTableView(teams, isClosed){
 }
 
 // ─── TEAM CARD HTML ────────────────────────────────────────────
-function teamCardHtml(t, isClosed, _teams){
+function teamCardHtml(t, isClosed, _teams, opts){
   const teams = _teams || (window.db?.teams||[]).filter(x=>x.ocorrencia_id===t.ocorrencia_id);
   const isChild  = !!t.meioPaiId;
   const isParent = !isChild && teams.some(c=>c.meioPaiId===t.id);
   const childCount = isParent ? meiosDoConjunto(t) : 0;
+  // Cartão de cabeçalho de um conjunto recolhido (cj), ou cartão de um filho
+  // desenhado já dentro do conjunto (semIndent — a indentação passa a ser a
+  // margem da caixa que o contém).
+  const cj = (opts && opts.conjunto) || null;
+  const resumo = cj ? resumoConjunto(cj) : null;
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},desmobilizado:{l:'DESMOB.',cls:'badge-closed'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
   // No urgency indication on closed ocorrências
   const ti=(!isClosed && t.estado==='operacao')?timeInfo(t):null;
-  const urgent=ti && !ti.semInfo && ti.pct>=85;
+  // Um conjunto fechado tem de acender na mesma: a urgência é a do membro mais
+  // perto do limite, senão recolher esconderia o aviso.
+  const urgent=(ti && !ti.semInfo && ti.pct>=85) || !!(resumo && resumo.pior && resumo.pior.pct>=85);
   const pendingDelete=hasPendingDelete(t.id);
 
   // Time bar HTML — suppressed for closed ocorrências
@@ -4417,7 +4506,7 @@ function teamCardHtml(t, isClosed, _teams){
     : t.fsbfEmrId||t.meioPaiId&&teams.find(x=>x.id===t.meioPaiId)?.fsbfEmrId ? '#b91c1c'
     : t.fsbfBsbfId||t.meioPaiId&&teams.find(x=>x.id===t.meioPaiId)?.fsbfBsbfId ? '#b45309' : null;
   const cardStyle = isChild
-    ? `margin-left:20px;border-left:3px solid ${groupColor||'var(--border)'};`
+    ? `${(opts&&opts.semIndent)?'':'margin-left:20px;'}border-left:3px solid ${groupColor||'var(--border)'};`
     : isParent && groupColor
       ? `border-left:3px solid ${groupColor};`
       : '';
@@ -4434,11 +4523,33 @@ function teamCardHtml(t, isClosed, _teams){
         ? `<span class="badge badge-y" style="font-size:8px" title="Viatura atribuída">🚗 ${esc(t.matricula||'viatura')}</span>`
         : `<span class="badge badge-warn" style="font-size:8px" title="Despachado sem viatura — a escala EGFR do dia não a tinha">🚗 sem viatura</span>`)
     : '';
+  const marcaConjunto = cj
+    ? `<button class="conjunto-toggle" onclick="toggleConjunto('${t.id}')"
+         title="${cj.aberto?'Recolher os meios do conjunto':`Ver os ${cj.aqui} meios do conjunto`}"
+         aria-expanded="${cj.aberto}"><span class="conjunto-seta">▸</span>⬡ ${cj.aqui} meios</button>`
+    : `<span class="badge badge-info" style="font-size:9px" title="${childCount} meios neste conjunto">⬡ ${childCount}</span>`;
   const nameHtml = isChild
     ? `<span style="color:${groupColor||'var(--muted)'};font-size:10px">└</span> ${esc(t.eq)} ${chipGrupo}`
     : isParent
-      ? `${esc(t.eq)} <span class="badge badge-info" style="font-size:9px" title="${childCount} meios neste conjunto">⬡ ${childCount}</span> ${natBadge}`
+      ? `${esc(t.eq)} ${marcaConjunto} ${natBadge}`
       : `${esc(t.eq)} ${chipViat}`;
+  // Resumo do conjunto: o que se perderia de vista com os filhos recolhidos.
+  const resumoHtml = !resumo ? '' : `
+      <div class="team-card-row"><span class="lbl">Conjunto</span>
+        <span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">
+          <span>${esc(resumo.estados)}</span>
+          ${resumo.ops?`<span style="color:var(--muted)">👥 ${resumo.ops} operacionais</span>`:''}
+          ${cj.aqui<cj.total?`<span class="badge badge-warn" style="font-size:8px" title="O conjunto tem ${cj.total} meios; os restantes estão noutro estado e aparecem no bloco respectivo.">+${cj.total-cj.aqui} noutro bloco</span>`:''}
+          ${resumo.bloqueado?`<span class="badge badge-warn" style="font-size:8px" title="Um dos meios tem pedido de remoção pendente">🔒 pedido pendente</span>`:''}
+        </span>
+      </div>
+      ${resumo.pior?`<div class="time-remaining">
+        <div class="time-remaining-label">
+          <span class="left">Mais perto do limite · ${esc(resumo.pior.eq)}</span>
+          <span class="right ${resumo.pior.cls}">${resumo.pior.label}</span>
+        </div>
+        <div class="time-bar-track"><div class="time-bar-fill ${resumo.pior.cls}" style="width:${resumo.pior.pct}%"></div></div>
+      </div>`:''}`;
   return `<div class="team-card estado-${t.estado}${urgent?' urgent':''}${isClosed?' closed-occ':''}" style="${cardStyle}">
     <div class="team-card-head">
       <div class="team-card-name">${nameHtml}</div>
@@ -4447,6 +4558,7 @@ function teamCardHtml(t, isClosed, _teams){
       ${pendingDelete?`<span class="badge badge-warn" style="font-size:9px" title="Pedido de remoção pendente">🔒</span>`:''}
     </div>
     <div class="team-card-body">
+      ${resumoHtml}
       ${tiHtml}
       <div class="team-card-row"><span class="lbl">Responsável</span><span class="val">${esc(t.responsavel||'—')}</span></div>
       ${t.contacto?`<div class="team-card-row"><span class="lbl">Contacto</span><span class="val">${esc(t.contacto)}</span></div>`:''}
