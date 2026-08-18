@@ -36,6 +36,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 14 | 16/08/2026 | Conjuntos compostos: contentor não é meio, acções ao nível do grupo, destacar/reagrupar | `1299668` | **por validar (só beta2)** |
 | 15 | 16/08/2026 | Viatura de um meio EGFR atribuível depois do despacho | `f6b00a0` | **por validar (só beta2)** |
 | 16 | 18/08/2026 | Modais de Meio: ordem das caixas, limites de operação condicionais, botão de operacionais | `2d6889f` | **por validar (só beta2)** |
+| 17 | 18/08/2026 | Nomes dos operacionais legíveis no tema claro | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1273,3 +1274,46 @@ O ficheiro passa à verificação de sintaxe do bloco `<script>`.
    avisa.
 6. Editar um meio já em operação e confirmar que os bloqueios por fase se
    mantêm (os campos de fases anteriores continuam trancados).
+
+---
+
+## 17 — Nomes dos operacionais legíveis no tema claro
+
+**Data:** 18/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Os crachás com os nomes dos operacionais no cartão do meio — bem visíveis nos
+EGFR, que trazem a guarnição nomeada da escala — apareciam **pretos sobre
+pretos** no tema claro.
+
+A causa é uma mistura de fundo fixo com cor variável: `.operative-chip` tinha
+`background:rgba(37,39,32,.8)`, escrito à mão e sempre escuro, mas
+`color:var(--text)`, que no tema claro passa a `#1a2a1a`. No tema escuro os
+dois davam-se bem; ao mudar de tema só um deles mudava.
+
+O fundo passa a vir de `var(--surface2)` no tema claro, pela mesma via que já
+era usada para `.badge-closed` e `.schema-block`.
+
+| Tema | Contraste antes | Contraste depois |
+|---|---|---|
+| Claro | 1.85:1 (ilegível) | **12.91:1** |
+| Escuro | 12.07:1 | 12.07:1 (inalterado) |
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — uma regra: `html.theme-light .operative-chip`.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Passar ao tema claro, abrir uma ocorrência com um EGFR empenhado.
+2. Confirmar que os nomes da guarnição se leem no cartão do meio.
+3. Voltar ao tema escuro e confirmar que continua igual ao que era.
+
+### Encontrado ao lado, por corrigir
+
+`.tl-cat-outros` (filtro «Outros» da Fita do Tempo) tem exactamente o mesmo
+defeito, embora menos gritante: fundo escuro fixo com `color:var(--muted)`, o
+que no tema claro dá **1.61:1**. Não foi mexido por estar fora do que foi
+pedido.
