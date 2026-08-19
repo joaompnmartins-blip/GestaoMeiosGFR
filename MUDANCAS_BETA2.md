@@ -1593,6 +1593,17 @@ como `dataISO()` já fazia.
   - `mapTeam()` / `persistTeam()` — os campos novos.
 - **Base de dados:** migração automática ao arrancar; sem SQL manual.
 
+### Salvaguarda para os registos antigos
+
+Ao passar a usar `limite_op_date`, os registos gravados **antes** da correcção
+do fuso passariam a ser lidos com a data errada — e um meio com o limite entre
+as 00:00 e as 00:59 apareceria como **EXPIRADO** sem o estar. São 2 em 64 no
+beta2 e **1 dos 9 meios activos do beta1**.
+
+`timeInfo()` passa por isso a aceitar `limite_op_date` só quando cai **depois**
+do início da janela; caso contrário deriva o limite como fazia antes. Os três
+casos — data certa, data um dia atrás, e sem data — dão agora o mesmo resultado.
+
 ### Como validar
 
 1. Meio em operação perto do limite: anotar o tempo restante.

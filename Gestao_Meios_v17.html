@@ -2715,10 +2715,15 @@ function timeInfo(t){
   const chegada = new Date(`${iniData}T${iniHora}`);
   let limite = null;
   if(t.limiteOp){
-    // limiteOp é uma hora do dia; a data vem de limiteOpDate quando existe, e
-    // só na falta dela é que se assume o mesmo dia (ou o seguinte, se já passou)
-    limite = new Date(`${t.limiteOpDate || iniData}T${t.limiteOp}`);
-    if(!t.limiteOpDate && limite<=chegada) limite.setDate(limite.getDate()+1);
+    // limiteOp é uma hora do dia. A data vem de limiteOpDate, mas os registos
+    // gravados antes da correcção do fuso têm-na em UTC e podem estar um dia
+    // atrás — o que mostraria como EXPIRADO um meio que não o está. Por isso só
+    // se aceita se cair depois do início da janela; senão, deriva-se como antes.
+    limite = t.limiteOpDate ? new Date(`${t.limiteOpDate}T${t.limiteOp}`) : null;
+    if(!limite || isNaN(limite.getTime()) || limite<=chegada){
+      limite = new Date(`${iniData}T${t.limiteOp}`);
+      if(limite<=chegada) limite.setDate(limite.getDate()+1);
+    }
   } else if(t.horasMax){
     limite = new Date(chegada.getTime() + t.horasMax*3600000);
   }
