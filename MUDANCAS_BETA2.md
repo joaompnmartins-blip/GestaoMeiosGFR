@@ -39,6 +39,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 17 | 18/08/2026 | Nomes dos operacionais legíveis no tema claro | `b82d25d` | **por validar (só beta2)** |
 | 18 | 18/08/2026 | Conjuntos compostos recolhidos dentro do cartão do pai | `a88a182` | **por validar (só beta2)** |
 | 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `b71a7fe` | **por validar (só beta2)** |
+| 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1522,3 +1523,83 @@ Resultado: 3 filhos actualizados (8 nomes) e 1 contentor preenchido (8 nomes).
 3. Despachar uma BSBF nova com guarnição registada e confirmar que já nasce com
    os nomes, sem correcção de dados nenhuma.
 4. Despachar uma EMR e confirmar o mesmo no MR.
+
+---
+
+## 20 — Retomar operação depois do descanso repõe o tempo de operação
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Pôr um meio em **Descanso** e voltar a **Em Operação** não mexia no relógio: o
+meio regressava com o tempo do turno anterior, muitas vezes já **EXPIRADO**. O
+descanso serve precisamente para repor o tempo de operação, pelo que o relógio
+tem de recomeçar.
+
+Era deliberado — o código dizia `// Resume operation from rest — no new
+timestamps` e gravava só `estado`. O mesmo acontecia ao mudar o estado pelo
+**Editar Meio**.
+
+### Porque não bastava carimbar a chegada de novo
+
+`timeInfo()` calculava tudo a partir de `data_chegada`/`hora_chegada`. Reiniciar
+o relógio por aí obrigaria a reescrever a **chegada ao TO** — que é um facto
+registado, aparece no cartão, na tabela, na Ficha do Meio e nos relatórios.
+
+Separaram-se as duas coisas com um campo novo, `op_inicio_data`/`op_inicio_hora`:
+
+- **Chegada ao TO** — quando o meio chegou. Não se reescreve.
+- **Início da janela de operação** — onde o relógio de fadiga arranca. Igual à
+  chegada até ao primeiro descanso; recomeça a cada retoma.
+
+A migração preenche o campo novo com a chegada, pelo que nada muda para os meios
+que nunca descansaram.
+
+### Comportamento
+
+Meio chegado às 08:00 com 12h máximas, retomado às 17:02:
+
+| | Tempo restante |
+|---|---|
+| Em operação, antes do descanso | 2h57m (75% · amarelo) |
+| Retoma **antes** da correcção | 2h57m (75%) — continuava a contar |
+| Retoma **depois** da correcção | 11h59m (0% · verde) |
+| Chegada ao TO depois da retoma | 08:00 — intacta |
+
+Um meio que já estivesse **EXPIRADO** antes do descanso volta com a janela
+inteira, que é o ponto.
+
+A janela de retoma passa a mostrar a hora de recomeço e a permitir rever as
+**horas máx. operação** (por omissão, as anteriores).
+
+### Defeito encontrado pelo caminho
+
+`limite_op_date` era gravado com `toISOString()`, que é **UTC**. Uma retoma
+depois da meia-noite ficava com a data do dia anterior. Não dava por isso porque
+`timeInfo()` ignorava o campo e reconstruía o limite a partir da chegada; ao
+passar a usá-lo, tinha de ficar correcto. Passa a sair dos componentes locais,
+como `dataISO()` já fazia.
+
+### Alterações
+
+- `server.js` — colunas `op_inicio_data`/`op_inicio_hora` com preenchimento a
+  partir de `data_chegada`; entram em `MEIO_COLS`.
+- `Gestao_Meios_v17.html`
+  - `reiniciarJanelaOp()` — reinicia a janela e devolve os campos a gravar.
+  - `timeInfo()` — conta a partir da janela; usa `limiteOpDate` quando existe.
+  - `applyOpToTeam()`, retoma em `doQuickOp()` (incluindo o grupo composto) e o
+    percurso de edição em `saveTeam()`.
+  - `mapTeam()` / `persistTeam()` — os campos novos.
+- **Base de dados:** migração automática ao arrancar; sem SQL manual.
+
+### Como validar
+
+1. Meio em operação perto do limite: anotar o tempo restante.
+2. Descanso → **Retomar Op.**: o tempo restante volta ao máximo e a barra fica
+   verde.
+3. Confirmar que a **Chegada** no cartão continua a original.
+4. Repetir pelo **Editar Meio** (descanso → Em Operação): mesmo resultado.
+5. Num conjunto composto com «aplicar a todos», confirmar que todos os membros
+   repõem o relógio.
+6. Retomar depois da meia-noite e confirmar que o limite fica no dia certo.

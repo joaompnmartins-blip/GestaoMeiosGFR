@@ -299,6 +299,7 @@ const MEIO_COLS = [
   'operacionais','responsavel','contacto',
   'data_despacho','hora_despacho','data_saida_entidade','hora_saida_entidade',
   'data_chegada','hora_chegada','horas_max','limite_op','limite_op_date',
+  'op_inicio_data','op_inicio_hora',
   'data_demob','hora_demob','data_chegada_entidade','hora_chegada_entidade',
   'km','missao','estado','obs',
   'previsto_data','previsto_hora',
@@ -3506,6 +3507,13 @@ async function runMigrations() {
     // sinalizador em vez de anular meio_pai_id: sem o elo perdia-se a origem e
     // não haveria a que voltar.
     `ALTER TABLE IF EXISTS meios              ADD COLUMN IF NOT EXISTS destacado BOOLEAN NOT NULL DEFAULT false`,
+    // Início da janela de operação. Era data_chegada que servia de arranque ao
+    // relógio de fadiga, mas as duas coisas separam-se no descanso: a chegada ao
+    // TO é um facto que não se reescreve, e o relógio recomeça a cada retoma.
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_data DATE`,
+    `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_hora TEXT`,
+    `UPDATE meios SET op_inicio_data = data_chegada, op_inicio_hora = hora_chegada
+      WHERE op_inicio_data IS NULL AND data_chegada IS NOT NULL`,
     `ALTER TABLE IF EXISTS ocorrencias_eventos ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS ocorrencia_timeline ADD COLUMN IF NOT EXISTS posto_comando_id UUID REFERENCES postos_comando(id) ON DELETE SET NULL`,
     `ALTER TABLE IF EXISTS viaturas ADD COLUMN IF NOT EXISTS dispositivo BOOLEAN DEFAULT false`,

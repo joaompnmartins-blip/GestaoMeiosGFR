@@ -2544,7 +2544,7 @@ function dataISO(v){
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, destacado:!!r.destacado, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), opInicioData:dataISO(r.op_inicio_data), opInicioHora:r.op_inicio_hora, dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, destacado:!!r.destacado, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -2579,7 +2579,7 @@ async function persistOcorrencia(payload, editId){
 }
 
 async function persistTeam(payload, editId){
-  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, recurso_adicional_id:payload.recursoAdicionalId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null, posto_comando_id:payload.postoComandoId||null };
+  const row = { ocorrencia_id:payload.ocorrencia_id, eq:payload.eq, tipo:payload.tipo, matricula:payload.matricula||null, concelho:payload.concelho, setor:payload.setor, operacionais:payload.operacionais, responsavel:payload.responsavel, contacto:payload.contacto, data_despacho:payload.dataDespacho||null, hora_despacho:payload.horaDespacho||null, data_saida_entidade:payload.dataSaidaEntidade||null, hora_saida_entidade:payload.horaSaidaEntidade||null, data_chegada:payload.dataChegada||null, hora_chegada:payload.horaChegada||null, horas_max:payload.horasMax||null, limite_op:payload.limiteOp||null, limite_op_date:payload.limiteOpDate||null, op_inicio_data:payload.opInicioData||null, op_inicio_hora:payload.opInicioHora||null, data_demob:payload.dataDemob||null, hora_demob:payload.horaDemob||null, data_chegada_entidade:payload.dataChegadaEntidade||null, hora_chegada_entidade:payload.horaChegadaEntidade||null, km:payload.km||null, missao:payload.missao, estado:payload.estado, obs:payload.obs, previsto_data:payload.previstoData||null, previsto_hora:payload.previstoHora||null, equipa_id:payload.equipaId||null, recurso_id:payload.recursoId||null, recurso_adicional_id:payload.recursoAdicionalId||null, viatura_id:payload.viaturaId||null, transporte_id:payload.transporteId||null, posto_comando_id:payload.postoComandoId||null };
   if(editId){
     const res = await supaWriteOrQueue('meios','update',{id:editId,row}, editId, `Editar: ${payload.eq}`);
     if(res===null && isOnline) return null;
@@ -2701,18 +2701,24 @@ function nowStr(){ return new Date().toLocaleTimeString('pt-PT',{hour:'2-digit',
 // Devolve { semInfo:true, label } quando faltam dados, para o cartão poder dizer
 // o que é preciso indicar em vez de não mostrar nada — ou, pior, mostrar NaN.
 function timeInfo(t){
-  const temChegada = !!(t.dataChegada && t.horaChegada);
+  // O relógio conta a partir do início da janela de operação, que só coincide
+  // com a chegada ao TO até ao primeiro descanso: retomar operação recomeça a
+  // janela, mas não reescreve a hora a que o meio chegou.
+  const iniData = t.opInicioData || t.dataChegada;
+  const iniHora = t.opInicioHora || t.horaChegada;
+  const temChegada = !!(iniData && iniHora);
   const temLimite  = !!(t.limiteOp || t.horasMax);
   if(!temChegada || !temLimite){
     const falta = [!temChegada && 'Chegada ao TO', !temLimite && 'Tempo máximo Op.'].filter(Boolean);
     return { semInfo:true, pct:0, cls:'sem-info', label:`Sem info — indicar ${falta.join(' + ')}` };
   }
-  const chegada = new Date(`${t.dataChegada}T${t.horaChegada}`);
+  const chegada = new Date(`${iniData}T${iniHora}`);
   let limite = null;
   if(t.limiteOp){
-    // limiteOp may be on the same date or next day if overnight
-    limite = new Date(`${t.dataChegada}T${t.limiteOp}`);
-    if(limite<=chegada) limite.setDate(limite.getDate()+1);
+    // limiteOp é uma hora do dia; a data vem de limiteOpDate quando existe, e
+    // só na falta dela é que se assume o mesmo dia (ou o seguinte, se já passou)
+    limite = new Date(`${t.limiteOpDate || iniData}T${t.limiteOp}`);
+    if(!t.limiteOpDate && limite<=chegada) limite.setDate(limite.getDate()+1);
   } else if(t.horasMax){
     limite = new Date(chegada.getTime() + t.horasMax*3600000);
   }
@@ -4649,8 +4655,12 @@ function quickAction(type, teamId){
     if(t.estado==='descanso'){
       title.textContent=`Retomar Operação — ${t.eq}`;
       body.innerHTML=`
-        <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma retoma de <strong>operação</strong> por <strong>${esc(t.eq)}</strong>?</p>
-        <div class="form-field" style="margin-top:14px;"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-obs-resume" rows="2"></textarea></div>`;
+        <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">Confirma retoma de <strong>operação</strong> por <strong>${esc(t.eq)}</strong>?<br>
+        O tempo de operação recomeça agora, às <strong>${timeStr}</strong>. A chegada ao TO mantém-se.</p>
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="form-field"><label class="form-label">Horas máx. operação</label><input class="form-input" id="qa-hmax-resume" type="number" min="1" max="24" value="${t.horasMax||12}"/></div>
+        </div>
+        <div class="form-field" style="margin-top:12px;"><label class="form-label">Observação (opcional)</label><textarea class="form-textarea" id="qa-obs-resume" rows="2"></textarea></div>`;
       footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
         <button class="btn btn-success" onclick="doQuickOp('${teamId}')">▶ Confirmar Retoma</button>`;
     } else {
@@ -4982,18 +4992,35 @@ async function applyTransitToTeam(t, saidaDate, saidaTime, obs, despDate, despTi
   await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — em trânsito${saidaDate?' (saída '+saidaDate+' '+saidaTime+')':''}.`,t.eq,t.postoComandoId);
 }
 
+// Reinicia a janela de operação a partir de um instante, devolvendo os campos a
+// gravar. A chegada ao TO fica intacta — é um facto, não o arranque do relógio.
+// Nota: a data do limite tem de sair dos componentes locais. Com toISOString()
+// uma retoma depois da meia-noite ficava com a data do dia anterior.
+function reiniciarJanelaOp(t, quando, hmax){
+  const horas = parseInt(hmax) || parseInt(t.horasMax) || 0;
+  t.opInicioData = dataISO(quando);
+  t.opInicioHora = quando.toTimeString().slice(0,5);
+  if(horas) t.horasMax = horas;
+  const row = { op_inicio_data:t.opInicioData, op_inicio_hora:t.opInicioHora, horas_max:t.horasMax||null };
+  if(horas){
+    const lim = new Date(quando.getTime() + horas*3600000);
+    t.limiteOp = lim.toTimeString().slice(0,5);
+    t.limiteOpDate = dataISO(lim);
+    row.limite_op = t.limiteOp;
+    row.limite_op_date = t.limiteOpDate;
+  }
+  return row;
+}
+
 async function applyOpToTeam(t, d, h, hmax, setor, missao){
-  const arr=new Date(`${d}T${h}`);
-  const lim=new Date(arr.getTime()+hmax*3600000);
-  const limStr=lim.toTimeString().slice(0,5);
-  const limDate=lim.toISOString().split('T')[0];
-  t.estado='operacao'; t.dataChegada=d; t.horaChegada=h; t.horasMax=hmax;
-  t.limiteOp=limStr; t.limiteOpDate=limDate;
+  t.estado='operacao'; t.dataChegada=d; t.horaChegada=h;
+  const janela=reiniciarJanelaOp(t, new Date(`${d}T${h}`), hmax);
+  const limStr=t.limiteOp;
   if(setor)  t.setor=setor;
   if(missao) t.missao=missao;
   const msg=`Activado em operação. Setor: ${t.setor||'—'}. Limite op.: ${limStr}.`;
   addEventLog(t,msg);
-  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,horas_max:hmax,limite_op:limStr,limite_op_date:limDate,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',data_chegada:d,hora_chegada:h,...janela,setor:t.setor,missao:t.missao}},t.id,`Operação: ${t.eq}`);
   await persistEvento(t.id,msg);
   await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — activado em operação. Setor: ${t.setor||'—'}. Limite: ${limStr}.`,t.eq,t.postoComandoId);
 }
@@ -5066,20 +5093,25 @@ async function doQuickOp(id){
   const applyAll=document.getElementById('qa-apply-all')?.checked;
 
   if(t.estado==='descanso'){
-    // Resume operation from rest — no new timestamps
+    // Retomar operação recomeça a janela: o descanso serve precisamente para
+    // repor o tempo de operação. A chegada ao TO não se altera.
     const obs=document.getElementById('qa-obs-resume')?.value?.trim()||'';
+    const hmax=parseInt(document.getElementById('qa-hmax-resume')?.value)||t.horasMax;
+    const agora=new Date();
     try {
+      const janela=reiniciarJanelaOp(t, agora, hmax);
       t.estado='operacao';
-      const msg=`Retomou operação${obs?' — '+obs:''}.`;
+      const msg=`Retomou operação${obs?' — '+obs:''}.${t.limiteOp?` Novo limite op.: ${t.limiteOp}.`:''}`;
       addEventLog(t,msg);
-      await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao'}},t.id,`Retoma Op.: ${t.eq}`);
+      await supaWriteOrQueue('meios','update',{id:t.id,row:{estado:'operacao',...janela}},t.id,`Retoma Op.: ${t.eq}`);
       await persistEvento(t.id,msg);
-      await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — retomou operação.`,t.eq,t.postoComandoId);
+      await persistOccEvento(t.ocorrencia_id,'estado',`${t.eq} — retomou operação${t.limiteOp?`. Novo limite: ${t.limiteOp}`:''}.`,t.eq,t.postoComandoId);
       if(applyAll) for(const s of compositeGroupSiblings(t)){
         if(s.estado==='descanso'){
+          const jS=reiniciarJanelaOp(s, agora, hmax);
           s.estado='operacao';
-          await supaWriteOrQueue('meios','update',{id:s.id,row:{estado:'operacao'}},s.id,`Retoma Op.: ${s.eq}`);
-          await persistEvento(s.id,'Retomou operação.');
+          await supaWriteOrQueue('meios','update',{id:s.id,row:{estado:'operacao',...jS}},s.id,`Retoma Op.: ${s.eq}`);
+          await persistEvento(s.id,`Retomou operação.${s.limiteOp?` Novo limite op.: ${s.limiteOp}.`:''}`);
         }
       }
     } catch(e){ console.warn('doQuickOp resume:', e); }
@@ -5761,6 +5793,9 @@ async function saveTeam(){
     horaChegada:document.getElementById('team-hora-chegada').value,
     horasMax:parseInt(document.getElementById('team-horas-max').value)||null,
     limiteOp:document.getElementById('team-limite-op').value,
+    limiteOpDate:(editId?db.teams.find(x=>x.id===editId)?.limiteOpDate:null)||null,
+    opInicioData:(editId?db.teams.find(x=>x.id===editId)?.opInicioData:null)||null,
+    opInicioHora:(editId?db.teams.find(x=>x.id===editId)?.opInicioHora:null)||null,
     dataDemob:document.getElementById('team-data-demob').value,
     horaDemob:document.getElementById('team-hora-demob').value,
     dataChegadaEntidade:document.getElementById('team-data-chegada-entidade').value,
@@ -5861,6 +5896,21 @@ async function saveTeam(){
     }
   } else {
     payload.transporteId=document.getElementById('team-transporte-id').value||null;
+  }
+
+  // Retomar operação pela edição vale tanto como pelo botão do cartão: a janela
+  // recomeça. Sem isto, o meio voltava a Em Operação com o relógio do turno
+  // anterior — muitas vezes já expirado.
+  if(editId){
+    const anterior=db.teams.find(x=>x.id===editId);
+    if(anterior && anterior.estado==='descanso' && payload.estado==='operacao'){
+      const alvo={horasMax:payload.horasMax||anterior.horasMax};
+      const janela=reiniciarJanelaOp(alvo, new Date(), payload.horasMax||anterior.horasMax);
+      payload.opInicioData=janela.op_inicio_data;
+      payload.opInicioHora=janela.op_inicio_hora;
+      payload.horasMax=alvo.horasMax;
+      if(janela.limite_op){ payload.limiteOp=janela.limite_op; payload.limiteOpDate=janela.limite_op_date; }
+    }
   }
 
   const id = await persistTeam(payload, editId||null);
