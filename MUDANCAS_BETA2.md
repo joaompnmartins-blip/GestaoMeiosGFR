@@ -39,7 +39,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 17 | 18/08/2026 | Nomes dos operacionais legíveis no tema claro | `b82d25d` | **por validar (só beta2)** |
 | 18 | 18/08/2026 | Conjuntos compostos recolhidos dentro do cartão do pai | `a88a182` | **por validar (só beta2)** |
 | 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `b71a7fe` | **por validar (só beta2)** |
-| 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `PENDENTE` | **por validar (só beta2)** |
+| 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
