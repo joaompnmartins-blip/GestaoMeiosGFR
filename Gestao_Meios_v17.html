@@ -5367,12 +5367,15 @@ function meioEstadoOpts(estadoActual){
   sel.value = estadoActual;
 }
 
-// Ao adicionar não há transição — escolhe-se o estado inicial — por isso o
-// selector volta à lista completa e nada fica bloqueado.
+// Ao adicionar não há transição — escolhe-se o estado inicial — por isso nada
+// fica bloqueado. O descanso fica de fora: é uma pausa de quem já esteve em
+// operação, e nenhum meio é empenhado directamente para descanso. Continua
+// disponível na edição, que é onde a pausa acontece.
+const MEIO_ESTADOS_INICIAIS = Object.keys(MEIO_ESTADO_ROT).filter(e => e !== 'descanso');
 function meioEstadoOptsCompleto(){
   const sel = document.getElementById('team-estado');
-  if(sel) sel.innerHTML = Object.entries(MEIO_ESTADO_ROT)
-    .map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  if(sel) sel.innerHTML = MEIO_ESTADOS_INICIAIS
+    .map(v=>`<option value="${v}">${MEIO_ESTADO_ROT[v]}</option>`).join('');
   [...MEIO_CAMPOS_IDENTIDADE, ...MEIO_CAMPOS_FASE.flatMap(f=>f.campos)]
     .forEach(id => bloquearCampo(id, false));
   const nota = document.getElementById('team-bloqueio-nota');

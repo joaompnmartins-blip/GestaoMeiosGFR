@@ -40,6 +40,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 18 | 18/08/2026 | Conjuntos compostos recolhidos dentro do cartão do pai | `a88a182` | **por validar (só beta2)** |
 | 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `b71a7fe` | **por validar (só beta2)** |
 | 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
+| 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1614,3 +1615,39 @@ casos — data certa, data um dia atrás, e sem data — dão agora o mesmo resu
 5. Num conjunto composto com «aplicar a todos», confirmar que todos os membros
    repõem o relógio.
 6. Retomar depois da meia-noite e confirmar que o limite fica no dia certo.
+
+---
+
+## 21 — Adicionar Meio deixa de oferecer o estado Descanso
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O selector de **Estado** do **Adicionar Meio** oferecia os cinco estados. O
+descanso não é um estado de partida: é a pausa de quem já esteve em operação, e
+nenhum meio é empenhado directamente para descanso.
+
+Passa a oferecer apenas **Previsto · Em Trânsito · Em Operação · Desmobilizado**.
+
+Na **edição** nada muda — é lá que a pausa acontece:
+
+| Situação | Estados oferecidos |
+|---|---|
+| Adicionar | previsto, transito, operacao, desmobilizado |
+| Editar (admin/of. ligação) | os cinco, descanso incluído |
+| Editar (operacional, em operação) | operacao, descanso, desmobilizado |
+| Editar (operacional, em descanso) | descanso, operacao, desmobilizado |
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `MEIO_ESTADOS_INICIAIS` e `meioEstadoOptsCompleto()`,
+  que só é chamada ao adicionar; a edição passa por `meioEstadoOpts()` e fica
+  intacta.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. **Adicionar Meio**: confirmar que *Em Descanso* não aparece no Estado.
+2. **Editar** um meio em operação: *Em Descanso* continua disponível.
+3. Editar um meio já em descanso: continua a poder retomar operação.
