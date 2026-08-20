@@ -2287,15 +2287,37 @@ vi_emp AS (
     AND COALESCE(btrim(x.ocorrencia_num),'') <> ''
     AND v.dispositivo AND v.ativo
   GROUP BY m.companhia
+),
+-- Disponível = está constituído na Carta de Meios do dia, esteja ou não
+-- empenhado. Fica entre o efetivo (tudo o que há) e o empenhado (o que saiu):
+-- efetivo >= disponivel >= empenhado.
+op_disp AS (
+  SELECT o.companhia, count(DISTINCT mm.operacional_id)::int n
+  FROM fsbf_equipa_membros mm
+  JOIN operacionais_fsbf o ON o.id = mm.operacional_id
+  WHERE mm.data = $1 AND o.companhia IS NOT NULL
+  GROUP BY o.companhia
+),
+vi_disp AS (
+  SELECT m.companhia, count(DISTINCT v.id)::int n
+  FROM vsrc x
+  JOIN viaturas v ON v.id = x.vid
+  JOIN mapa m ON m.base = v.base
+  WHERE x.vid IS NOT NULL AND v.dispositivo AND v.ativo
+  GROUP BY m.companhia
 )
 SELECT c.companhia,
        COALESCE(oe.n,0) AS op_empenhados, COALESCE(oef.n,0) AS op_efetivo,
-       COALESCE(ve.n,0) AS vi_empenhadas, COALESCE(vef.n,0) AS vi_efetivo
+       COALESCE(od.n,0) AS op_disponiveis,
+       COALESCE(ve.n,0) AS vi_empenhadas, COALESCE(vef.n,0) AS vi_efetivo,
+       COALESCE(vd.n,0) AS vi_disponiveis
 FROM comps c
 LEFT JOIN op_emp oe  ON oe.companhia  = c.companhia
 LEFT JOIN op_ef  oef ON oef.companhia = c.companhia
+LEFT JOIN op_disp od ON od.companhia  = c.companhia
 LEFT JOIN vi_emp ve  ON ve.companhia  = c.companhia
 LEFT JOIN vi_ef  vef ON vef.companhia = c.companhia
+LEFT JOIN vi_disp vd ON vd.companhia  = c.companhia
 ORDER BY CASE c.companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' THEN 3 ELSE 4 END`;
 
 const pct = (n, d) => d ? Math.round((n / d) * 1000) / 10 : 0;
@@ -2323,13 +2345,17 @@ async function gravarEmpenhamento(data) {
   for (const r of rows) {
     await pool.query(
       `INSERT INTO fsbf_empenhamento_diario
-         (data, companhia, op_empenhados, op_efetivo, vi_empenhadas, vi_efetivo, atualizado_em)
-       VALUES ($1,$2,$3,$4,$5,$6, now())
+         (data, companhia, op_empenhados, op_efetivo, op_disponiveis,
+          vi_empenhadas, vi_efetivo, vi_disponiveis, atualizado_em)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
        ON CONFLICT (data, companhia) DO UPDATE SET
          op_empenhados=EXCLUDED.op_empenhados, op_efetivo=EXCLUDED.op_efetivo,
+         op_disponiveis=EXCLUDED.op_disponiveis,
          vi_empenhadas=EXCLUDED.vi_empenhadas, vi_efetivo=EXCLUDED.vi_efetivo,
+         vi_disponiveis=EXCLUDED.vi_disponiveis,
          atualizado_em=now()`,
-      [data, r.companhia, r.op_empenhados, r.op_efetivo, r.vi_empenhadas, r.vi_efetivo]);
+      [data, r.companhia, r.op_empenhados, r.op_efetivo, r.op_disponiveis,
+       r.vi_empenhadas, r.vi_efetivo, r.vi_disponiveis]);
   }
   return rows;
 }
@@ -2360,7 +2386,8 @@ app.get('/api/fsbf/empenhamento', requireAuth('visualizador'), FSBF_GESTORES, wr
   for (const r of emFalta) await gravarEmpenhamento(r.d);
 
   const { rows } = await pool.query(
-    `SELECT data::text, companhia, op_empenhados, op_efetivo, vi_empenhadas, vi_efetivo
+    `SELECT data::text, companhia, op_empenhados, op_efetivo, op_disponiveis,
+            vi_empenhadas, vi_efetivo, vi_disponiveis
      FROM fsbf_empenhamento_diario
      WHERE data BETWEEN $1 AND $2
      ORDER BY data, CASE companhia WHEN 'Norte' THEN 1 WHEN 'Centro' THEN 2 WHEN 'Sul' THEN 3 ELSE 4 END`,
@@ -2369,7 +2396,13 @@ app.get('/api/fsbf/empenhamento', requireAuth('visualizador'), FSBF_GESTORES, wr
     de, ate, hoje,
     series: rows.map(r => ({ ...r,
       op_pct: pct(r.op_empenhados, r.op_efetivo),
-      vi_pct: pct(r.vi_empenhadas, r.vi_efetivo) })),
+      vi_pct: pct(r.vi_empenhadas, r.vi_efetivo),
+      // Disponíveis sobre o efetivo — que fatia do dispositivo está de serviço.
+      op_disp_pct: pct(r.op_disponiveis, r.op_efetivo),
+      vi_disp_pct: pct(r.vi_disponiveis, r.vi_efetivo),
+      // E que fatia dos que estão de serviço é que saiu para ocorrência.
+      op_emp_disp_pct: pct(r.op_empenhados, r.op_disponiveis),
+      vi_emp_disp_pct: pct(r.vi_empenhadas, r.vi_disponiveis) })),
   });
 }));
 
@@ -3662,15 +3695,21 @@ async function runMigrations() {
     // ocorrencia_num, que é estado corrente e mutável: apagar um número reescreve
     // o passado. Guardar os números do dia torna a série histórica confiável.
     `CREATE TABLE IF NOT EXISTS fsbf_empenhamento_diario (
-        data          DATE NOT NULL,
-        companhia     TEXT NOT NULL,
-        op_empenhados INT  NOT NULL DEFAULT 0,
-        op_efetivo    INT  NOT NULL DEFAULT 0,
-        vi_empenhadas INT  NOT NULL DEFAULT 0,
-        vi_efetivo    INT  NOT NULL DEFAULT 0,
-        atualizado_em TIMESTAMPTZ DEFAULT now(),
+        data           DATE NOT NULL,
+        companhia      TEXT NOT NULL,
+        op_empenhados  INT  NOT NULL DEFAULT 0,
+        op_efetivo     INT  NOT NULL DEFAULT 0,
+        op_disponiveis INT  NOT NULL DEFAULT 0,
+        vi_empenhadas  INT  NOT NULL DEFAULT 0,
+        vi_efetivo     INT  NOT NULL DEFAULT 0,
+        vi_disponiveis INT  NOT NULL DEFAULT 0,
+        atualizado_em  TIMESTAMPTZ DEFAULT now(),
         PRIMARY KEY (data, companhia)
     )`,
+    // Depois do CREATE, para as bases que já tinham a tabela sem estas colunas.
+    // Antes dele, o ALTER IF EXISTS não fazia nada e a base nova nascia sem elas.
+    `ALTER TABLE IF EXISTS fsbf_empenhamento_diario ADD COLUMN IF NOT EXISTS op_disponiveis INT NOT NULL DEFAULT 0`,
+    `ALTER TABLE IF EXISTS fsbf_empenhamento_diario ADD COLUMN IF NOT EXISTS vi_disponiveis INT NOT NULL DEFAULT 0`,
     // Validação de linhas da Carta de Meios: confirmação humana de que a linha
     // está correcta. Distinta de "gravada" — gravar acontece implicitamente em
     // vários fluxos, pelo que só um acto explícito marca validado.

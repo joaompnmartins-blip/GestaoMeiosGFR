@@ -8105,10 +8105,13 @@ async function renderFsbfEmpenhamento(){
   if(!linhas.length){
     box.innerHTML = `<div class="empty" style="padding:40px 0;"><span class="empty-icon">◎</span>
       <div class="empty-text">Sem dados de empenhamento neste período.<br>
-      <span style="font-size:12px;color:var(--muted);">O empenhamento conta equipas com nº de ocorrência preenchido na Carta de Meios.</span></div></div>`;
+      <span style="font-size:12px;color:var(--muted);">Disponível = constituído na Carta de Meios do dia. Empenhado = com nº de ocorrência preenchido.</span></div></div>`;
     return;
   }
 
+  // As percentagens dos totais calculam-se aqui: somar as do servidor daria a
+  // soma de três percentagens, que não quer dizer nada.
+  const pctTxt=(n,d)=>d?`${String(Math.round((n/d)*1000)/10).replace('.',',')}%`:'—';
   const tile=(rot,val,sub)=>`<div style="flex:1;min-width:150px;background:var(--bg-card,var(--bg));border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
     <div style="font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);">${rot}</div>
     <div style="font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;margin-top:4px;">${val}</div>
@@ -8116,8 +8119,10 @@ async function renderFsbfEmpenhamento(){
 
   box.innerHTML = `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
-      ${tile('Operacionais empenhados', som('op_empenhados'), `de ${som('op_efetivo')} do efetivo`)}
-      ${tile('Viaturas empenhadas', som('vi_empenhadas'), `de ${som('vi_efetivo')} no dispositivo`)}
+      ${tile('Operacionais disponíveis', som('op_disponiveis'), `de ${som('op_efetivo')} do efetivo · ${pctTxt(som('op_disponiveis'),som('op_efetivo'))}`)}
+      ${tile('Operacionais empenhados', som('op_empenhados'), `de ${som('op_disponiveis')} disponíveis · ${pctTxt(som('op_empenhados'),som('op_disponiveis'))}`)}
+      ${tile('Viaturas disponíveis', som('vi_disponiveis'), `de ${som('vi_efetivo')} no dispositivo · ${pctTxt(som('vi_disponiveis'),som('vi_efetivo'))}`)}
+      ${tile('Viaturas empenhadas', som('vi_empenhadas'), `de ${som('vi_disponiveis')} disponíveis · ${pctTxt(som('vi_empenhadas'),som('vi_disponiveis'))}`)}
       ${tile('Dia', (ultimoDia||'').split('-').reverse().join('/'), ultimoDia===data.hoje?'em curso — recalculado':'instantâneo gravado')}
     </div>
     <div id="emp-g1"></div>
@@ -8127,16 +8132,21 @@ async function renderFsbfEmpenhamento(){
       ${(ultimoDia||'').split('-').reverse().join('/')} — por companhia</div>
     <div class="table-wrap" style="overflow-x:auto;margin-bottom:22px;">
       <table style="font-size:12px;">
-        <thead><tr><th>Companhia</th><th>Op. empenhados</th><th>Efetivo</th><th>%</th>
-          <th>Viat. empenhadas</th><th>Dispositivo</th><th>%</th></tr></thead>
+        <thead><tr><th>Companhia</th>
+          <th>Op. disponíveis</th><th>Efetivo</th><th>%</th><th>Op. empenhados</th><th>% dos disp.</th>
+          <th>Viat. disponíveis</th><th>Dispositivo</th><th>%</th><th>Viat. empenhadas</th><th>% das disp.</th></tr></thead>
         <tbody>${hojeLinhas.map(r=>`<tr>
           <td><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${EMP_COR[r.companhia]||'var(--muted)'};margin-right:7px;"></span>${esc(r.companhia)}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.op_empenhados}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.op_disponiveis}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);">${r.op_efetivo}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.op_pct).replace('.',',')}%</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.vi_empenhadas}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.op_disp_pct).replace('.',',')}%</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.op_empenhados}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.op_emp_disp_pct).replace('.',',')}%</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.vi_disponiveis}</td>
           <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);">${r.vi_efetivo}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.vi_pct).replace('.',',')}%</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.vi_disp_pct).replace('.',',')}%</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${r.vi_empenhadas}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${String(r.vi_emp_disp_pct).replace('.',',')}%</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
