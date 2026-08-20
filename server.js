@@ -2872,11 +2872,11 @@ app.get('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
     `, [data]),
     pool.query(`
       SELECT m.id, m.fsbf_bsbf_id, m.fsbf_emr_id, m.operacional_id, m.is_chefe, m.ordem,
-             o.nome, o.companhia, o.base
+             m.turno, o.nome, o.companhia, o.base
       FROM fsbf_equipa_membros m
       JOIN operacionais_fsbf o ON o.id = m.operacional_id
       WHERE m.data = $1
-      ORDER BY m.ordem, o.nome
+      ORDER BY m.turno, m.ordem, o.nome
     `, [data]),
   ]);
 

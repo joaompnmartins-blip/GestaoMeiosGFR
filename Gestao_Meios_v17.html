@@ -8921,9 +8921,12 @@ function fsbfForaDaBase(op, baseLinha){
 // ser gravada. Antes disto, escrever a guarnição numa linha nova não fazia
 // aparecer o botão — parecia que a secção não tinha guarnição nenhuma.
 function fsbfMembrosBtn(row, tipo){
-  const preench = (row.membros||[]).filter(m=>!m.is_chefe).length;
+  const naoChefe = (row.membros||[]).filter(m=>!m.is_chefe);
+  const preench = naoChefe.filter(m=>(m.turno||'A')==='A').length;
+  const segundo = naoChefe.filter(m=>(m.turno||'A')!=='A').length;
   return `<span id="fsbf-mem-badge-${tipo}-${row.id}">${
-    fsbfMembrosBadgeHtml(row.id, tipo, fsbfLugares(row, tipo), preench)}</span>`;
+    fsbfMembrosBadgeHtml(row.id, tipo, fsbfLugares(row, tipo), preench)}${
+    segundo?`<span class="badge badge-info" style="font-size:9px;margin-left:4px;" title="Guarnição do 2.º turno, para rendição">B ${segundo}</span>`:''}</span>`;
 }
 
 function fsbfMembrosBadgeHtml(id, tipo, lugares, preench){
@@ -8943,25 +8946,40 @@ function fsbfMembrosBadgeRefresh(id, tipo){
   const el = document.getElementById(`fsbf-${tipo==='emr'?'e-top':'b-guar'}-${id}`);
   const lugares = Math.max(0, (Number(el ? el.value : 0) || 0) - 1);
   const row = (tipo==='emr' ? _fsbfEmrCache : _fsbfBsbfCache).find(r=>r.id===id);
-  const preench = ((row?.membros)||[]).filter(m=>!m.is_chefe).length;
-  cont.innerHTML = fsbfMembrosBadgeHtml(id, tipo, lugares, preench);
+  // O crachá conta o 1.º turno; o 2.º, quando existe, aparece ao lado.
+  const naoChefe = ((row?.membros)||[]).filter(m=>!m.is_chefe);
+  const preench = naoChefe.filter(m=>(m.turno||'A')==='A').length;
+  const segundo = naoChefe.filter(m=>(m.turno||'A')!=='A').length;
+  cont.innerHTML = fsbfMembrosBadgeHtml(id, tipo, lugares, preench)
+    + (segundo?`<span class="badge badge-info" style="font-size:9px;margin-left:4px;" title="Guarnição do 2.º turno, para rendição">B ${segundo}</span>`:'');
 }
 
-function openFsbfMembros(id, tipo){
+function openFsbfMembros(id, tipo, turno){
   const row = (tipo==='emr' ? _fsbfEmrCache : _fsbfBsbfCache).find(r=>r.id===id);
   if(!row) return;
+  turno = turno || 'A';
   const lugares = fsbfLugares(row, tipo);
-  const membros = (row.membros||[]).filter(m=>!m.is_chefe)
+  // A guarnição é a do turno escolhido — a do outro turno fica onde está.
+  const membros = (row.membros||[]).filter(m=>!m.is_chefe && (m.turno||'A')===turno)
                     .sort((a,b)=>(a.ordem??0)-(b.ordem??0));
   const baseLinha = fsbfBaseDaLinha(id, tipo) || (row.base||'').trim();
-  _fsbfMembrosCtx = { id, tipo, row, lugares, baseLinha };
+  _fsbfMembrosCtx = { id, tipo, row, lugares, baseLinha, turno };
 
   const label = tipo==='emr'
     ? `Máquina de Rasto — ${esc(row.mr_cod||row.base||'')}`
     : `${esc(row.brigada==='Outros'?'Outros Meios':row.brigada)} — ${esc(row.viatura_cod||row.base||'')}`;
   document.getElementById('fsbf-mem-title').textContent = 'Guarnição';
+  const nOutro = (row.membros||[]).filter(m=>!m.is_chefe && (m.turno||'A')!==turno).length;
   document.getElementById('fsbf-mem-sub').innerHTML = label +
-    (baseLinha ? ` <span style="color:var(--muted);">· base ${esc(baseLinha)}</span>` : '');
+    (baseLinha ? ` <span style="color:var(--muted);">· base ${esc(baseLinha)}</span>` : '') +
+    `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;">
+       <span style="font-size:11px;color:var(--muted);">Turno</span>
+       ${['A','B'].map(x=>`<button class="btn btn-xs" onclick="openFsbfMembros('${id}','${tipo}','${x}')"
+           style="${x===turno?'background:var(--accent);color:#111;border-color:var(--accent);':''}font-size:11px;padding:2px 10px;"
+           >${x}</button>`).join('')}
+       ${nOutro?`<span style="font-size:11px;color:var(--muted);">· o outro turno tem ${nOutro} identificado(s)</span>`
+                :`<span style="font-size:11px;color:var(--muted);">· o segundo turno serve para render a guarnição no terreno</span>`}
+     </div>`;
 
   const semBase   = !baseLinha;
   const temCrew   = membros.length > 0;
@@ -9068,7 +9086,8 @@ async function saveFsbfMembros(){
   const { id, tipo } = _fsbfMembrosCtx;
   const ids = [...document.querySelectorAll('.fsbf-mem-sel')].map(s=>s.value).filter(Boolean);
   if(new Set(ids).size !== ids.length){ toast('Operacional repetido na mesma guarnição.','err'); return; }
-  const body = { data: document.getElementById('fsbf-data').value, operacional_ids: ids };
+  const body = { data: document.getElementById('fsbf-data').value, operacional_ids: ids,
+                 turno: _fsbfMembrosCtx.turno || 'A' };
   body[tipo==='emr' ? 'fsbf_emr_id' : 'fsbf_bsbf_id'] = id;
   const { error } = await apiFetch('/api/fsbf/membros',{method:'PUT',body:JSON.stringify(body)});
   if(error){ toast(error.message,'err'); return; }
