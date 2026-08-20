@@ -46,7 +46,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 24 | 19/08/2026 | Meio desmobilizado deixa de mostrar Setor, Posto e Missão | `a748c02` | **por validar (só beta2)** |
 | 25 | 19/08/2026 | Missão com acção própria no cartão, registada na Fita do Tempo | `2a0751d` | **por validar (só beta2)** |
 | 26 | 20/08/2026 | Categoria «Missão» na Fita do Tempo, com o meio identificado | `2f25c99` | **por validar (só beta2)** |
-| 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `PENDENTE` | **por validar (só beta2)** |
+| 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `32d4b2d` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
