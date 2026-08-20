@@ -47,6 +47,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 25 | 19/08/2026 | Missão com acção própria no cartão, registada na Fita do Tempo | `2a0751d` | **por validar (só beta2)** |
 | 26 | 20/08/2026 | Categoria «Missão» na Fita do Tempo, com o meio identificado | `2f25c99` | **por validar (só beta2)** |
 | 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `32d4b2d` | **por validar (só beta2)** |
+| 28 | 20/08/2026 | Todos os contadores de meios da aplicação sem contentores | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2017,3 +2018,74 @@ contentor e conta como veículo — a distinção que `meioEhContentor()` já fa
 2. Confirmar **15 Operacionais**.
 3. Pôr um meio em descanso e confirmar que o Descanso sobe e os Veículos não.
 4. Exportar o relatório e confirmar que as parcelas do RESUMO fecham com o total.
+
+---
+
+## 28 — Todos os contadores de meios da aplicação
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### Porquê
+
+A alteração 27 corrigiu os cabeçalhos de setor, mas o defeito era geral: **em
+toda a aplicação os contadores contavam linhas da tabela**, e o contentor de
+uma BSF/BSBF entrava sempre. Foi feito o varrimento completo.
+
+Impacto real no beta2, nas ocorrências activas:
+
+| Ocorrência | Antes | Depois | A mais |
+|---|---|---|---|
+| 20261150361 · Matosinhos | 18 | **15** | 3 |
+| 20261163776 · Faro | 13 | **11** | 2 |
+
+Na de Faro, por estado: *Em Trânsito* 8 → **7**, *Em Operação* 5 → **4**.
+
+### Onde foi corrigido
+
+**Página principal**
+- Contadores globais: meios activos, em operação, em descanso, desmobilizados.
+- Cartão da ocorrência: *Meios PCO*, *Meios Total*, o número grande do cartão,
+  e as contagens de operação/descanso.
+- Cartão de cada PCF/AIM: número de meios e operação/descanso.
+- Blocos por módulo — **SF** (ESF e BSF), **FSBF** (FSBF e EMR) e **EGFR**:
+  o número de *Meios* e as linhas de estatísticas de cada um.
+
+**Página da ocorrência**
+- Painel de estados: operação, descanso, desmobilizados, trânsito, previstos.
+- Secção de postos: meios por PCF/AIM.
+
+**Arquivo**
+- Meios por ocorrência arquivada e o total do arquivo.
+
+**Relatório exportado**
+- Meios por posto de comando.
+
+**Servidor**
+- `GET /api/ocorrencias/:id/postos` devolvia `meios_count` com o contentor
+  incluído. O frontend não o lê — calcula do seu lado — mas era um número errado
+  a sair da API, à espera de que alguém o usasse.
+
+### Como ficou
+
+Duas funções passam a ser o único sítio onde se contam meios:
+
+```js
+somaMeios(teams)          // total, sem contentores
+contaEstado(teams, estado) // por estado, sem contentores
+```
+
+No servidor, a mesma regra em SQL: sem pai, com filhos, e com marca de
+composição (`composicao_id` ou `fsbf_bsbf_id`).
+
+Verificado que as duas dão o mesmo: corridas as funções do ficheiro contra as
+48 linhas reais das ocorrências activas do beta2, os totais batem certo com a
+consulta SQL — 18→15 e 13→11.
+
+### Como validar
+
+1. Página principal: o número de meios de cada ocorrência com BSF/BSBF deve
+   baixar, e passar a coincidir com o que a página da ocorrência mostra.
+2. Nos blocos **Gestão FSBF** e **Gestão SF**, confirmar que *Meios* já não
+   conta os contentores.
+3. Abrir a ocorrência e confirmar que o painel de estados soma ao total.
+4. Arquivo: confirmar que o total de meios acompanha.

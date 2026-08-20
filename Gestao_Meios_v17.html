@@ -2827,8 +2827,8 @@ function filterSubregiao(val){ occSubregiaoFilter=val; renderOcorrencias(); }
 
 function postoCardHtml(p){
   const postoTeams = db.teams.filter(t=>t.postoComandoId===p.id && t.estado!=='desmobilizado');
-  const ops   = postoTeams.filter(t=>t.estado==='operacao').length;
-  const rest  = postoTeams.filter(t=>t.estado==='descanso').length;
+  const ops   = contaEstado(postoTeams,'operacao');
+  const rest  = contaEstado(postoTeams,'descanso');
   const totalOps = somaOperacionais(postoTeams);
   const tipoCls  = p.tipo==='PCF' ? 'badge-info' : 'badge-warn';
   return `<div class="occ-card" style="margin-top:6px;border-left:3px solid ${p.tipo==='PCF'?'var(--accent3)':'var(--warn)'};" onclick="event.stopPropagation();openPostoDetalhe('${p.id}')">
@@ -2841,7 +2841,7 @@ function postoCardHtml(p){
     </div>
     <div class="occ-card-body" style="padding:8px 14px 8px 16px;">
       <div>
-        <div class="occ-teams-count" style="font-size:20px">${postoTeams.length}</div>
+        <div class="occ-teams-count" style="font-size:20px">${somaMeios(postoTeams)}</div>
         <div class="occ-teams-label">meios · ${totalOps} op.ais</div>
       </div>
       <div style="text-align:right;font-size:11px;color:var(--muted);line-height:2.2;">
@@ -2905,12 +2905,12 @@ function esfBsfBlock(teams, compact=false){
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="sf-esf-block">
       <div class="sf-block-label" style="color:var(--icnf-green-lime)">ESF</div>
-      <div class="sf-block-num" style="font-size:${sz}">${esfT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz}">${somaMeios(esfT)}</div><div class="sf-block-sub">Meios</div>
       <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${esfOps}</div><div class="sf-block-sub">Operacionais</div>
     </div>
     <div class="sf-bsf-block">
       <div class="sf-block-label" style="color:var(--warn)">BSF</div>
-      <div class="sf-block-num" style="font-size:${sz}">${bsfT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz}">${somaMeios(bsfT)}</div><div class="sf-block-sub">Meios</div>
       <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${bsfOps}</div><div class="sf-block-sub">Operacionais</div>
     </div>
   </div>`;
@@ -2947,12 +2947,12 @@ function fsbfEmrBlock(teams, compact=false){
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="fsbf-bsbf-block">
       <div class="sf-block-label" style="color:var(--warn)">FSBF</div>
-      <div class="sf-block-num" style="font-size:${sz}">${fsbfT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz}">${somaMeios(fsbfT)}</div><div class="sf-block-sub">Meios</div>
       <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${fsbfOps}</div><div class="sf-block-sub">Operacionais</div>
     </div>
     <div class="fsbf-emr-block">
       <div class="sf-block-label" style="color:var(--accent2)">EMR</div>
-      <div class="sf-block-num" style="font-size:${sz}">${emrT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz}">${somaMeios(emrT)}</div><div class="sf-block-sub">Meios</div>
       <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${emrOps}</div><div class="sf-block-sub">Operacionais</div>
     </div>
   </div>`;
@@ -3028,7 +3028,7 @@ function egfrBlock(teams, compact=false){
   return `<div style="display:flex;gap:8px;margin-bottom:8px;">
     <div class="egfr-block">
       <div class="sf-block-label" style="color:var(--accent3)">EGFR</div>
-      <div class="sf-block-num" style="font-size:${sz}">${egfrT.length}</div><div class="sf-block-sub">Meios</div>
+      <div class="sf-block-num" style="font-size:${sz}">${somaMeios(egfrT)}</div><div class="sf-block-sub">Meios</div>
       <div class="sf-block-num" style="font-size:${sz};margin-top:6px;">${egfrOps}</div><div class="sf-block-sub">Operacionais</div>
     </div>
   </div>`;
@@ -3208,10 +3208,10 @@ function occCardHtmlViz(o){
       <div style="padding:10px 16px 12px 20px;">
         ${o.oficialLigacaoNome?`<div style="font-size:11px;color:var(--muted);margin-bottom:10px;">OL: <strong style="color:var(--text)">${esc(o.oficialLigacaoNome)}</strong></div>`:''}
         <div style="display:flex;gap:28px;margin-bottom:10px;flex-wrap:wrap;">
-          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${mainTeams.length}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios PCO</div></div>
+          <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${somaMeios(mainTeams)}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios PCO</div></div>
           <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${mainOps}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Operacionais PCO</div></div>
           ${postos.length?`<div style="border-left:1px solid var(--border);padding-left:28px;display:flex;gap:28px;">
-            <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${activeT.length}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios Total</div></div>
+            <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${somaMeios(activeT)}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Meios Total</div></div>
             <div><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;line-height:1;">${totalOps}</div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Operacionais Total</div></div>
           </div>`:''}
         </div>
@@ -3227,8 +3227,8 @@ function occCardHtml(o){
   const activeT=teams.filter(t=>t.estado!=='desmobilizado');
   // PCO principal: meios without a posto
   const mainTeams = activeT.filter(t=>!t.postoComandoId);
-  const ops=mainTeams.filter(t=>t.estado==='operacao').length;
-  const rest=mainTeams.filter(t=>t.estado==='descanso').length;
+  const ops=contaEstado(mainTeams,'operacao');
+  const rest=contaEstado(mainTeams,'descanso');
   const totalOps=somaOperacionais(mainTeams);
   const urgent=mainTeams.filter(t=>{
     if(t.estado!=='operacao') return false;
@@ -3249,7 +3249,7 @@ function occCardHtml(o){
       </div>
       <div class="occ-card-body">
         <div>
-          <div class="occ-teams-count">${mainTeams.length}</div>
+          <div class="occ-teams-count">${somaMeios(mainTeams)}</div>
           <div class="occ-teams-label">meios · ${totalOps} operacionais</div>
         </div>
         <div style="text-align:right;font-size:11px;color:var(--muted);line-height:2.2;">
@@ -3332,39 +3332,40 @@ function updateStats(){
   const activeOccIds=new Set(db.ocorrencias.filter(o=>o.status==='active').map(o=>o.id));
   document.getElementById('s-active').textContent=activeOccIds.size;
   const activeTeams=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado!=='desmobilizado');
-  document.getElementById('s-teams').textContent=activeTeams.length;
+  document.getElementById('s-teams').textContent=somaMeios(activeTeams);
   document.getElementById('s-operacionais').textContent=somaOperacionais(activeTeams);
-  document.getElementById('s-ops').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='operacao').length;
-  document.getElementById('s-rest').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='descanso').length;
-  document.getElementById('s-demob').textContent=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado==='desmobilizado').length;
+  const _daOcc=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id));
+  document.getElementById('s-ops').textContent=contaEstado(_daOcc,'operacao');
+  document.getElementById('s-rest').textContent=contaEstado(_daOcc,'descanso');
+  document.getElementById('s-demob').textContent=contaEstado(_daOcc,'desmobilizado');
   const sfRow=document.getElementById('sf-stats-row');
   if(sfRow&&sfRow.style.display!=='none'){
     const esfT=activeTeams.filter(t=>categorizeMeio(t)==='ESF');
     const bsfT=activeTeams.filter(t=>categorizeMeio(t)==='BSF');
-    document.getElementById('sf-s-esf-op').textContent=esfT.filter(t=>t.estado==='operacao').length;
-    document.getElementById('sf-s-esf-rest').textContent=esfT.filter(t=>t.estado==='descanso').length;
-    document.getElementById('sf-s-esf-meios').textContent=esfT.length;
+    document.getElementById('sf-s-esf-op').textContent=contaEstado(esfT,'operacao');
+    document.getElementById('sf-s-esf-rest').textContent=contaEstado(esfT,'descanso');
+    document.getElementById('sf-s-esf-meios').textContent=somaMeios(esfT);
     document.getElementById('sf-s-esf-opn').textContent=somaOperacionais(esfT);
-    document.getElementById('sf-s-bsf-meios').textContent=bsfT.length;
+    document.getElementById('sf-s-bsf-meios').textContent=somaMeios(bsfT);
     document.getElementById('sf-s-bsf-opn').textContent=somaOperacionais(bsfT);
   }
   const fsbfRow=document.getElementById('fsbf-stats-row');
   if(fsbfRow&&fsbfRow.style.display!=='none'){
     const fsbfT=activeTeams.filter(t=>t.fsbfBsbfId&&!t.fsbfEmrId);
     const emrT =activeTeams.filter(t=>!!t.fsbfEmrId);
-    document.getElementById('fsbf-s-fsbf-op').textContent=fsbfT.filter(t=>t.estado==='operacao').length;
-    document.getElementById('fsbf-s-fsbf-rest').textContent=fsbfT.filter(t=>t.estado==='descanso').length;
-    document.getElementById('fsbf-s-fsbf-meios').textContent=fsbfT.length;
+    document.getElementById('fsbf-s-fsbf-op').textContent=contaEstado(fsbfT,'operacao');
+    document.getElementById('fsbf-s-fsbf-rest').textContent=contaEstado(fsbfT,'descanso');
+    document.getElementById('fsbf-s-fsbf-meios').textContent=somaMeios(fsbfT);
     document.getElementById('fsbf-s-fsbf-opn').textContent=somaOperacionais(fsbfT);
-    document.getElementById('fsbf-s-emr-meios').textContent=emrT.length;
+    document.getElementById('fsbf-s-emr-meios').textContent=somaMeios(emrT);
     document.getElementById('fsbf-s-emr-opn').textContent=somaOperacionais(emrT);
   }
   const egfrRow=document.getElementById('egfr-stats-row');
   if(egfrRow&&egfrRow.style.display!=='none'){
     const egfrT=activeTeams.filter(t=>categorizeMeio(t)==='EGFR');
-    document.getElementById('egfr-s-op').textContent=egfrT.filter(t=>t.estado==='operacao').length;
-    document.getElementById('egfr-s-rest').textContent=egfrT.filter(t=>t.estado==='descanso').length;
-    document.getElementById('egfr-s-meios').textContent=egfrT.length;
+    document.getElementById('egfr-s-op').textContent=contaEstado(egfrT,'operacao');
+    document.getElementById('egfr-s-rest').textContent=contaEstado(egfrT,'descanso');
+    document.getElementById('egfr-s-meios').textContent=somaMeios(egfrT);
     document.getElementById('egfr-s-opn').textContent=somaOperacionais(egfrT);
   }
 }
@@ -3376,7 +3377,7 @@ function arqCardHtml(o){
   const teams=db.teams.filter(t=>t.ocorrencia_id===o.id);
   const activeT=teams.filter(t=>t.estado!=='desmobilizado');
   const totalOps=somaOperacionais(activeT);
-  const desmob=teams.filter(t=>t.estado==='desmobilizado').length;
+  const desmob=contaEstado(teams,'desmobilizado');
   // Try to find close date from occ eventos or fall back to updated_at
   const closeEvt=(db_occEventos[o.id]||[]).find(e=>e.msg&&e.msg.includes('fechada'));
   const closedAt=closeEvt?new Date(closeEvt.ts).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -3393,7 +3394,7 @@ function arqCardHtml(o){
     <div class="arq-card-body">
       <div style="display:flex;gap:24px;align-items:center;">
         <div>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;color:var(--muted)">${teams.length}</div>
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;color:var(--muted)">${somaMeios(teams)}</div>
           <div class="arq-stat">meios</div>
         </div>
         <div>
@@ -3453,7 +3454,7 @@ function renderArquivo(){
   );
 
   // Stats
-  const arqMeios=list.reduce((s,o)=>s+db.teams.filter(t=>t.ocorrencia_id===o.id).length,0);
+  const arqMeios=list.reduce((s,o)=>s+somaMeios(db.teams.filter(t=>t.ocorrencia_id===o.id)),0);
   const arqOps=list.reduce((s,o)=>s+somaOperacionais(db.teams.filter(t=>t.ocorrencia_id===o.id)),0);
   document.getElementById('arq-total').textContent=list.length;
   document.getElementById('arq-meios').textContent=arqMeios;
@@ -3874,7 +3875,7 @@ function renderPostosSection(isClosed){
     const tipoBadge = p.tipo==='PCF'
       ? `<span class="badge badge-info" style="font-size:9px">PCF</span>`
       : `<span class="badge badge-warn" style="font-size:9px">AIM</span>`;
-    const meioCount = db.teams.filter(t=>t.ocorrencia_id===currentOccId && t.postoComandoId===p.id).length;
+    const meioCount = somaMeios(db.teams.filter(t=>t.ocorrencia_id===currentOccId && t.postoComandoId===p.id));
     const olNome = p.oficial_ligacao_nome || '—';
     const editBtn = canEdit ? `<button class="btn btn-ghost btn-xs" onclick="openPostoModal('${p.id}')" style="margin-left:6px;">✎</button>` : '';
     const closeBtn = canEdit ? `<button class="btn btn-danger btn-xs" onclick="fecharPosto('${p.id}')" style="margin-left:4px;" title="Fechar posto (meios voltam ao PCO principal)">✕</button>` : '';
@@ -4072,11 +4073,11 @@ function renderTeams(){
   document.getElementById('d-total').textContent=somaMeios(activeT);
   const totalOps=somaOperacionais(activeT);
   document.getElementById('d-total-ops').textContent=totalOps;
-  document.getElementById('d-ops2').textContent=teams.filter(t=>t.estado==='operacao').length;
-  document.getElementById('d-rest2').textContent=teams.filter(t=>t.estado==='descanso').length;
-  document.getElementById('d-demob2').textContent=teams.filter(t=>t.estado==='desmobilizado').length;
-  document.getElementById('d-transit').textContent=teams.filter(t=>t.estado==='transito').length;
-  document.getElementById('d-previsto').textContent=teams.filter(t=>t.estado==='previsto').length;
+  document.getElementById('d-ops2').textContent=contaEstado(teams,'operacao');
+  document.getElementById('d-rest2').textContent=contaEstado(teams,'descanso');
+  document.getElementById('d-demob2').textContent=contaEstado(teams,'desmobilizado');
+  document.getElementById('d-transit').textContent=contaEstado(teams,'transito');
+  document.getElementById('d-previsto').textContent=contaEstado(teams,'previsto');
   // Alerts disabled for closed ocorrências
   if(isClosed) document.getElementById('alerts-row').innerHTML='';
   else renderAlerts(teams);
@@ -4880,6 +4881,13 @@ function meioContaOperacionais(t){
 // Contagem de meios: o contentor não é um meio e não entra.
 function somaMeios(teams){
   return (teams||[]).filter(t => !meioEhContentor(t)).length;
+}
+
+// Contagem por estado, com a mesma regra. Todos os contadores da aplicação têm
+// de passar por aqui: contar linhas da tabela dá sempre a mais nas ocorrências
+// com conjuntos compostos, e os números deixam de bater uns com os outros.
+function contaEstado(teams, estado){
+  return (teams||[]).filter(t => t.estado === estado && !meioEhContentor(t)).length;
 }
 
 function somaOperacionais(teams){
@@ -6702,7 +6710,7 @@ function exportLog(){
     lines.push('  POSTOS DE COMANDO');
     lines.push(sep2);
     postos.forEach(p=>{
-      const meioCount = teams.filter(t=>t.postoComandoId===p.id).length;
+      const meioCount = somaMeios(teams.filter(t=>t.postoComandoId===p.id));
       lines.push(`  [${p.tipo||'PCO'}] ${p.nome}  ·  OL: ${p.oficial_ligacao_nome||'—'}  ·  ${meioCount} meio${meioCount!==1?'s':''}`);
     });
     lines.push('');

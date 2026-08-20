@@ -791,7 +791,14 @@ app.get('/api/postos', requireAuth('visualizador'), wrap(async (_req, res) => {
 app.get('/api/ocorrencias/:id/postos', requireAuth('visualizador'), wrap(async (req, res) => {
   const { rows } = await pool.query(`
     SELECT p.*,
-           COUNT(m.id) FILTER (WHERE m.estado <> 'desmobilizado') AS meios_count
+           -- O contentor de uma BSF/BSBF não é um meio: tem filhos, não tem pai
+           -- e traz a marca da composição. Contá-lo dava sempre um a mais.
+           COUNT(m.id) FILTER (
+             WHERE m.estado <> 'desmobilizado'
+               AND NOT (m.meio_pai_id IS NULL
+                        AND (m.composicao_id IS NOT NULL OR m.fsbf_bsbf_id IS NOT NULL)
+                        AND EXISTS (SELECT 1 FROM meios f WHERE f.meio_pai_id = m.id))
+           ) AS meios_count
     FROM postos_comando p
     LEFT JOIN meios m ON m.posto_comando_id = p.id
     WHERE p.ocorrencia_id = $1 AND p.ativo
