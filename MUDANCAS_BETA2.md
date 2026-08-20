@@ -2611,10 +2611,27 @@ UPDATE fsbf_empenhamento_diario e SET
 violam `efetivo >= disponível >= empenhado`, e 86 têm disponíveis acima de zero
 (as outras 16 são dias sem carta).
 
+### Os gráficos
+
+Os dois gráficos passam a traçar **as duas medidas por companhia**: o
+**disponível a tracejado** e o **empenhado a cheio**, na mesma cor.
+
+A cor continua a querer dizer **companhia** — não se lhe podia dar um segundo
+significado — e é o **traço** que distingue as duas medidas. As duas linhas
+partilham o mesmo denominador, o **efetivo**, senão não se podiam comparar uma
+com a outra no mesmo eixo; assim a linha cheia fica sempre por baixo da
+tracejada, e a distância entre elas é a folga que resta. Confirmado nas 102
+linhas gravadas: nenhuma tem empenhados acima de disponíveis.
+
+O balão de detalhe passa a ler-se *«Sul 0% de 35,6%»* — empenhado de
+disponível.
+
 ### Como validar
 
 1. **Gestão FSBF → Empenhamento**: quatro mosaicos, com disponíveis e
    empenhados para operacionais e viaturas.
+2. Nos gráficos, confirmar a linha tracejada por cima da cheia e a legenda a
+   explicar o traço.
 2. Confirmar na tabela por companhia as duas percentagens.
 3. Abrir a **série diária** e confirmar que os dias anteriores já trazem
    disponíveis.

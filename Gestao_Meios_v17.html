@@ -8004,7 +8004,10 @@ function empGrelhaDatas(de, ate){
 
 // Linhas 2px, eixos recessivos, legenda + rótulo directo no fim de cada série,
 // e camada de leitura (linha-guia + tooltip) sobre o dia mais próximo.
-function empGraficoLinhas(id, titulo, datas, series, unidade){
+// series = linha cheia (empenhados); seriesSec = linha tracejada (disponíveis).
+// Mesma cor para a mesma companhia — a cor já quer dizer companhia e não se lhe
+// pode dar um segundo significado. O traço é que distingue as duas medidas.
+function empGraficoLinhas(id, titulo, datas, series, unidade, seriesSec){
   const W=760, H=240, ml=42, mr=76, mt=16, mb=28;
   const iw=W-ml-mr, ih=H-mt-mb;
   const x = i => datas.length<2 ? ml+iw/2 : ml + (i/(datas.length-1))*iw;
@@ -8015,6 +8018,15 @@ function empGraficoLinhas(id, titulo, datas, series, unidade){
   const passo = Math.max(1, Math.ceil(datas.length/8));
   const eixoX = datas.map((d,i)=> i%passo? '' :
     `<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="var(--muted)">${d.slice(8,10)}/${d.slice(5,7)}</text>`).join('');
+  const caminho = (pts) => {
+    let d='', abrir=true;
+    pts.forEach((v,i)=>{ if(v==null){abrir=true;return;} d += (abrir?'M':'L')+x(i)+' '+y(v)+' '; abrir=false; });
+    return d.trim();
+  };
+  // Tracejado por baixo: é o tecto contra o qual se lê a linha cheia.
+  const linhasSec = !seriesSec ? '' : EMP_ORDEM.filter(c=>seriesSec[c]).map(c=>
+    `<path d="${caminho(seriesSec[c])}" fill="none" stroke="${EMP_COR[c]}" stroke-width="1.5"
+       stroke-dasharray="4 3" opacity="0.55" stroke-linejoin="round" stroke-linecap="round"/>`).join('');
   const linhas = EMP_ORDEM.filter(c=>series[c]).map(c=>{
     const pts=series[c];
     // segmentos contíguos: um buraco parte a linha
@@ -8035,14 +8047,20 @@ function empGraficoLinhas(id, titulo, datas, series, unidade){
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px;">
       <span style="font-weight:600;font-size:13px;">${esc(titulo)}</span>
       <span style="font-size:11px;color:var(--muted);">${esc(unidade)}</span>
-      <span style="display:flex;gap:12px;margin-left:auto;">${legenda}</span>
+      <span style="display:flex;gap:12px;margin-left:auto;align-items:center;">${legenda}${seriesSec?`
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);border-left:1px solid var(--border);padding-left:12px;">
+          <svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/></svg>disponíveis
+        </span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text);">
+          <svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke="currentColor" stroke-width="2"/></svg>empenhados
+        </span>`:''}</span>
     </div>
     <div style="position:relative;overflow-x:auto;" id="${id}-wrap">
       <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:520px;height:auto;display:block;" id="${id}">
         ${grid}
         <line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt+ih}" stroke="var(--border)"/>
         <line class="emp-guia" x1="0" y1="${mt}" x2="0" y2="${mt+ih}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" style="display:none;"/>
-        ${eixoX}${linhas}${alvos}
+        ${eixoX}${linhasSec}${linhas}${alvos}
       </svg>
       <div class="emp-tip" style="display:none;position:absolute;pointer-events:none;background:var(--surface2);
         border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:11px;white-space:nowrap;z-index:5;"></div>
@@ -8050,7 +8068,7 @@ function empGraficoLinhas(id, titulo, datas, series, unidade){
   </div>`;
 }
 
-function empLigarHover(id, datas, series, sufixo){
+function empLigarHover(id, datas, series, sufixo, seriesSec){
   const svg=document.getElementById(id); if(!svg) return;
   const wrap=document.getElementById(id+'-wrap');
   const tip=wrap.querySelector('.emp-tip'), guia=svg.querySelector('.emp-guia');
@@ -8061,10 +8079,12 @@ function empLigarHover(id, datas, series, sufixo){
       guia.setAttribute('x1',cx); guia.setAttribute('x2',cx); guia.style.display='';
       const linhas=EMP_ORDEM.filter(c=>series[c]).map(c=>{
         const v=series[c][i];
+        const vs=seriesSec&&seriesSec[c]?seriesSec[c][i]:null;
         return `<div style="display:flex;align-items:center;gap:6px;">
           <span style="width:8px;height:8px;border-radius:2px;background:${EMP_COR[c]};"></span>
           <span style="color:var(--muted);">${c}</span>
-          <strong style="margin-left:auto;color:var(--text);">${v==null?'—':v+sufixo}</strong></div>`;
+          <strong style="margin-left:auto;color:var(--text);">${v==null?'—':v+sufixo}</strong>
+          ${seriesSec?`<span style="color:var(--muted);">de ${vs==null?'—':vs+sufixo}</span>`:''}</div>`;
       }).join('');
       tip.innerHTML=`<div style="color:var(--muted);margin-bottom:4px;">${datas[i].split('-').reverse().join('/')}</div>${linhas}`;
       tip.style.display='';
@@ -8089,13 +8109,18 @@ async function renderFsbfEmpenhamento(){
 
   const datas = empGrelhaDatas(data.de, data.ate);
   const idx = Object.fromEntries(datas.map((d,i)=>[d,i]));
-  const serieOp={}, serieVi={};
-  EMP_ORDEM.forEach(c=>{ serieOp[c]=datas.map(()=>null); serieVi[c]=datas.map(()=>null); });
+  const serieOp={}, serieVi={}, serieOpD={}, serieViD={};
+  EMP_ORDEM.forEach(c=>{ serieOp[c]=datas.map(()=>null); serieVi[c]=datas.map(()=>null);
+                         serieOpD[c]=datas.map(()=>null); serieViD[c]=datas.map(()=>null); });
   linhas.forEach(r=>{
     if(!(r.companhia in serieOp)) return;
     const i=idx[r.data]; if(i===undefined) return;
     serieOp[r.companhia][i]=r.op_pct;
     serieVi[r.companhia][i]=r.vi_pct;
+    // Ambas as medidas sobre o mesmo denominador — o efetivo — senão as duas
+    // linhas do gráfico não se podiam comparar uma com a outra.
+    serieOpD[r.companhia][i]=r.op_disp_pct;
+    serieViD[r.companhia][i]=r.vi_disp_pct;
   });
 
   const ultimoDia = linhas.length ? linhas[linhas.length-1].data : null;
@@ -8177,11 +8202,11 @@ async function renderFsbfEmpenhamento(){
     </p>`;
 
   document.getElementById('emp-g1').innerHTML =
-    empGraficoLinhas('emp-svg-op','Operacionais empenhados',datas,serieOp,'% do efetivo da companhia');
+    empGraficoLinhas('emp-svg-op','Operacionais — disponíveis e empenhados',datas,serieOp,'% do efetivo da companhia',serieOpD);
   document.getElementById('emp-g2').innerHTML =
-    empGraficoLinhas('emp-svg-vi','Viaturas empenhadas',datas,serieVi,'% do dispositivo da companhia');
-  empLigarHover('emp-svg-op',datas,serieOp,'%');
-  empLigarHover('emp-svg-vi',datas,serieVi,'%');
+    empGraficoLinhas('emp-svg-vi','Viaturas — disponíveis e empenhadas',datas,serieVi,'% do dispositivo da companhia',serieViD);
+  empLigarHover('emp-svg-op',datas,serieOp,'%',serieOpD);
+  empLigarHover('emp-svg-vi',datas,serieVi,'%',serieViD);
 }
 
 // ══ GRUATA ═══════════════════════════════════════════════════════
