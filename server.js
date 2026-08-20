@@ -2096,20 +2096,27 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
   const data = req.query.data || new Date().toISOString().slice(0, 10);
   const [bsbfRes, emrRes] = await Promise.all([
     pool.query(`
+      -- "Já despachado" tem de olhar para a VIATURA e não só para a linha da
+      -- escala do próprio dia. A Carta de Meios tem uma linha por dia, pelo que
+      -- um meio despachado a partir da escala de segunda aparecia livre na
+      -- lista de quinta — com botão de Despachar que o despacho depois recusava,
+      -- por a viatura estar ocupada.
       SELECT e.*, v.viatura_cod, v.matricula, v.classe,
-        (SELECT m.id FROM meios m
-           JOIN fsbf_bsbf_equipa e2 ON m.fsbf_bsbf_id = e2.id
-           WHERE e2.brigada = e.brigada AND e2.data = e.data
-             AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1
-        ) AS deployed_meio_id,
-        (SELECT o2.local_ignicao FROM meios m
-           JOIN fsbf_bsbf_equipa e2 ON m.fsbf_bsbf_id = e2.id
-           JOIN ocorrencias o2 ON o2.id = m.ocorrencia_id
-           WHERE e2.brigada = e.brigada AND e2.data = e.data
-             AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1
-        ) AS deployed_occ_nome
+        d.deployed_meio_id, d.deployed_occ_nome
       FROM fsbf_bsbf_equipa e
       LEFT JOIN viaturas v ON v.id = e.veiculo_id
+      LEFT JOIN LATERAL (
+        SELECT m.id AS deployed_meio_id, o.local_ignicao AS deployed_occ_nome
+        FROM meios m
+        JOIN ocorrencias o ON o.id = m.ocorrencia_id
+        WHERE m.estado <> 'desmobilizado'
+          AND ( (e.veiculo_id IS NOT NULL AND m.viatura_id = e.veiculo_id)
+             OR (m.meio_pai_id IS NULL AND EXISTS (
+                   SELECT 1 FROM fsbf_bsbf_equipa e2
+                    WHERE e2.id = m.fsbf_bsbf_id
+                      AND e2.brigada = e.brigada AND e2.data = e.data)) )
+        LIMIT 1
+      ) d ON true
       WHERE e.data = $1
       ORDER BY e.brigada, e.ordem, e.created_at
     `, [data]),
@@ -2119,14 +2126,25 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
         vaop.viatura_cod AS vaop_cod, vaop.matricula AS vaop_matricula,
         vpil.viatura_cod AS vpil_cod, vpil.matricula AS vpil_matricula,
         vlci.viatura_cod AS vlci_cod, vlci.matricula AS vlci_matricula,
-        m.id AS deployed_meio_id, o.id AS deployed_occ_id, o.local_ignicao AS deployed_occ_nome
+        d.deployed_meio_id, d.deployed_occ_id, d.deployed_occ_nome
       FROM fsbf_emr_equipa e
       LEFT JOIN viaturas mr   ON mr.id   = e.mr_viatura_id
       LEFT JOIN viaturas vaop ON vaop.id = e.vaop_viatura_id
       LEFT JOIN viaturas vpil ON vpil.id = e.vpiloto_viatura_id
       LEFT JOIN viaturas vlci ON vlci.id = e.vlci_viatura_id
-      LEFT JOIN meios m ON m.fsbf_emr_id = e.id AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
-      LEFT JOIN ocorrencias o ON o.id = m.ocorrencia_id
+      -- Qualquer das quatro viaturas em uso já chega para a equipa não estar
+      -- livre, mesmo que o despacho tenha saído da escala de outro dia.
+      LEFT JOIN LATERAL (
+        SELECT m.id AS deployed_meio_id, o.id AS deployed_occ_id,
+               o.local_ignicao AS deployed_occ_nome
+        FROM meios m
+        JOIN ocorrencias o ON o.id = m.ocorrencia_id
+        WHERE m.estado <> 'desmobilizado'
+          AND ( (m.fsbf_emr_id = e.id AND m.meio_pai_id IS NULL)
+             OR (m.viatura_id IS NOT NULL AND m.viatura_id IN
+                  (e.mr_viatura_id, e.vaop_viatura_id, e.vpiloto_viatura_id, e.vlci_viatura_id)) )
+        LIMIT 1
+      ) d ON true
       WHERE e.data = $1
       ORDER BY e.ordem, e.created_at
     `, [data]),

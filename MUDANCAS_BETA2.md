@@ -50,6 +50,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 28 | 20/08/2026 | Todos os contadores de meios da aplicação sem contentores | `f1a89ee` | **por validar (só beta2)** |
 | 29 | 20/08/2026 | Carta de Meios: linha da EMR deixa de sair fora do cartão | `8d30481` | **por validar (só beta2)** |
 | 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `a662e86` | **por validar (só beta2)** |
+| 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2205,3 +2206,79 @@ mais perto do limite com o nome ao lado.
 4. Pôr um membro em descanso e confirmar que a linha recolhida passa a dizer
    `1 descanso · 2 em op.`.
 5. Confirmar que o efectivo da linha é o do conjunto.
+
+---
+
+## 31 — Meios já despachados continuavam a aparecer livres na lista do ofligacao_ccon
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O defeito
+
+Na ocorrência **20261163776 (Faro)** o **M01** está despachado, em trânsito, e
+mesmo assim continuava a aparecer com botão **🚀 Despachar** na lista de meios
+nacionais.
+
+A causa é a **Carta de Meios ter uma linha por dia**. O M01 tem uma linha de
+escala para cada data — 13/08, 14/08, …, 20/08 — e o despacho ficou preso à
+linha de **16/08**. A lista, filtrada pelo dia escolhido, mostrava a linha de
+**hoje**, que é outra linha, sem despacho associado:
+
+```sql
+LEFT JOIN meios m ON m.fsbf_emr_id = e.id AND m.estado <> 'desmobilizado'
+```
+
+Ou seja: a exclusividade estava a ser avaliada **por linha de escala** e não
+pelo meio físico.
+
+| Linha de escala do M01 | Marcada despachada |
+|---|---|
+| 2026-08-20 (a que se vê hoje) | **não** |
+| 2026-08-16 (a que foi despachada) | sim |
+
+O mesmo na **BSBF**, cuja consulta comparava `e2.data = e.data`: as três
+viaturas da Brigada Sul estavam em uso em Faro e as linhas de hoje davam-nas
+por livres.
+
+### Porque não dava asneira maior
+
+O despacho em si **recusava**: a verificação por viatura (`m.viatura_id = ANY`)
+apanhava o conflito e devolvia *«Viatura já está em uso na ocorrência…»*. Ou
+seja, o sistema estava seguro — mas a lista convidava a uma acção que ia falhar,
+e dava a entender que o meio estava disponível quando não estava.
+
+### A correcção
+
+O «já despachado» passa a olhar para a **viatura**, que é o que persiste de um
+dia para o outro, alinhando a lista com o que o despacho já exigia. Na EMR basta
+qualquer uma das quatro viaturas (MR, VAOP, Vpiloto, VLCI) estar em uso.
+
+Verificado contra o beta2, na lista de **2026-08-20**:
+
+| Equipa | Antes | Agora |
+|---|---|---|
+| EMR M01 | livre | **Faro, Loulé, Salir** |
+| EMR M03, M04, M09, M15, M16, M23 | livres | livres |
+| BSBF Sul — VAOP 12, VFCI 03, VFCI 04 | livres | **Faro, Loulé, Salir** |
+| BSBF Norte e Outros | livres | livres |
+
+### Alterações
+
+- `server.js` — `GET /api/fsbf/disponivel`: as consultas da BSBF e da EMR
+  passam por um `LEFT JOIN LATERAL` que considera despachada a linha cuja
+  viatura esteja num meio activo, além da regra antiga da linha do próprio dia.
+- **Base de dados:** nenhuma alteração.
+
+### Fica por resolver
+
+A **Gruata** tem o mesmo defeito — a consulta também compara só o dia — mas não
+se corrige da mesma maneira: os meios criados pelo despacho de Gruata **não
+guardam `viatura_id`**, pelo que não há viatura por onde os apanhar. Corrigi-lo
+exige primeiro que esse despacho passe a registar as viaturas.
+
+### Como validar
+
+1. Como `ofligacao_ccon`, abrir a lista de meios nacionais no dia de hoje.
+2. O **M01** deve aparecer como **✓ Em uso**, com a ocorrência de Faro.
+3. As três viaturas da **BSBF Sul** idem.
+4. Desmobilizar o M01 e confirmar que volta a aparecer despachável.
