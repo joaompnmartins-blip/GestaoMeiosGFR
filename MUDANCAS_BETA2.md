@@ -44,6 +44,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `5dc599f` | **por validar (só beta2)** |
 | 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `bed08c8` | **por validar (só beta2)** |
 | 24 | 19/08/2026 | Meio desmobilizado deixa de mostrar Setor, Posto e Missão | `a748c02` | **por validar (só beta2)** |
+| 25 | 19/08/2026 | Missão com acção própria no cartão, registada na Fita do Tempo | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1827,3 +1828,60 @@ Verificado: com o meio desmobilizado, `team-setor` mantém `BRAVO`,
    continuam registados.
 4. Numa ocorrência sem postos, confirmar que o Posto de Comando continua
    escondido em qualquer estado.
+
+---
+
+## 25 — Missão passa a ter acção própria no cartão do meio
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+A **Missão / Posição** só se alterava abrindo o **Editar Meio** — um formulário
+inteiro, com bloqueios por fase, para mudar um campo de texto. O setor, o
+sector e o posto já tinham acção própria no cartão; a missão não.
+
+Passa a haver um botão **◎ Missão** no cartão, ao lado do **⊞ Setor**. Abre uma
+janela pequena com a missão actual, um campo para a nova, e as **missões já em
+uso na ocorrência** como sugestões — para o mesmo posto não ficar escrito de
+três maneiras diferentes. Deixar em branco retira a missão.
+
+O botão aparece em todos os estados menos **Desmobilizado**, seguindo a regra da
+alteração 24: um meio que saiu do TO não tem missão.
+
+Em conjuntos compostos entra na lista do **«aplicar a todos»**, como o setor:
+uma BSF inteira pode receber a mesma missão de uma vez.
+
+### Registo na Fita do Tempo
+
+Cada alteração escreve nos dois sítios que alimentam a Fita do Tempo, com o
+antes e o depois — tal como `applySectorToTeam` já fazia:
+
+| Destino | Categoria na Fita | Texto |
+|---|---|---|
+| `meios_eventos` | Meios ICNF | `Missão: PF Barão → OF LIG.` |
+| `ocorrencias_eventos` (tag `missao`) | Ocorrência | `SF 01-115 — missão: PF Barão → OF LIG.` |
+
+Retirar a missão fica igualmente registado (`Missão: OF LIG → —.`), e atribuir
+a um meio que não tinha aparece como `— → Flanco direito`. Não é preciso
+categoria nova: a Fita classifica pela origem da linha e não pela `tag`, que
+não tem restrição na base.
+
+Se a missão não mudar, não se grava nem se regista nada.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `applyMissaoToTeam()`, `doQuickMissao()`, o ramo
+  `missao` do `quickAction()`, o botão no cartão, e `missao` na lista dos tipos
+  que oferecem «aplicar a todos».
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Num meio em operação, carregar em **◎ Missão**, escrever uma missão e
+   confirmar que aparece no cartão.
+2. Abrir a **Fita do Tempo** e confirmar as duas linhas, com o antes e o depois.
+3. Repetir deixando o campo em branco: a missão sai e fica registado.
+4. Num meio de uma BSF, usar **aplicar a todos** e confirmar que o conjunto
+   inteiro fica com a mesma missão.
+5. Confirmar que um meio **desmobilizado** não mostra o botão.

@@ -4530,6 +4530,7 @@ function teamCardHtml(t, isClosed, _teams, opts){
       ${_podeAgir&&t.estado==='descanso'?`<button class="btn btn-success btn-card" onclick="quickAction('op','${t.id}')">▶ Retomar Op.</button>`:''}
       ${_podeAgir&&(t.estado==='operacao'||t.estado==='descanso')?`<button class="btn btn-danger btn-card" onclick="quickAction('demob','${t.id}')">↩ Desmob.</button>`:''}
       ${_podeAgir&&t.estado!=='previsto'&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('sector','${t.id}')">⊞ Setor</button>`:''}
+      ${_podeAgir&&t.estado!=='desmobilizado'?`<button class="btn btn-info btn-card" onclick="quickAction('missao','${t.id}')" title="Atribuir ou alterar a missão">◎ Missão</button>`:''}
       ${_podeAgir&&occPostos().length>0&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('posto','${t.id}')">⇄ PCO</button>`:''}
       ${_podeAgir&&t.estado!=='desmobilizado'?`<button class="btn btn-ghost btn-card" onclick="quickAction('obs','${t.id}')">📝 Evento</button>`:''}
       <button class="btn btn-ghost btn-card" onclick="showMeioInfo('${t.id}')" title="Ver ficha do meio">Ficha Meio</button>
@@ -4764,6 +4765,25 @@ function quickAction(type, teamId){
     footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
       <button class="btn btn-info" onclick="doQuickSector('${teamId}')">⊞ Confirmar Mudança</button>`;
   }
+  else if(type==='missao'){
+    title.textContent=`Missão / Posição — ${t.eq}`;
+    // Sugestões: as missões já em uso nesta ocorrência, para não se escrever a
+    // mesma coisa de três maneiras diferentes.
+    const usadas=[...new Set(db.teams
+      .filter(x=>x.ocorrencia_id===t.ocorrencia_id && x.missao && x.missao!==t.missao)
+      .map(x=>x.missao))].slice(0,8);
+    body.innerHTML=`
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;">Missão actual: <strong>${esc(t.missao||'—')}</strong></p>
+      <div class="form-field" style="margin-top:14px;">
+        <label class="form-label">Nova missão / posição</label>
+        <input class="form-input" id="qa-missao" list="qa-missao-sug" value="${esc(t.missao||'')}" placeholder="Ex: EGFR, OF LIG, PF Barão…"/>
+        <datalist id="qa-missao-sug">${usadas.map(m=>`<option value="${esc(m)}"></option>`).join('')}</datalist>
+      </div>
+      ${usadas.length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">${usadas.map(m=>`<button class="btn btn-info btn-xs" onclick="document.getElementById('qa-missao').value=this.dataset.m" data-m="${esc(m)}">→ ${esc(m)}</button>`).join('')}</div>`:''}
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;">Deixar em branco retira a missão.</p>`;
+    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+      <button class="btn btn-info" onclick="doQuickMissao('${teamId}')">◎ Confirmar Missão</button>`;
+  }
   else if(type==='obs'){
     title.textContent=`Observação / Evento — ${t.eq}`;
     body.innerHTML=`
@@ -4794,7 +4814,7 @@ function quickAction(type, teamId){
       <button class="btn btn-primary" onclick="doQuickMovePCO('${teamId}')">⇄ Confirmar Transferência</button>`;
   }
   // If this meio belongs to a composite team, offer "apply to all" checkbox
-  if(['transit','op','rest','demob','sector','posto','chegadaBase'].includes(type)){
+  if(['transit','op','rest','demob','sector','missao','posto','chegadaBase'].includes(type)){
     const siblings = compositeGroupSiblings(t);
     if(siblings.length > 0){
       const label = compositeGroupLabel(t);
@@ -5093,6 +5113,19 @@ async function applySectorToTeam(t, setor){
   await persistOccEvento(t.ocorrencia_id,'sector',`${t.eq} — setor: ${old} → ${t.setor||'—'}.`,t.eq,t.postoComandoId);
 }
 
+// A missão só se mudava pelo Editar Meio, que abre um formulário inteiro para
+// alterar um campo. Fica a par do setor: acção própria no cartão, e o antes e o
+// depois ficam na Fita do Tempo — na do meio e na da ocorrência.
+async function applyMissaoToTeam(t, missao){
+  const antes = t.missao || '—';
+  t.missao = missao;
+  const msg = `Missão: ${antes} → ${t.missao||'—'}.`;
+  addEventLog(t,msg);
+  await supaWriteOrQueue('meios','update',{id:t.id,row:{missao:t.missao}},t.id,`Missão: ${t.eq}`);
+  await persistEvento(t.id,msg);
+  await persistOccEvento(t.ocorrencia_id,'missao',`${t.eq} — missão: ${antes} → ${t.missao||'—'}.`,t.eq,t.postoComandoId);
+}
+
 async function applyPostoToTeam(t, postoId, postoNome){
   const oldNome = db.postos.find(p=>p.id===t.postoComandoId)?.nome || 'PCO Principal';
   t.postoComandoId = postoId||null;
@@ -5244,6 +5277,19 @@ async function doQuickSector(id){
   } catch(e){ console.warn('doQuickSector:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Setor ${t.setor||'—'}.`,'ok');
+}
+
+async function doQuickMissao(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const missao=document.getElementById('qa-missao').value.trim();
+  const applyAll=document.getElementById('qa-apply-all')?.checked;
+  if(missao===(t.missao||'')){ closeModal('modal-action'); return; }
+  try {
+    await applyMissaoToTeam(t,missao);
+    if(applyAll) for(const s of compositeGroupSiblings(t)) await applyMissaoToTeam(s,missao);
+  } catch(e){ console.warn('doQuickMissao:', e); }
+  closeModal('modal-action'); await cacheToIDB(); renderTeams();
+  toast(`✓ ${t.eq} — missão ${t.missao||'retirada'}.`,'ok');
 }
 
 async function doQuickObs(id){
