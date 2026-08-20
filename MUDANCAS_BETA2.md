@@ -52,7 +52,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `a662e86` | **por validar (só beta2)** |
 | 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `b4fa875` | **por validar (só beta2)** |
 | 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `d258c0b` | **por validar (só beta2)** |
-| 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `PENDENTE` | **por validar (só beta2)** |
+| 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `7187ad4` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
