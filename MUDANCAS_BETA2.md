@@ -55,6 +55,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `7187ad4` | **por validar (só beta2)** |
 | 34 | 20/08/2026 | Sem crachás de nomes nos cartões de BSBF e EMR | `5360c03` | **por validar (só beta2)** |
 | 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `c55f675` | **por validar (só beta2)** |
+| 36 | 20/08/2026 | Disponíveis nas estatísticas de empenhamento FSBF · **com correcção de dados** | `1f141f3` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2522,3 +2523,98 @@ mão, continua a levar 403.
 3. Confirmar que os dados aparecem (não pode ficar vazio nem dar erro).
 4. Entrar como **gestor ICNF**: continua a ver os cinco separadores e todas as
    acções.
+
+---
+
+## 36 — Disponíveis nas estatísticas de empenhamento FSBF
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+As estatísticas tinham dois números: **efetivo** (tudo o que há nos quadros) e
+**empenhado** (o que saiu para ocorrência). Passa a haver um terceiro pelo meio,
+o **disponível**: o que está constituído na **Carta de Meios do dia**, esteja ou
+não empenhado.
+
+```
+efetivo  >=  disponível  >=  empenhado
+ (tudo)     (de serviço)     (na ocorrência)
+```
+
+Exemplo real do beta2, em 20/08:
+
+| Companhia | Op. disp. | Op. emp. | Efetivo | Viat. disp. | Viat. emp. | Dispositivo |
+|---|---|---|---|---|---|---|
+| Norte | 5 | 0 | 74 | 7 | 0 | 25 |
+| Centro | 6 | 0 | 42 | 6 | 0 | 30 |
+| Sul | 21 | 0 | 59 | 11 | 0 | 28 |
+
+### Percentagens
+
+Passam a ser duas, e a segunda responde melhor à pergunta:
+
+- **Disponíveis / efetivo** — que fatia do dispositivo está de serviço.
+- **Empenhados / disponíveis** — que fatia de quem está de serviço é que saiu.
+
+A percentagem antiga era *empenhados / efetivo*, que dilui o número por gente
+que nem sequer está escalada nesse dia.
+
+### Vale a pena notar
+
+O **disponível é o número mais fiável dos três**. Sai directamente da Carta de
+Meios — de quem lá está escalado — enquanto o empenhado depende do
+`ocorrencia_num` escrito à mão, que quase nunca é preenchido (ver o que ficou
+dito na análise das ocorrências da Carta de Meios). É por isso que na tabela
+acima os empenhados estão todos a zero e os disponíveis não.
+
+### Alterações
+
+- `server.js`
+  - `EMPENHAMENTO_SQL` — CTE `op_disp` e `vi_disp`, iguais aos de empenhamento
+    mas sem a condição do `ocorrencia_num`.
+  - `fsbf_empenhamento_diario` ganha `op_disponiveis` e `vi_disponiveis`, na
+    criação da tabela **e** por `ALTER` a seguir — o `ALTER IF EXISTS` sozinho,
+    posto antes do `CREATE`, não fazia nada e uma base nova nascia sem elas.
+  - A série devolve as novas contagens e quatro percentagens.
+- `Gestao_Meios_v17.html` — dois mosaicos novos e a tabela por companhia com as
+  colunas de disponíveis; as percentagens dos totais calculam-se das contagens
+  somadas, porque somar percentagens de três companhias não quer dizer nada.
+- **Base de dados:** duas colunas novas, por migração automática, **e uma
+  correcção de dados** (abaixo) que não viaja com o ramo.
+
+### Correcção de dados aplicada ao beta2
+
+Os 102 instantâneos já gravados ficariam a zeros nas colunas novas — a série
+histórica não mostraria disponíveis nenhuns até alguém recalcular dia a dia.
+Foram preenchidos a partir da Carta de cada dia:
+
+```sql
+UPDATE fsbf_empenhamento_diario e SET
+  op_disponiveis = COALESCE((SELECT count(DISTINCT mm.operacional_id)::int
+      FROM fsbf_equipa_membros mm JOIN operacionais_fsbf o ON o.id = mm.operacional_id
+     WHERE mm.data = e.data AND o.companhia = e.companhia), 0),
+  vi_disponiveis = COALESCE((SELECT count(DISTINCT v.id)::int
+      FROM ( SELECT veiculo_id AS vid FROM fsbf_bsbf_equipa WHERE data = e.data
+             UNION ALL SELECT mr_viatura_id      FROM fsbf_emr_equipa WHERE data = e.data
+             UNION ALL SELECT vaop_viatura_id    FROM fsbf_emr_equipa WHERE data = e.data
+             UNION ALL SELECT vpiloto_viatura_id FROM fsbf_emr_equipa WHERE data = e.data
+             UNION ALL SELECT vlci_viatura_id    FROM fsbf_emr_equipa WHERE data = e.data ) x
+      JOIN viaturas v ON v.id = x.vid
+      JOIN (SELECT DISTINCT base, companhia FROM operacionais_fsbf
+             WHERE ativo AND base IS NOT NULL AND companhia IS NOT NULL) m ON m.base = v.base
+     WHERE x.vid IS NOT NULL AND v.dispositivo AND v.ativo AND m.companhia = e.companhia), 0),
+  atualizado_em = now();
+```
+
+**102 linhas** actualizadas, de 06/07 a 20/08. Verificado depois: **0** linhas
+violam `efetivo >= disponível >= empenhado`, e 86 têm disponíveis acima de zero
+(as outras 16 são dias sem carta).
+
+### Como validar
+
+1. **Gestão FSBF → Empenhamento**: quatro mosaicos, com disponíveis e
+   empenhados para operacionais e viaturas.
+2. Confirmar na tabela por companhia as duas percentagens.
+3. Abrir a **série diária** e confirmar que os dias anteriores já trazem
+   disponíveis.
