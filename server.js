@@ -678,6 +678,106 @@ app.delete('/api/meios/:id/viatura', requireAuth('ofligacao'), wrap(async (req, 
   res.json(upd);
 }));
 
+// ── GET /api/meios/:id/turnos — que guarnições há na Carta ──────
+// Alimenta a janela de rendição: sem saber que turnos existem para esta linha
+// da Carta, não há o que escolher.
+app.get('/api/meios/:id/turnos', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { rows: [meio] } = await pool.query('SELECT * FROM meios WHERE id=$1', [req.params.id]);
+  if (!meio) return res.status(404).json({ error: 'Meio não encontrado.' });
+  const { rows: [pai] } = meio.meio_pai_id
+    ? await pool.query('SELECT * FROM meios WHERE id=$1', [meio.meio_pai_id])
+    : { rows: [null] };
+  const origem = origemFsbfDoMeio(meio, pai);
+  if (!origem) return res.json({ turnos: [], atual: null });
+  const { rows } = await pool.query(
+    `SELECT m.turno, count(*)::int AS membros,
+            max(CASE WHEN m.is_chefe THEN o.nome END) AS chefe
+       FROM fsbf_equipa_membros m
+       JOIN operacionais_fsbf o ON o.id = m.operacional_id
+      WHERE m.${origem.col} = $1
+      GROUP BY m.turno ORDER BY m.turno`, [origem.id]);
+  const { rows: [atual] } = await pool.query(
+    `SELECT turno, desde FROM meios_guarnicoes WHERE meio_id=$1 AND ate IS NULL LIMIT 1`,
+    [req.params.id]);
+  res.json({ turnos: rows, atual: atual || null });
+}));
+
+// ── POST /api/meios/:id/rendicao ────────────────────────────────
+app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, res) => {
+  const { turno, data, hora, horas_max } = req.body || {};
+  if (!turno) return res.status(400).json({ error: 'Indique o turno que entra.' });
+  if (!data || !hora) return res.status(400).json({ error: 'Indique a data e a hora da rendição.' });
+
+  const { rows: [meio] } = await pool.query('SELECT * FROM meios WHERE id=$1', [req.params.id]);
+  if (!meio) return res.status(404).json({ error: 'Meio não encontrado.' });
+  if (meio.estado === 'desmobilizado')
+    return res.status(409).json({ error: 'Um meio desmobilizado já não tem guarnição a bordo.' });
+
+  // A rendição é do conjunto todo: uma brigada não se rende meia. Partindo de
+  // qualquer membro, chega-se ao mesmo conjunto.
+  const raizId = meio.meio_pai_id || meio.id;
+  const { rows: familia } = await pool.query(
+    `SELECT * FROM meios WHERE (id = $1 OR (meio_pai_id = $1 AND NOT destacado))
+        AND estado <> 'desmobilizado' ORDER BY meio_pai_id NULLS FIRST, eq`, [raizId]);
+  const raiz = familia.find(m => m.id === raizId) || meio;
+  const alvos = familia;
+
+  const quando = `${data}T${hora}:00`;
+  const client = await pool.connect();
+  const feitos = [];
+  try {
+    await client.query('BEGIN');
+    for (const alvo of alvos) {
+      const pai = alvo.meio_pai_id ? familia.find(m => m.id === alvo.meio_pai_id) || raiz : null;
+      const origem = origemFsbfDoMeio(alvo, pai);
+      if (!origem) continue;
+      const nomes = await lerGuarnicaoTurno(client, origem.col, origem.id, turno, alvo.contacto);
+      if (!nomes.length) continue;
+      const chefe = await chefeDoTurno(client, origem.col, origem.id, turno);
+      await renderGuarnicao(client, alvo, {
+        turno, quando, nomes, chefe, contacto: alvo.contacto, userId: req.user.id });
+
+      // O relógio de operação recomeça: o tempo máximo mede o cansaço da
+      // guarnição, e a guarnição é outra. A chegada ao TO não se toca.
+      const h = Number(horas_max) || alvo.horas_max || null;
+      if (h) {
+        const lim = somarHorasParede(data, hora, h);
+        await client.query(
+          `UPDATE meios SET op_inicio_data=$2, op_inicio_hora=$3, horas_max=$4,
+                            limite_op=$5, limite_op_date=$6, responsavel=COALESCE($7, responsavel),
+                            updated_at=now()
+            WHERE id=$1`,
+          [alvo.id, data, hora, h, lim.hora, lim.data, chefe || null]);
+      } else {
+        await client.query(
+          `UPDATE meios SET op_inicio_data=$2, op_inicio_hora=$3,
+                            responsavel=COALESCE($4, responsavel), updated_at=now()
+            WHERE id=$1`, [alvo.id, data, hora, chefe || null]);
+      }
+      await client.query(
+        `INSERT INTO meios_eventos (meio_id, ts, msg, user_id) VALUES ($1, now(), $2, $3)`,
+        [alvo.id, `Rendição de guarnição — entrou o turno ${turno}${chefe ? ` (chefe ${chefe})` : ''}.`, req.user.id]);
+      feitos.push({ id: alvo.id, eq: alvo.eq, membros: nomes.length, chefe: chefe || null });
+    }
+    if (!feitos.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        error: `Não há guarnição do turno ${turno} registada na Carta de Meios para este meio.` });
+    }
+    await client.query(
+      `INSERT INTO ocorrencias_eventos (ocorrencia_id, ts, tag, meio_label, msg, user_id, posto_comando_id)
+       VALUES ($1, now(), 'guarnicao', $2, $3, $4, $5)`,
+      [meio.ocorrencia_id, raiz.eq,
+       `${raiz.eq} — rendição de guarnição: entrou o turno ${turno} em ${feitos.length} meio(s).`,
+       req.user.id, meio.posto_comando_id || null]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+
+  res.json({ ok: true, turno, quando, meios: feitos });
+}));
+
+
 // ── Destacar / reagrupar um meio do seu conjunto ─────────────────────────
 // O contentor (BSBF, EMR) guarda o efectivo vindo da Carta de Meios, pelo que
 // destacar um membro obriga a descontá-lo — de outro modo passaria a ser
@@ -3130,12 +3230,79 @@ async function lerGuarnicao(client, col, escalaId, contactoChefe) {
       ORDER BY m.is_chefe DESC, m.ordem, o.nome`, [escalaId]);
   return rows.map(r => (r.is_chefe && contactoChefe) ? `${r.nome} (${contactoChefe})` : r.nome);
 }
+// A mesma leitura, restrita a um turno — é o que a rendição precisa.
+async function lerGuarnicaoTurno(client, col, escalaId, turno, contactoChefe) {
+  if (!GUARNICAO_COLS.includes(col) || !escalaId) return [];
+  const { rows } = await client.query(
+    `SELECT o.nome, m.is_chefe
+       FROM fsbf_equipa_membros m
+       JOIN operacionais_fsbf o ON o.id = m.operacional_id
+      WHERE m.${col} = $1 AND m.turno = $2
+      ORDER BY m.is_chefe DESC, m.ordem, o.nome`, [escalaId, turno]);
+  return rows.map(r => (r.is_chefe && contactoChefe) ? `${r.nome} (${contactoChefe})` : r.nome);
+}
+
+async function chefeDoTurno(client, col, escalaId, turno) {
+  if (!GUARNICAO_COLS.includes(col) || !escalaId) return null;
+  const { rows: [r] } = await client.query(
+    `SELECT o.nome FROM fsbf_equipa_membros m
+       JOIN operacionais_fsbf o ON o.id = m.operacional_id
+      WHERE m.${col} = $1 AND m.turno = $2 AND m.is_chefe LIMIT 1`, [escalaId, turno]);
+  return r ? r.nome : null;
+}
+
 async function gravarOperativos(client, meioId, nomes) {
   for (let i = 0; i < nomes.length; i++) {
     await client.query(
       `INSERT INTO meios_operativos (meio_id, nome, ordem) VALUES ($1,$2,$3)`, [meioId, nomes[i], i]);
   }
   return nomes.length;
+}
+
+// ── Rendição de guarnição ────────────────────────────────────────
+// As viaturas ficam, a guarnição muda. Não é um despacho novo: o meio é o
+// mesmo, com a mesma chegada ao TO. O que recomeça é o relógio de operação,
+// porque o tempo máximo mede o cansaço de quem lá está — e quem lá está é outro.
+
+// Aritmética de relógio de parede, sem fuso: os componentes entram e saem como
+// texto e o Date.UTC serve só de calculadora. Fazê-lo em hora local do servidor
+// dava um dia de diferença conforme onde o servidor está.
+function somarHorasParede(data, hora, horas) {
+  const [Y, M, D] = String(data).split('-').map(Number);
+  const [h, m]    = String(hora || '00:00').split(':').map(Number);
+  const fim = new Date(Date.UTC(Y, M - 1, D, h, m) + (Number(horas) || 0) * 3600000);
+  return { data: fim.toISOString().slice(0, 10), hora: fim.toISOString().slice(11, 16) };
+}
+
+// A que linha da Carta é que este meio está preso, e por que coluna.
+function origemFsbfDoMeio(meio, pai) {
+  if (meio.fsbf_bsbf_id) return { col: 'fsbf_bsbf_id', id: meio.fsbf_bsbf_id };
+  if (meio.fsbf_emr_id)  return { col: 'fsbf_emr_id',  id: meio.fsbf_emr_id  };
+  // Os filhos de uma EMR não trazem a ligação — está no pai.
+  if (pai?.fsbf_emr_id)  return { col: 'fsbf_emr_id',  id: pai.fsbf_emr_id  };
+  if (pai?.fsbf_bsbf_id) return { col: 'fsbf_bsbf_id', id: pai.fsbf_bsbf_id };
+  return null;
+}
+
+// Fecha a guarnição a bordo e abre a que entra, num só sítio para o histórico
+// não poder ficar com duas abertas nem com nenhuma.
+async function renderGuarnicao(client, meio, { turno, quando, nomes, chefe, contacto, userId }) {
+  await client.query(
+    `UPDATE meios_guarnicoes SET ate = $2 WHERE meio_id = $1 AND ate IS NULL`,
+    [meio.id, quando]);
+  const { rows: [g] } = await client.query(
+    `INSERT INTO meios_guarnicoes (meio_id, turno, desde, chefe_nome, contacto, origem, created_by)
+     VALUES ($1,$2,$3,$4,$5,'rendicao',$6) RETURNING id`,
+    [meio.id, turno || null, quando, chefe || null, contacto || null, userId]);
+  for (let i = 0; i < nomes.length; i++) {
+    await client.query(
+      `INSERT INTO meios_guarnicao_membros (guarnicao_id, nome, ordem) VALUES ($1,$2,$3)`,
+      [g.id, nomes[i], i]);
+  }
+  // meios_operativos continua a ser a guarnição a bordo.
+  await client.query(`DELETE FROM meios_operativos WHERE meio_id = $1`, [meio.id]);
+  await gravarOperativos(client, meio.id, nomes);
+  return g.id;
 }
 
 // ── POST /api/ocorrencias/:occId/deploy/fsbf-emr ───────────────
@@ -3635,6 +3802,48 @@ async function runMigrations() {
     // Início da janela de operação. Era data_chegada que servia de arranque ao
     // relógio de fadiga, mas as duas coisas separam-se no descanso: a chegada ao
     // TO é um facto que não se reescreve, e o relógio recomeça a cada retoma.
+    // ── Histórico de guarnições do meio ─────────────────────────────
+    // meios_operativos guarda só a guarnição actual: render uma guarnição
+    // apagava a que saía e não ficava registo de quem esteve a bordo, nem
+    // quando. Estas duas tabelas guardam os períodos; meios_operativos passa a
+    // ser o espelho da guarnição aberta, para nada do que já a lê ter de mudar.
+    `CREATE TABLE IF NOT EXISTS meios_guarnicoes (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        meio_id    UUID NOT NULL REFERENCES meios(id) ON DELETE CASCADE,
+        turno      TEXT,
+        desde      TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ate        TIMESTAMPTZ,
+        chefe_nome TEXT,
+        contacto   TEXT,
+        origem     TEXT,
+        created_by UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS meios_guarnicao_membros (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        guarnicao_id UUID NOT NULL REFERENCES meios_guarnicoes(id) ON DELETE CASCADE,
+        nome         TEXT NOT NULL,
+        ordem        INT DEFAULT 0
+    )`,
+    `CREATE INDEX IF NOT EXISTS meios_guarnicoes_meio_idx ON meios_guarnicoes (meio_id)`,
+    // Um meio só pode ter uma guarnição a bordo de cada vez. O índice parcial
+    // torna isso impossível de violar, mesmo que dois pedidos cheguem juntos.
+    `CREATE UNIQUE INDEX IF NOT EXISTS meios_guarnicao_aberta_idx
+       ON meios_guarnicoes (meio_id) WHERE ate IS NULL`,
+    // Os meios que já têm guarnição passam a ter também o período aberto, senão
+    // a primeira rendição não teria o que fechar. Idempotente.
+    `INSERT INTO meios_guarnicoes (meio_id, desde, chefe_nome, contacto, origem)
+     SELECT m.id, COALESCE(m.data_chegada::timestamptz, m.created_at, now()),
+            m.responsavel, m.contacto, 'despacho'
+       FROM meios m
+      WHERE EXISTS (SELECT 1 FROM meios_operativos o WHERE o.meio_id = m.id)
+        AND NOT EXISTS (SELECT 1 FROM meios_guarnicoes g WHERE g.meio_id = m.id)`,
+    `INSERT INTO meios_guarnicao_membros (guarnicao_id, nome, ordem)
+     SELECT g.id, o.nome, o.ordem
+       FROM meios_guarnicoes g
+       JOIN meios_operativos o ON o.meio_id = g.meio_id
+      WHERE g.ate IS NULL
+        AND NOT EXISTS (SELECT 1 FROM meios_guarnicao_membros mm WHERE mm.guarnicao_id = g.id)`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_data DATE`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_hora TEXT`,
     `UPDATE meios SET op_inicio_data = data_chegada, op_inicio_hora = hora_chegada
