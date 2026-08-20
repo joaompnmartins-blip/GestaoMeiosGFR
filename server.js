@@ -2615,18 +2615,19 @@ app.delete('/api/fsbf/gruata', requireAuth('visualizador'), FSBF_GESTORES, wrap(
 // chefe_nome é texto livre; operacionais_fsbf.nome tem índice único, por isso
 // a resolução por nome é fiável — um nome que não resolva fica simplesmente
 // sem linha e aparece como não identificado nas estatísticas.
-async function syncChefeMembro(db, { data, bsbfId = null, emrId = null, chefeNome }) {
+async function syncChefeMembro(db, { data, bsbfId = null, emrId = null, chefeNome, turno = 'A' }) {
   const col = bsbfId ? 'fsbf_bsbf_id' : 'fsbf_emr_id';
   const id  = bsbfId || emrId;
-  await db.query(`DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND is_chefe`, [id]);
+  // Cada turno tem o seu chefe: apagar todos apagaria o do outro turno.
+  await db.query(`DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND is_chefe AND turno=$2`, [id, turno]);
   if (!chefeNome) return { ok: true };
   const { rows: [op] } = await db.query(
     `SELECT id, nome FROM operacionais_fsbf WHERE nome = $1 AND ativo`, [chefeNome]);
   if (!op) return { ok: true, unresolved: chefeNome };
   try {
     await db.query(
-      `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, is_chefe, ordem)
-       VALUES ($1,$2,$3,true,-1)`, [data, id, op.id]);
+      `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, is_chefe, turno, ordem)
+       VALUES ($1,$2,$3,true,$4,-1)`, [data, id, op.id, turno]);
   } catch (e) {
     if (e.code === '23505') return { ok: false, conflito: op.nome };
     throw e;
@@ -2669,7 +2670,7 @@ async function companhiaStats(data) {
 
 // Substitui os membros não-chefe de uma equipa (operação atómica).
 app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
-  const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [] } = req.body;
+  const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [], turno = 'A' } = req.body;
   if (!data) return res.status(400).json({ error: 'data obrigatória.' });
   if (!!fsbf_bsbf_id === !!fsbf_emr_id)
     return res.status(400).json({ error: 'Indique exactamente uma equipa.' });
@@ -2694,11 +2695,13 @@ app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(as
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query(`DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND NOT is_chefe`, [id]);
+    // Só a guarnição deste turno é substituída — a do outro fica.
+    await client.query(
+      `DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND NOT is_chefe AND turno=$2`, [id, turno]);
     for (let i = 0; i < ids.length; i++) {
       await client.query(
-        `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, ordem, created_by)
-         VALUES ($1,$2,$3,$4,$5)`, [data, id, ids[i], i, req.user.id]);
+        `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, turno, ordem, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6)`, [data, id, ids[i], turno, i, req.user.id]);
     }
     await client.query('COMMIT');
   } catch (e) {
@@ -2707,11 +2710,14 @@ app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(as
       const { rows: [o] } = await pool.query(
         `SELECT m.operacional_id, o.nome FROM fsbf_equipa_membros m
          JOIN operacionais_fsbf o ON o.id = m.operacional_id
-         WHERE m.data=$1 AND m.operacional_id = ANY($2::uuid[]) AND m.${col} IS DISTINCT FROM $3
-         LIMIT 1`, [data, ids, id]);
+         WHERE m.data=$1 AND m.turno=$4 AND m.operacional_id = ANY($2::uuid[])
+           AND m.${col} IS DISTINCT FROM $3
+         LIMIT 1`, [data, ids, id, turno]);
+      // O conflito é dentro do turno: a mesma pessoa pode estar no turno A de
+      // uma viatura e no turno B de outra, o que antes era impossível.
       return res.status(409).json({
-        error: o ? `${o.nome} já está noutra guarnição neste dia.`
-                 : 'Operacional já atribuído a outra guarnição neste dia.' });
+        error: o ? `${o.nome} já está noutra guarnição do turno ${turno} neste dia.`
+                 : `Operacional já atribuído a outra guarnição do turno ${turno} neste dia.` });
     }
     throw e;
   } finally { client.release(); }
@@ -2924,10 +2930,10 @@ app.post('/api/fsbf/carta/copy', requireAuth('visualizador'), FSBF_GESTORES, wra
     if (!novoB && !novoE) continue;
     await pool.query(
       `INSERT INTO fsbf_equipa_membros
-         (data, fsbf_bsbf_id, fsbf_emr_id, operacional_id, is_chefe, ordem, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (data, operacional_id) DO NOTHING`,
-      [to, novoB, novoE, m.operacional_id, m.is_chefe, m.ordem, req.user.id]);
+         (data, fsbf_bsbf_id, fsbf_emr_id, operacional_id, is_chefe, turno, ordem, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (data, turno, operacional_id) DO NOTHING`,
+      [to, novoB, novoE, m.operacional_id, m.is_chefe, m.turno || 'A', m.ordem, req.user.id]);
     copiados++;
   }
 
@@ -3776,12 +3782,24 @@ async function runMigrations() {
         fsbf_emr_id    UUID REFERENCES fsbf_emr_equipa(id)  ON DELETE CASCADE,
         operacional_id UUID NOT NULL REFERENCES operacionais_fsbf(id) ON DELETE RESTRICT,
         is_chefe       BOOLEAN NOT NULL DEFAULT false,
+        turno          TEXT NOT NULL DEFAULT 'A',
         ordem          INT DEFAULT 0,
         created_at     TIMESTAMPTZ DEFAULT now(),
         created_by     UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
         CHECK (num_nonnulls(fsbf_bsbf_id, fsbf_emr_id) = 1)
     )`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS fsbf_membros_dia_op_idx  ON fsbf_equipa_membros (data, operacional_id)`,
+    // ── Guarnições por turno ────────────────────────────────────────
+    // A Carta tem uma linha por dia e a guarnição estava presa a essa linha:
+    // não havia como dizer que a mesma viatura tem uma guarnição de dia e
+    // outra de noite. O turno passa a fazer parte da identidade do membro.
+    `ALTER TABLE IF EXISTS fsbf_equipa_membros ADD COLUMN IF NOT EXISTS turno TEXT NOT NULL DEFAULT 'A'`,
+    // O índice antigo, (data, operacional_id), era o que impedia a segunda
+    // guarnição do mesmo dia. O turno tem de ser NOT NULL: com nulos, as linhas
+    // escapavam todas ao índice — em Postgres dois nulos nunca são iguais — e a
+    // exclusividade deixaria de valer para o que quer que fosse.
+    `DROP INDEX IF EXISTS fsbf_membros_dia_op_idx`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS fsbf_membros_dia_turno_op_idx
+       ON fsbf_equipa_membros (data, turno, operacional_id)`,
     `CREATE INDEX        IF NOT EXISTS fsbf_membros_bsbf_idx    ON fsbf_equipa_membros (fsbf_bsbf_id)`,
     `CREATE INDEX        IF NOT EXISTS fsbf_membros_emr_idx     ON fsbf_equipa_membros (fsbf_emr_id)`,
     // Materializa o chefe de cada equipa como membro. Idempotente: DO NOTHING
@@ -3792,13 +3810,13 @@ async function runMigrations() {
        FROM fsbf_bsbf_equipa e
        JOIN operacionais_fsbf o ON o.nome = e.chefe_nome AND o.ativo
       WHERE e.chefe_nome IS NOT NULL
-     ON CONFLICT (data, operacional_id) DO NOTHING`,
+     ON CONFLICT (data, turno, operacional_id) DO NOTHING`,
     `INSERT INTO fsbf_equipa_membros (data, fsbf_emr_id, operacional_id, is_chefe, ordem)
      SELECT e.data, e.id, o.id, true, -1
        FROM fsbf_emr_equipa e
        JOIN operacionais_fsbf o ON o.nome = e.chefe_nome AND o.ativo
       WHERE e.chefe_nome IS NOT NULL
-     ON CONFLICT (data, operacional_id) DO NOTHING`,
+     ON CONFLICT (data, turno, operacional_id) DO NOTHING`,
     // Expand brigada CHECK on fsbf_bsbf_equipa to include 'Outros'
     `DO $$ BEGIN
        ALTER TABLE fsbf_bsbf_equipa DROP CONSTRAINT IF EXISTS fsbf_bsbf_equipa_brigada_check;
