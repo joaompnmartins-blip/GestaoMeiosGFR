@@ -46,6 +46,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 24 | 19/08/2026 | Meio desmobilizado deixa de mostrar Setor, Posto e Missão | `a748c02` | **por validar (só beta2)** |
 | 25 | 19/08/2026 | Missão com acção própria no cartão, registada na Fita do Tempo | `2a0751d` | **por validar (só beta2)** |
 | 26 | 20/08/2026 | Categoria «Missão» na Fita do Tempo, com o meio identificado | `2f25c99` | **por validar (só beta2)** |
+| 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1944,3 +1945,75 @@ o filtro **Missão** dá uma lista limpa, uma linha por alteração.
 3. Filtrar por Missão e confirmar uma linha por alteração, com o crachá do meio.
 4. Confirmar que as entradas antigas (setor, estado) passaram a mostrar também
    o crachá do meio.
+
+---
+
+## 27 — Contagens do cabeçalho de setor/PCO: contentores fora, e rótulos por extenso
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que estava errado
+
+O cabeçalho de cada setor contava **linhas da tabela**, não meios:
+
+```js
+const ops = st.filter(t => t.estado === 'operacao').length;
+```
+
+O contentor de uma BSF/BSBF não é um meio — é o rótulo do conjunto — mas
+entrava na conta na mesma. No setor **BRAVO** da ocorrência de Faro estão o
+contentor `BRIG 01-185` e os seus três `SF`, e o cabeçalho dizia **4** enquanto
+o cartão logo abaixo dizia **3 meios**. Dois números diferentes para a mesma
+coisa, no mesmo ecrã.
+
+O efectivo (**15**) já estava certo: usa `somaOperacionais()`, corrigido na
+alteração 11.
+
+### O que passa a ser
+
+| | Antes | Agora |
+|---|---|---|
+| BRAVO | 🟢 4 op. · 🟡 0 desc. · 👥 15 op.ais | 🟢 **3** Veículos · 🟡 0 Descanso · 👥 15 Operacionais |
+
+Os rótulos passam a **Veículos**, **Descanso** e **Operacionais**, por extenso —
+`op.` e `op.ais` liam-se mal e confundiam-se um com o outro.
+
+**Nota sobre o primeiro número:** era «em operação» e passa a ser o total de
+veículos do setor. Como os grupos de setor só contêm meios em operação ou em
+descanso, o total é a soma dos dois, e o **Descanso** passa a ler-se como
+subconjunto: *3 veículos, dos quais 0 em descanso*. Se preferir que o primeiro
+número continue a ser só os que estão em operação, é uma linha.
+
+### O mesmo defeito noutros dois sítios
+
+Verificados a propósito, e corrigidos:
+
+- Cabeçalhos dos blocos **Previstos** e **Em Trânsito** — contavam contentores.
+- **RESUMO do relatório exportado** — o total já usava `somaMeios()`, mas as
+  parcelas por estado (`em op.`, `descanso`, `desmob.`) contavam contentores, o
+  que fazia com que as parcelas não fechassem com o total.
+
+### Casos verificados
+
+| Caso | Veículos | Descanso | Operacionais |
+|---|---|---|---|
+| BRAVO: contentor BSF + 3 SF | 3 | 0 | 15 |
+| ALFA: `EGFR 03` em descanso | 1 | 1 | 3 |
+
+O `EGFR 03` tem `composicao_id` mas não tem filhos, pelo que **não** é
+contentor e conta como veículo — a distinção que `meioEhContentor()` já fazia.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `renderSectorGroups()` passa a usar `somaMeios()` e
+  a excluir contentores do descanso; cabeçalhos de Previstos/Em Trânsito; e o
+  RESUMO do relatório.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Na ocorrência de Faro, setor BRAVO: o cabeçalho deve dizer **3 Veículos** e
+   coincidir com os **3 meios** do cartão.
+2. Confirmar **15 Operacionais**.
+3. Pôr um meio em descanso e confirmar que o Descanso sobe e os Veículos não.
+4. Exportar o relatório e confirmar que as parcelas do RESUMO fecham com o total.

@@ -4296,16 +4296,18 @@ function renderSectorGroups(ativos, isClosed){
   const sorted=Object.keys(sectors).sort((a,b)=>a==='(Sem Setor)'?1:b==='(Sem Setor)'?-1:a.localeCompare(b));
   return sorted.map(s=>{
     const st=sectors[s];
-    const ops=st.filter(t=>t.estado==='operacao').length;
-    const rest=st.filter(t=>t.estado==='descanso').length;
-    const totalOps=somaOperacionais(st.filter(t=>t.estado!=='desmobilizado'));
+    // O contentor de uma BSF/BSBF não é um meio e não pode entrar na conta —
+    // era por isso que o cabeçalho do setor dizia 4 com três meios no chão.
+    const veiculos=somaMeios(st);
+    const rest=st.filter(t=>t.estado==='descanso'&&!meioEhContentor(t)).length;
+    const totalOps=somaOperacionais(st);
     return `<div class="sector-group">
       <div class="sector-header">
         <span class="sector-label">${esc(s)}</span>
         <div class="sector-stats">
-          <span class="sector-stat" style="color:var(--success)">🟢 ${ops} op.</span>
-          <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} desc.</span>
-          <span class="sector-stat">👥 ${totalOps} op.ais</span>
+          <span class="sector-stat" style="color:var(--success)">🟢 ${veiculos} Veículos</span>
+          <span class="sector-stat" style="color:var(--warn)">🟡 ${rest} Descanso</span>
+          <span class="sector-stat">👥 ${totalOps} Operacionais</span>
         </div>
       </div>
       ${gridConjuntos(st,isClosed)}
@@ -4327,7 +4329,7 @@ function renderSectorView(teams, isClosed){
     html+=`<div class="previsto-section">
       <div class="previsto-section-hdr">
         <span class="previsto-section-label">⏳ Previstos</span>
-        <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${previstos.length} meio${previstos.length!==1?'s':''} aguardam mobilização</span></div>
+        <div class="sector-stats"><span class="sector-stat" style="color:#b890e8">${somaMeios(previstos)} meio${somaMeios(previstos)!==1?'s':''} aguardam mobilização</span></div>
       </div>
       ${gridConjuntos(previstos,isClosed)}
     </div>`;
@@ -4338,7 +4340,7 @@ function renderSectorView(teams, isClosed){
     html+=`<div class="transito-section">
       <div class="transito-section-hdr">
         <span class="transito-section-label">🚒 Em Trânsito</span>
-        <div class="sector-stats"><span class="sector-stat" style="color:var(--icnf-blue-light)">${transitos.length} meio${transitos.length!==1?'s':''} a caminho do TO</span></div>
+        <div class="sector-stats"><span class="sector-stat" style="color:var(--icnf-blue-light)">${somaMeios(transitos)} meio${somaMeios(transitos)!==1?'s':''} a caminho do TO</span></div>
       </div>
       ${gridConjuntos(transitos,isClosed)}
     </div>`;
@@ -6707,7 +6709,8 @@ function exportLog(){
   }
 
   lines.push(sep2);
-  lines.push(`  RESUMO: ${somaMeios(teams)} meios · ${teams.filter(t=>t.estado==='operacao').length} em op. · ${teams.filter(t=>t.estado==='descanso').length} descanso · ${teams.filter(t=>t.estado==='desmobilizado').length} desmob.`);
+  const _porEstado = e => (teams||[]).filter(t => t.estado===e && !meioEhContentor(t)).length;
+  lines.push(`  RESUMO: ${somaMeios(teams)} meios · ${_porEstado('operacao')} em op. · ${_porEstado('descanso')} descanso · ${_porEstado('desmobilizado')} desmob.`);
   lines.push(sep2);
   lines.push('');
 
