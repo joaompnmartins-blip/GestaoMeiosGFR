@@ -1624,6 +1624,10 @@
           <option>DELTA</option><option>FOXTROT</option><option>GOLF</option><option>HOTEL</option><option>INDIA</option>
         </select>
       </div>
+      <div class="form-field" id="posto-field" style="display:none;">
+        <label class="form-label">Posto de Comando</label>
+        <select class="form-select" id="team-posto"></select>
+      </div>
       <div class="form-field">
         <label class="form-label">Missão / Posição</label>
         <input class="form-input" id="team-missao" placeholder="Ex: EGFR, OF LIG, PF Barão…"/>
@@ -3585,6 +3589,31 @@ function occPostos(){
   return db.postos.filter(p=>p.ocorrencia_id===currentOccId);
 }
 
+// Selector de posto, partilhado pelo Adicionar/Editar Meio e pelo despacho de
+// meios nacionais. Só aparece se a ocorrência tiver postos — quando não tem, a
+// escolha não existe e o campo seria ruído. O valor por omissão é o posto onde
+// se está: entrar num PCF e adicionar continua a colocar o meio nesse PCF.
+function preencherPostoOpts(idSelect, idCampo, seleccionado){
+  const sel = document.getElementById(idSelect);
+  const campo = document.getElementById(idCampo);
+  if(!sel) return;
+  const postos = occPostos();
+  if(campo) campo.style.display = postos.length ? '' : 'none';
+  const conhecido = postos.some(p => p.id === seleccionado);
+  sel.innerHTML = '<option value="">PCO Principal</option>'
+    + postos.map(p=>`<option value="${p.id}">${esc(p.nome)} (${esc(p.tipo)})</option>`).join('')
+    // Um posto desactivado deixa de vir na lista; sem isto, editar um meio que
+    // lá esteja mudava-o silenciosamente para o PCO Principal ao gravar.
+    + (seleccionado && !conhecido ? `<option value="${seleccionado}">(posto já não activo)</option>` : '');
+  sel.value = seleccionado || '';
+}
+
+function nomePosto(id){
+  if(!id) return 'PCO Principal';
+  const p = db.postos.find(x=>x.id===id);
+  return p ? `${p.nome} (${p.tipo})` : 'posto removido';
+}
+
 function openDetalhe(id){
   currentOccId=id;
   currentPostoId=null;
@@ -5487,6 +5516,7 @@ function openAddTeam(){
   document.getElementById('pm-ops-list').innerHTML='';
   onTeamTipoChange();
   meioEstadoOptsCompleto();
+  preencherPostoOpts('team-posto','posto-field', currentPostoId||'');
   document.getElementById('team-ops').value='';
   document.getElementById('team-estado').value='previsto';
   document.getElementById('team-previsto-data').value='';
@@ -5729,6 +5759,7 @@ function editTeam(id){
   }
 
   meioEstadoOpts(t.estado||'transito');
+  preencherPostoOpts('team-posto','posto-field', t.postoComandoId||'');
   document.getElementById('team-previsto-data').value=t.previstoData||'';
   document.getElementById('team-previsto-hora').value=t.previstoHora||'';
   toggleMobilizacaoFields(t.estado||'transito', true);
@@ -5817,7 +5848,15 @@ async function saveTeam(){
     equipaId:document.getElementById('team-equipa-id').value||null,
     recursoId:document.getElementById('team-recurso-id').value||null,
     recursoAdicionalId:document.getElementById('team-recurso-adicional-id').value||null,
-    postoComandoId: editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null),
+    // '' é uma escolha legítima — PCO Principal — e não pode cair no valor
+    // anterior, senão nunca se conseguia trazer um meio de volta ao principal.
+    postoComandoId: (() => {
+      const campo = document.getElementById('posto-field');
+      const sel   = document.getElementById('team-posto');
+      if(!sel || (campo && campo.style.display === 'none'))
+        return editId ? (db.teams.find(x=>x.id===editId)?.postoComandoId||null) : (currentPostoId||null);
+      return sel.value || null;
+    })(),
   };
 
   // Exclusividade: meio ocupado = activo OU desmobilizado sem chegada_entidade
@@ -5944,6 +5983,13 @@ async function saveTeam(){
       if(payload.setor!==old.setor){
         changes.push(`Setor: ${old.setor||'—'} → ${payload.setor||'—'}`);
         await persistOccEvento(currentOccId,'sector',`${eq} — setor alterado: ${old.setor||'—'} → ${payload.setor||'—'}`,eq);
+      }
+      if((payload.postoComandoId||null)!==(old.postoComandoId||null)){
+        const de=nomePosto(old.postoComandoId), para=nomePosto(payload.postoComandoId);
+        changes.push(`Posto: ${de} → ${para}`);
+        addEventLog(db.teams[idx],`Transferido: ${de} → ${para}.`);
+        await persistEvento(id,`Transferido: ${de} → ${para}.`);
+        await persistOccEvento(currentOccId,'posto',`${eq} — transferido: ${de} → ${para}`,eq,payload.postoComandoId||null);
       }
       if(obs&&obs!==oldObs){
         changes.push(`Obs: ${obs}`);
@@ -9311,6 +9357,7 @@ function openDeployModal(type, teamId, extra){
     : 'Despachar Equipa EMR';
   document.getElementById('deploy-setor').value  = '';
   document.getElementById('deploy-missao').value = '';
+  preencherPostoOpts('deploy-posto','deploy-posto-field', currentPostoId||'');
   openModal('modal-deploy-nacional');
 }
 
@@ -9321,6 +9368,7 @@ async function confirmDeployNacional(){
   const body = {
     setor:  document.getElementById('deploy-setor').value.trim()||undefined,
     missao: document.getElementById('deploy-missao').value.trim()||undefined,
+    posto_comando_id: document.getElementById('deploy-posto')?.value || null,
   };
   let url;
   if(_deployType === 'egfr'){
@@ -10885,6 +10933,10 @@ async function mergeSaveConfirm(){
         <div class="form-field" style="flex:2;min-width:160px;">
           <label class="form-label">Missão</label>
           <input class="form-input" id="deploy-missao" placeholder="Missão / descrição…"/>
+        </div>
+        <div class="form-field" id="deploy-posto-field" style="flex:2;min-width:180px;display:none;">
+          <label class="form-label">Posto de Comando</label>
+          <select class="form-select" id="deploy-posto"></select>
         </div>
       </div>
     </div>

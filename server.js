@@ -99,8 +99,11 @@ function wrap(fn) {
         console.warn(`${e.code} em ${req.method} ${req.originalUrl}: ${e.message}`);
         return res.status(conhecido.status).json({ error: conhecido.msg, code: e.code });
       }
+      // Erros de validação trazem o seu próprio estado. Sem isto saíam como 500
+      // e a fila de sincronização, que descarta 4xx e repete tudo o resto,
+      // ficava a tentar para sempre um pedido que nunca vai ser aceite.
       console.error(e.message);
-      res.status(500).json({ error: e.message });
+      res.status(e.status || 500).json({ error: e.message });
     }
   };
 }
@@ -308,6 +311,21 @@ const MEIO_COLS = [
 
 const OCUPADO_ESTADOS = ['previsto','transito','operacao','descanso'];
 
+// O posto tem de ser desta ocorrência. A chave estrangeira só garante que
+// existe: sem esta verificação, um id de outra ocorrência era aceite e o meio
+// desaparecia da vista de quem o despachou.
+async function postoDaOcorrencia(occId, postoId, db) {
+  if (!postoId) return null;
+  const { rows } = await (db || pool).query(
+    'SELECT id FROM postos_comando WHERE id=$1 AND ocorrencia_id=$2 AND ativo', [postoId, occId]);
+  if (!rows.length) {
+    const e = new Error('O posto de comando indicado não pertence a esta ocorrência.');
+    e.status = 400;
+    throw e;
+  }
+  return postoId;
+}
+
 async function findRecursoConflict(recursoId, estado, excludeId) {
   if (!recursoId) return null;
   // Occupied = active state OR desmobilizado still "em regresso" (no chegada_entidade)
@@ -455,6 +473,7 @@ app.post('/api/meios', requireAuth('ofligacao'), wrap(async (req, res) => {
   if (vConflict) {
     return res.status(409).json({ error: `Esta viatura já está em uso na ocorrência "${vConflict.local_ignicao}".` });
   }
+  await postoDaOcorrencia(b.ocorrencia_id, b.posto_comando_id);
   const cols = [...MEIO_COLS, 'created_by'];
   const vals = [...MEIO_COLS.map(c => b[c] ?? null), req.user.id];
   const ph   = cols.map((_, i) => `$${i + 1}`).join(',');
@@ -470,6 +489,12 @@ app.patch('/api/meios/:id', requireAuth('operacional'), wrap(async (req, res) =>
   // must not null out NOT NULL columns like ocorrencia_id or eq.
   const cols = MEIO_COLS.filter(c => c in b);
   if (!cols.length) return res.json({ ok: true });
+
+  // A ocorrência do meio manda: o posto tem de ser dela, não da que vier no corpo.
+  if (b.posto_comando_id) {
+    const { rows: [dono] } = await pool.query('SELECT ocorrencia_id FROM meios WHERE id=$1', [req.params.id]);
+    if (dono) await postoDaOcorrencia(dono.ocorrencia_id, b.posto_comando_id);
+  }
 
   // Trocar o recurso de um meio existente é outra via para o mesmo desvio. Só
   // se verifica quando o valor muda de facto: já existem meios nacionais
@@ -2116,7 +2141,8 @@ app.get('/api/fsbf/disponivel', requireAuth('ofligacao_ccon'), wrap(async (req, 
 
 // Despacha a GRUATA inteira: um meio-pai + um filho por viatura da ficha.
 app.post('/api/ocorrencias/:occId/deploy/fsbf-gruata', requireCCON, wrap(async (req, res) => {
-  const { data, setor, missao } = req.body;
+  const { data, setor, missao, posto_comando_id } = req.body;
+  const postoId = await postoDaOcorrencia(req.params.occId, posto_comando_id);
   if (!data) return res.status(400).json({ error: 'data obrigatória.' });
 
   const { rows: [g] } = await pool.query(`SELECT * FROM fsbf_gruata WHERE data=$1`, [data]);
@@ -2139,31 +2165,32 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-gruata', requireCCON, wrap(async (
     await client.query('BEGIN');
     const { rows: [parent] } = await client.query(
       `INSERT INTO meios (ocorrencia_id, eq, tipo, operacionais, responsavel, contacto,
-                          setor, missao, estado, data_chegada, fsbf_gruata_id, created_by)
-       VALUES ($1,$2,'GRUATA',$3,$4,$5,$6,$7,'previsto',$8,$9,$10) RETURNING *`,
+                          setor, missao, estado, data_chegada, fsbf_gruata_id, created_by,
+                          posto_comando_id)
+       VALUES ($1,$2,'GRUATA',$3,$4,$5,$6,$7,'previsto',$8,$9,$10,$11) RETURNING *`,
       [req.params.occId, nome, totalOp, g.cmdt_nome || null, g.cmdt_contacto || null,
-       setor || null, missao || null, today, g.id, req.user.id]);
+       setor || null, missao || null, today, g.id, req.user.id, postoId]);
 
     for (const l of linhas) {
       await client.query(
         `INSERT INTO meios (ocorrencia_id, meio_pai_id, eq, tipo, matricula, operacionais,
                             responsavel, contacto, setor, missao, estado, data_chegada,
-                            fsbf_bsbf_id, fsbf_gruata_id, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'previsto',$11,$12,$13,$14)`,
+                            fsbf_bsbf_id, fsbf_gruata_id, created_by, posto_comando_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'previsto',$11,$12,$13,$14,$15)`,
         [req.params.occId, parent.id, l.veiculo || nome,
          (l.veiculo || '').split(' ')[0] || 'VLCI', l.matricula || null, l.guarnicao || 0,
          l.chefe_equipa || null, l.contacto || null, setor || null, missao || null,
-         today, l.fsbf_bsbf_id || null, g.id, req.user.id]);
+         today, l.fsbf_bsbf_id || null, g.id, req.user.id, postoId]);
     }
     if (g.emr_mr) {
       await client.query(
         `INSERT INTO meios (ocorrencia_id, meio_pai_id, eq, tipo, operacionais, responsavel,
                             contacto, setor, missao, estado, data_chegada, fsbf_emr_id,
-                            fsbf_gruata_id, created_by)
-         VALUES ($1,$2,$3,'MR',$4,$5,$6,$7,$8,'previsto',$9,$10,$11,$12)`,
+                            fsbf_gruata_id, created_by, posto_comando_id)
+         VALUES ($1,$2,$3,'MR',$4,$5,$6,$7,$8,'previsto',$9,$10,$11,$12,$13)`,
         [req.params.occId, parent.id, g.emr_mr, g.emr_total_op || 0, g.emr_chefe || null,
          g.emr_contacto || null, setor || null, missao || null, today,
-         g.emr_id || null, g.id, req.user.id]);
+         g.emr_id || null, g.id, req.user.id, postoId]);
     }
     await client.query('COMMIT');
     res.status(201).json({ ok: true, meio: parent, filhos: linhas.length + (g.emr_mr ? 1 : 0) });
@@ -3040,7 +3067,8 @@ async function gravarOperativos(client, meioId, nomes) {
 // Creates MR as primary meio (fsbf_emr_id), secondary vehicles as children (meio_pai_id).
 // No container card — each vehicle appears as its own card, grouped by colour in the UI.
 app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req, res) => {
-  const { team_id, setor, missao } = req.body;
+  const { team_id, setor, missao, posto_comando_id } = req.body;
+  const postoId = await postoDaOcorrencia(req.params.occId, posto_comando_id);
   if (!team_id) return res.status(400).json({ error: 'team_id obrigatório.' });
 
   const { rows: [emr] } = await pool.query(`
@@ -3096,8 +3124,9 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
     const { rows: [mrMeio] } = await client.query(
       `INSERT INTO meios
          (ocorrencia_id, viatura_id, eq, tipo, matricula,
-          operacionais, responsavel, contacto, setor, missao, estado, data_chegada, fsbf_emr_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'previsto',$11,$12,$13) RETURNING *`,
+          operacionais, responsavel, contacto, setor, missao, estado, data_chegada, fsbf_emr_id, created_by,
+          posto_comando_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'previsto',$11,$12,$13,$14) RETURNING *`,
       [
         req.params.occId,
         emr.mr_viatura_id || null,
@@ -3108,7 +3137,7 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
         emr.chefe_nome || null,
         emr.contacto || null,
         setor || null, missao || null,
-        today, team_id, req.user.id,
+        today, team_id, req.user.id, postoId,
       ]
     );
 
@@ -3126,10 +3155,10 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
       const { rows: [child] } = await client.query(
         `INSERT INTO meios
            (ocorrencia_id, viatura_id, meio_pai_id, eq, tipo, matricula,
-            setor, missao, estado, data_chegada, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'previsto',$9,$10) RETURNING *`,
+            setor, missao, estado, data_chegada, created_by, posto_comando_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'previsto',$9,$10,$11) RETURNING *`,
         [req.params.occId, v.id, mrMeio.id, v.eq, v.tipo, v.mat||null,
-         setor||null, missao||null, today, req.user.id]
+         setor||null, missao||null, today, req.user.id, postoId]
       );
       meios.push(child);
     }
@@ -3145,7 +3174,8 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-emr', requireCCON, wrap(async (req
 // Creates a brigade parent meio (fsbf_bsbf_id = first vehicle row ID),
 // one child meio per vehicle, each with its chefe+contact as operative.
 app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (req, res) => {
-  const { brigada, data, setor, missao } = req.body;
+  const { brigada, data, setor, missao, posto_comando_id } = req.body;
+  const postoId = await postoDaOcorrencia(req.params.occId, posto_comando_id);
   if (!brigada || !data) return res.status(400).json({ error: 'brigada e data obrigatórios.' });
 
   const { rows: vehicles } = await pool.query(`
@@ -3189,14 +3219,15 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
     // Parent brigade container (fsbf_bsbf_id = first vehicle row, for exclusivity index)
     const { rows: [parent] } = await client.query(
       `INSERT INTO meios
-         (ocorrencia_id, eq, tipo, operacionais, setor, missao, estado, data_chegada, fsbf_bsbf_id, created_by)
-       VALUES ($1,$2,'BSBF',$3,$4,$5,'previsto',$6,$7,$8) RETURNING *`,
+         (ocorrencia_id, eq, tipo, operacionais, setor, missao, estado, data_chegada, fsbf_bsbf_id, created_by,
+          posto_comando_id)
+       VALUES ($1,$2,'BSBF',$3,$4,$5,'previsto',$6,$7,$8,$9) RETURNING *`,
       [
         req.params.occId,
         `BSBF ${brigada}`,
         vehicles.reduce((s, v) => s + (v.guarnicao || 0), 0),
         setor || null, missao || null,
-        today, vehicles[0].id, req.user.id,
+        today, vehicles[0].id, req.user.id, postoId,
       ]
     );
 
@@ -3207,8 +3238,9 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
       const { rows: [child] } = await client.query(
         `INSERT INTO meios
            (ocorrencia_id, viatura_id, meio_pai_id, eq, tipo, matricula,
-            operacionais, responsavel, contacto, setor, missao, estado, data_chegada, fsbf_bsbf_id, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'previsto',$12,$13,$14) RETURNING *`,
+            operacionais, responsavel, contacto, setor, missao, estado, data_chegada, fsbf_bsbf_id, created_by,
+            posto_comando_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'previsto',$12,$13,$14,$15) RETURNING *`,
         [
           req.params.occId,
           v.veiculo_id || null,
@@ -3220,7 +3252,7 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
           v.chefe_nome || null,
           v.contacto || null,
           setor || null, missao || null,
-          today, v.id, req.user.id,
+          today, v.id, req.user.id, postoId,
         ]
       );
       // Guarnição da linha da Carta de Meios; sem ela, resta o chefe.
@@ -3245,7 +3277,8 @@ app.post('/api/ocorrencias/:occId/deploy/fsbf-bsbf', requireCCON, wrap(async (re
 
 // ── POST /api/ocorrencias/:occId/deploy/egfr ───────────────────
 app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, res) => {
-  const { data, equipa, setor, missao } = req.body;
+  const { data, equipa, setor, missao, posto_comando_id } = req.body;
+  const postoId = await postoDaOcorrencia(req.params.occId, posto_comando_id);
   if (!data || !equipa) return res.status(400).json({ error: 'data e equipa obrigatórios.' });
 
   const [escalaRes, viatRes] = await Promise.all([
@@ -3291,8 +3324,9 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
     const { rows: [meio] } = await client.query(
       `INSERT INTO meios
          (ocorrencia_id, composicao_id, viatura_id, eq, tipo, matricula,
-          operacionais, setor, missao, estado, data_chegada, egfr_data, egfr_equipa, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'previsto',$10,$11,$12,$13) RETURNING *`,
+          operacionais, setor, missao, estado, data_chegada, egfr_data, egfr_equipa, created_by,
+          posto_comando_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'previsto',$10,$11,$12,$13,$14) RETURNING *`,
       [
         req.params.occId, comp.id,
         viat?.viatura_id || null,
@@ -3301,7 +3335,7 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
         viat?.matricula  || null,
         escalaRes.rows.length,
         setor || null, missao || null,
-        today, data, equipa, req.user.id,
+        today, data, equipa, req.user.id, postoId,
       ]
     );
 

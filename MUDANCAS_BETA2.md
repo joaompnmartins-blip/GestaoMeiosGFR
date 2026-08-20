@@ -41,6 +41,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `b71a7fe` | **por validar (só beta2)** |
 | 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
 | 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `f568ee3` | **por validar (só beta2)** |
+| 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1651,3 +1652,95 @@ Na **edição** nada muda — é lá que a pausa acontece:
 1. **Adicionar Meio**: confirmar que *Em Descanso* não aparece no Estado.
 2. **Editar** um meio em operação: *Em Descanso* continua disponível.
 3. Editar um meio já em descanso: continua a poder retomar operação.
+
+---
+
+## 22 — Empenhar um meio directamente num PCF/AIM
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O posto de comando de um meio era herdado do sítio onde se estava: o payload
+lia `currentPostoId`, que só deixa de ser nulo depois de se **entrar** num
+PCF/AIM. Como os meios se acrescentam a partir da ocorrência, caíam todos no
+PCO Principal, e atribuí-los exigia uma segunda passagem com o **⇄ PCO**.
+
+Essa segunda passagem quase nunca acontecia:
+
+| Ocorrência | Postos | No PCO Principal | Num posto |
+|---|---|---|---|
+| Matosinhos, Leça do Balio | Frente 1 · Frente 2 | 14 | **5** |
+| Ourém, Fátima | PCF Norte · AIM Ourém | 17 | 0 |
+| Vila Real, Ervões | Frente 1 · Frente 2 | 6 | 0 |
+| Faro, Loulé, Salir | PC Salir Sul | 18 | 0 |
+| ZZTESTE Sertã | AIM · PCF | 7 | 0 |
+
+66 meios no PCO Principal contra 5 em postos, em seis ocorrências que se deram
+ao trabalho de criar postos — e uma só ocorrência responde por todas as
+atribuições que existem.
+
+Passa a haver um selector **Posto de Comando** na caixa **Operação** do
+Adicionar/Editar Meio e no modal de **despacho de meios nacionais**. Só aparece
+quando a ocorrência tem postos.
+
+O valor por omissão é `currentPostoId`: entrar num PCF e acrescentar lá um meio
+continua a colocá-lo nesse PCF. O selector acrescenta uma escolha sem tirar
+nenhuma.
+
+### Âmbito
+
+| Via | Antes | Agora |
+|---|---|---|
+| Adicionar/Editar Meio | herdava o contexto | escolhe-se |
+| Composição BSF | já aceitava posto (pai e filhos) | inalterado |
+| BSBF | sempre PCO Principal | escolhe-se; pai e filhos |
+| EMR | sempre PCO Principal | escolhe-se; MR e filhos |
+| EGFR | sempre PCO Principal | escolhe-se |
+| Gruata | sempre PCO Principal | escolhe-se; pai, linhas e MR |
+
+A Gruata entrou por partilhar o mesmo modal de despacho: deixá-la de fora dava
+um campo que era ignorado só nesse caso.
+
+Nos conjuntos compostos o posto vai sempre do pai para os filhos, para o
+conjunto não nascer repartido por dois postos — que a vista por sector mostraria
+em blocos separados.
+
+### Três defeitos evitados pelo caminho
+
+1. **`'' || anterior`.** Ler o campo com `sel.value || anterior` fazia com que
+   escolher *PCO Principal* — que vale `''` — caísse no valor anterior. Nunca
+   mais se trazia um meio de volta ao principal. Distingue-se agora campo
+   ausente de escolha vazia.
+2. **Posto desactivado.** Um posto inactivo não vem na lista; sem o acrescentar
+   como opção, editar um meio que lá estivesse mudava-o em silêncio para o PCO
+   Principal ao gravar.
+3. **Validação a devolver 500.** O helper novo lança um erro com `status: 400`,
+   mas o `wrap()` respondia sempre 500 aos erros que não fossem do Postgres. Um
+   500 é repetido para sempre pela fila de sincronização (só os 4xx é que se
+   descartam — ver alteração 10), pelo que um posto inválido voltaria a
+   envenenar a fila. `wrap()` passa a respeitar `e.status`.
+
+### Alterações
+
+- `server.js`
+  - `postoDaOcorrencia()` — recusa um posto que não seja da ocorrência ou que
+    esteja inactivo. A chave estrangeira só garantia que o posto existia.
+  - Aplicado a `POST /api/meios`, `PATCH /api/meios/:id` (contra a ocorrência do
+    próprio meio, não a que vier no corpo) e aos quatro despachos.
+  - `wrap()` — respeita `e.status`.
+- `Gestao_Meios_v17.html` — `preencherPostoOpts()`, `nomePosto()`, o campo nos
+  dois modais, e o registo da transferência na edição (Fita do Tempo e eventos
+  do meio), como já se fazia para o setor.
+- **Base de dados:** nenhuma alteração de esquema.
+
+### Como validar
+
+1. Numa ocorrência **sem** postos: o campo não aparece.
+2. Numa **com** postos: **Adicionar Meio** mostra *PCO Principal* + os postos.
+3. Escolher um PCF e confirmar que o meio aparece nesse bloco da vista por sector.
+4. Entrar num PCF e acrescentar um meio: deve vir já com esse PCF por omissão.
+5. Editar esse meio e escolher *PCO Principal*: tem de voltar ao principal, e a
+   Fita do Tempo regista a transferência.
+6. Despachar uma BSBF para um PCF e confirmar que **as viaturas todas** lá ficam.
+7. Repetir com EMR e EGFR.
