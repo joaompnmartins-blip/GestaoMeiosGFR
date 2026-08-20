@@ -41,7 +41,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 19 | 18/08/2026 | Guarnição da Carta de Meios chega ao meio (BSBF e EMR) · **com correcção de dados** | `b71a7fe` | **por validar (só beta2)** |
 | 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
 | 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `f568ee3` | **por validar (só beta2)** |
-| 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `PENDENTE` | **por validar (só beta2)** |
+| 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `5dc599f` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
