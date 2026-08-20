@@ -45,6 +45,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `bed08c8` | **por validar (só beta2)** |
 | 24 | 19/08/2026 | Meio desmobilizado deixa de mostrar Setor, Posto e Missão | `a748c02` | **por validar (só beta2)** |
 | 25 | 19/08/2026 | Missão com acção própria no cartão, registada na Fita do Tempo | `2a0751d` | **por validar (só beta2)** |
+| 26 | 20/08/2026 | Categoria «Missão» na Fita do Tempo, com o meio identificado | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1885,3 +1886,61 @@ Se a missão não mudar, não se grava nem se regista nada.
 4. Num meio de uma BSF, usar **aplicar a todos** e confirmar que o conjunto
    inteiro fica com a mesma missão.
 5. Confirmar que um meio **desmobilizado** não mostra o botão.
+
+---
+
+## 26 — Categoria «Missão» na Fita do Tempo, com o meio identificado
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+A alteração 25 já gravava a `tag` `missao`, mas a Fita do Tempo **não usa a tag
+para nada**: classifica pela origem da linha. Tudo o que vem de
+`ocorrencias_eventos` era `ocorrencia`, pelo que as mudanças de missão ficavam
+misturadas com o resto e não se podiam filtrar.
+
+Passa a haver categoria própria **Missão**, com etiqueta âmbar. O botão de
+filtro aparece na Fita assim que existir uma entrada dessas — como acontece com
+as outras categorias, que se constroem a partir dos dados presentes.
+
+### O meio deixa de se perder
+
+`ocorrencias_eventos` guarda `meio_label` **desde sempre e em todos os eventos
+que envolvem um meio** — 477/477 nos de estado, 70/70 nos de setor, 25/25 nos
+de posto. A consulta da Fita descartava-o (`NULL`) e o meio só se via dentro do
+texto da mensagem, sem crachá próprio.
+
+Passa a ser devolvido. O efeito não é só na missão: **todas** as entradas de
+nível de ocorrência que envolvem um meio passam a mostrar o crachá do meio, o
+que muda o aspecto das linhas que já lá estão — para melhor, mas muda.
+
+Verificado com dados reais do beta2:
+
+| Categoria | Título | Meio |
+|---|---|---|
+| `missao` | VLCI 11 — missão: — → Teste missão Fita Tempo. | **VLCI 11** |
+| `meios_icnf` | Missão: — → Teste missão Fita Tempo. | VLCI 11 |
+
+### Nota sobre a duplicação
+
+Cada mudança de missão continua a dar **duas** linhas: a do meio
+(`meios_eventos`, categoria Meios ICNF) e a da ocorrência (categoria Missão).
+Não é novo — o setor e o estado sempre fizeram o mesmo. A diferença é que agora
+o filtro **Missão** dá uma lista limpa, uma linha por alteração.
+
+### Alterações
+
+- `server.js` — na consulta da Fita, o ramo de `ocorrencias_eventos` passa a
+  devolver `oe.meio_label` e a mapear `tag='missao'` para a categoria `missao`.
+  As restantes tags continuam em `ocorrencia`.
+- `Gestao_Meios_v17.html` — `TL_CATS.missao` e a classe `.tl-cat-missao`.
+- **Base de dados:** nenhuma alteração; só se passou a ler o que já lá estava.
+
+### Como validar
+
+1. Mudar a missão de um meio pelo **◎ Missão**.
+2. Abrir a **Fita do Tempo**: deve aparecer o botão de filtro **Missão**.
+3. Filtrar por Missão e confirmar uma linha por alteração, com o crachá do meio.
+4. Confirmar que as entradas antigas (setor, estado) passaram a mostrar também
+   o crachá do meio.

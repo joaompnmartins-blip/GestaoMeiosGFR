@@ -948,7 +948,13 @@ app.get('/api/ocorrencias/:id/timeline', requireAuth('visualizador'), wrap(async
 
       UNION ALL
 
-      SELECT oe.ts, 'ocorrencia', oe.msg, NULL, NULL::JSONB, NULL, NULL, oe.posto_comando_id
+      -- A missão tem categoria própria, para se poder filtrar a Fita por ela.
+      -- E o meio_label deixa de se perder: estava gravado em todos os eventos
+      -- que envolvem um meio, mas a Fita descartava-o e o meio só se via dentro
+      -- do texto da mensagem.
+      SELECT oe.ts,
+             CASE WHEN oe.tag = 'missao' THEN 'missao' ELSE 'ocorrencia' END,
+             oe.msg, NULL, NULL::JSONB, NULL, oe.meio_label, oe.posto_comando_id
       FROM ocorrencias_eventos oe
       WHERE oe.ocorrencia_id = $1
 
