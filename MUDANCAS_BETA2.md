@@ -54,7 +54,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `d258c0b` | **por validar (só beta2)** |
 | 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `7187ad4` | **por validar (só beta2)** |
 | 34 | 20/08/2026 | Sem crachás de nomes nos cartões de BSBF e EMR | `5360c03` | **por validar (só beta2)** |
-| 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `PENDENTE` | **por validar (só beta2)** |
+| 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `c55f675` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
