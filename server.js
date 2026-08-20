@@ -1544,8 +1544,13 @@ async function assertFonteAccess(client, recursoId, userRole) {
 
 const ALL_GESTORES      = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf');
 const ALL_GESTORES_READ = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf', 'chefe_grupo_fsbf');
+// Consulta do catálogo: o oficial de ligação precisa de saber que recursos e
+// viaturas existem para empenhar com conhecimento de causa, mas não os
+// administra. Só nos GET — escrever continua a ser dos gestores.
+const CATALOGO_LEITURA  = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf',
+                                        'chefe_grupo_fsbf', 'ofligacao', 'ofligacao_ccon');
 
-app.get('/api/gestao/recursos', requireAuth('visualizador'), ALL_GESTORES, wrap(async (req, res) => {
+app.get('/api/gestao/recursos', requireAuth('visualizador'), CATALOGO_LEITURA, wrap(async (req, res) => {
   const { tipo, subregiao, ativo, fonte } = req.query;
   const atvFilter = ativo === undefined ? null : ativo === 'true';
 
@@ -1714,7 +1719,7 @@ app.post('/api/gestao/viaturas/:id/prontidao', requireAuth('visualizador'), ALL_
 //  MÓDULOS DE GESTÃO — VIATURAS
 // ══════════════════════════════════════════════════════════════════
 
-app.get('/api/gestao/viaturas', requireAuth('visualizador'), ALL_GESTORES_READ, wrap(async (req, res) => {
+app.get('/api/gestao/viaturas', requireAuth('visualizador'), CATALOGO_LEITURA, wrap(async (req, res) => {
   const { recurso_id, classe, megfr, ativo, disponivel } = req.query;
   const atvFilter  = ativo      === undefined ? null : ativo      === 'true';
   const dispFilter = disponivel === undefined ? null : disponivel === 'true';

@@ -54,6 +54,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `d258c0b` | **por validar (só beta2)** |
 | 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `7187ad4` | **por validar (só beta2)** |
 | 34 | 20/08/2026 | Sem crachás de nomes nos cartões de BSBF e EMR | `5360c03` | **por validar (só beta2)** |
+| 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2451,3 +2452,73 @@ um. O que muda é só o cartão, que é a vista de relance.
 2. Cartão do **M01** e dos membros da EMR: idem.
 3. Cartão de uma **BSF** ou de um **EGFR**: os nomes continuam a aparecer.
 4. Abrir a **Ficha do Meio** de uma viatura da BSBF: os nomes estão lá.
+
+---
+
+## 35 — Gestão ICNF em consulta para o oficial de ligação
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O **oficial de ligação** passa a ter **GESTÃO ICNF** no menu, em modo de
+consulta: vê **Recursos** e **Viaturas** e mais nada.
+
+| | Gestor ICNF / admin | Oficial de ligação |
+|---|---|---|
+| Separadores | Recursos, Viaturas, Rádios, OLN, EGFR | **Recursos e Viaturas** |
+| ✎ Editar · ⚡ INOP · ✕ Remover | sim | **não** (a coluna mostra «—») |
+| + Novo / + Nova | sim | **não** |
+| Importar CSV (ETL) | sim | não |
+
+Aplica-se também ao `ofligacao_ccon`, que é o mesmo perfil com mais alcance —
+seria estranho o regional ver o catálogo e o nacional não.
+
+### Não é só esconder botões
+
+Os dois `GET` do catálogo estavam fechados aos oficiais de ligação
+(`ALL_GESTORES`), pelo que a página abriria vazia com **403**. Passa a haver um
+`CATALOGO_LEITURA` que os admite — **e só nos GET**.
+
+As **oito** rotas de escrita continuam em `ALL_GESTORES`, incluindo as de
+prontidão, que é o que põe um meio INOP:
+
+```
+GET    /api/gestao/recursos              CATALOGO_LEITURA
+GET    /api/gestao/viaturas              CATALOGO_LEITURA
+POST   /api/gestao/recursos              ALL_GESTORES
+PATCH  /api/gestao/recursos/:id          ALL_GESTORES
+DELETE /api/gestao/recursos/:id          ALL_GESTORES
+POST   /api/gestao/recursos/:id/prontidao ALL_GESTORES
+POST   /api/gestao/viaturas              ALL_GESTORES
+PATCH  /api/gestao/viaturas/:id          ALL_GESTORES
+DELETE /api/gestao/viaturas/:id          ALL_GESTORES
+POST   /api/gestao/viaturas/:id/prontidao ALL_GESTORES
+```
+
+Esconder o botão é conforto; o servidor é que decide. Se alguém chamar a rota à
+mão, continua a levar 403.
+
+### Duas coisas que faltavam para a página abrir sequer
+
+1. **`navTo()` recusava a página**: `MODULE_PAGES` mandava `gestao-icnf` só para
+   `gestor_icnf`, e o clique dava *«Acesso restrito ao gestor deste módulo»*.
+2. **O separador podia ficar num que não se pode ler.** Se numa visita anterior
+   tivesse ficado em Rádios, `renderGestaoICNF()` iria buscar dados proibidos.
+   Em consulta, força-se de volta a Recursos.
+
+### Alterações
+
+- `server.js` — `CATALOGO_LEITURA` nos dois GET do catálogo.
+- `Gestao_Meios_v17.html` — `podeGerirICNF()`; entrada de menu; classe
+  `icnf-so-gestor` nos separadores restritos e nos botões de criar; acções das
+  linhas de Recursos e de Viaturas; `MODULE_PAGES`; salvaguarda do separador.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Entrar como **oficial de ligação**: **GESTÃO ICNF** aparece no menu.
+2. Abrir: só **Recursos** e **Viaturas**, sem ✎, ⚡, ✕ nem + Novo.
+3. Confirmar que os dados aparecem (não pode ficar vazio nem dar erro).
+4. Entrar como **gestor ICNF**: continua a ver os cinco separadores e todas as
+   acções.

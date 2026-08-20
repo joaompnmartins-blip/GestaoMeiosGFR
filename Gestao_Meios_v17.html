@@ -1208,9 +1208,9 @@
           <div class="icnf-tabs" style="margin-bottom:0;border-bottom:none;flex:1;">
             <button class="icnf-tab-btn active" onclick="icnfSwitchTab('recursos',this)">Recursos</button>
             <button class="icnf-tab-btn" onclick="icnfSwitchTab('viaturas',this)">Viaturas</button>
-            <button class="icnf-tab-btn" onclick="icnfSwitchTab('radios',this)">Rádios</button>
-            <button class="icnf-tab-btn" onclick="icnfSwitchTab('oln',this)">OLN</button>
-            <button class="icnf-tab-btn" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
+            <button class="icnf-tab-btn icnf-so-gestor" onclick="icnfSwitchTab('radios',this)">Rádios</button>
+            <button class="icnf-tab-btn icnf-so-gestor" onclick="icnfSwitchTab('oln',this)">OLN</button>
+            <button class="icnf-tab-btn icnf-so-gestor" onclick="icnfSwitchTab('egfr',this)">EGFR</button>
           </div>
           <label class="btn btn-ghost btn-xs auth-gestor-icnf" id="btn-etl-sync" style="margin-bottom:4px;cursor:pointer;" title="Importar escala OLN ou EGFR a partir de um CSV">
             ⬆ Importar Escalas
@@ -1256,7 +1256,7 @@
                 <option value="">Todos</option>
                 <option value="false">Inativos</option>
               </select>
-              <button class="btn btn-primary btn-sm" onclick="openNewRecursoModal()">+ Novo</button>
+              <button class="btn btn-primary btn-sm icnf-so-gestor" onclick="openNewRecursoModal()">+ Novo</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -1298,7 +1298,7 @@
                 <option value="">Todas</option>
                 <option value="true">Disponíveis</option>
               </select>
-              <button class="btn btn-primary btn-sm" onclick="openNewViaturaModal()">+ Nova</button>
+              <button class="btn btn-primary btn-sm icnf-so-gestor" onclick="openNewViaturaModal()">+ Nova</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -2422,6 +2422,11 @@ async function completeLogin(authData){
   renderOcorrencias();
 }
 
+// A Gestão ICNF abre em consulta ao oficial de ligação: precisa de saber que
+// recursos e viaturas existem para empenhar com conhecimento de causa, mas não
+// os administra. Editar, INOP e remover são só do gestor.
+const podeGerirICNF = () => currentRole==='admin' || currentRole==='gestor_icnf';
+
 function applyRoleUI(){
   const isAdmin     = currentRole==='admin';
   const isCCON      = isAdmin || currentRole==='ofligacao_ccon';
@@ -2438,6 +2443,11 @@ function applyRoleUI(){
   document.querySelectorAll('.auth-gestor-sf').forEach(el=>el.style.display=isSF?'':'none');
   document.querySelectorAll('.auth-gestor-fsbf').forEach(el=>el.style.display=isFSBF?'':'none');
   document.querySelectorAll('.auth-gestor-icnf').forEach(el=>el.style.display=isICNF?'':'none');
+  // O oficial de ligação recupera a entrada de menu, mas em modo de consulta:
+  // só Recursos e Viaturas, e sem nada que altere o catálogo.
+  const navICNF = document.querySelector('.nav-item[data-page="gestao-icnf"]');
+  if(navICNF && ['ofligacao','ofligacao_ccon'].includes(currentRole)) navICNF.style.display='';
+  document.querySelectorAll('.icnf-so-gestor').forEach(el=>el.style.display=podeGerirICNF()?'':'none');
   // ofligacao e perfis de módulo: sem acesso a Meios (catálogo) e Arquivo
   // Meios (catálogo) e Arquivo tinham a mesma regra. Passam a ser
   // independentes: o oficial de ligação regional tem agora o arquivo completo,
@@ -2786,7 +2796,10 @@ function addEventLog(t, msg){
 let currentOccId=null, currentPostoId=null, currentView='sector';
 
 function navTo(page,el){
-  const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':['gestor_fsbf','chefe_grupo_fsbf'],'gestao-icnf':'gestor_icnf'};
+  // A Gestão ICNF admite também o oficial de ligação, em consulta: quem entra
+  // sem ser gestor não vê acções nenhumas (ver podeGerirICNF).
+  const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':['gestor_fsbf','chefe_grupo_fsbf'],
+                        'gestao-icnf':['gestor_icnf','ofligacao','ofligacao_ccon']};
   if(page==='utilizadores'&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
   // Pedidos: os oficiais de ligação consultam, só o admin aprova ou rejeita.
   // A restrição de escrita está em renderDeleteRequests e no servidor.
@@ -9818,6 +9831,9 @@ function icnfSwitchTab(tab, btn){
 }
 
 async function renderGestaoICNF(){
+  // Em consulta só existem Recursos e Viaturas; se ficou outro separador de uma
+  // visita anterior, volta-se ao primeiro em vez de pedir o que não se pode ler.
+  if(!podeGerirICNF() && !['recursos','viaturas'].includes(_icnfTab)) _icnfTab='recursos';
   if(_icnfTab==='recursos') await renderICNFRecursos();
   else if(_icnfTab==='viaturas') await renderICNFViaturas();
   else if(_icnfTab==='radios')   await renderICNFRadios();
@@ -9868,9 +9884,10 @@ async function renderICNFRecursos(){
     <td class="mono" style="text-align:center">${r.viaturas_count||0}</td>
     <td class="mono" style="text-align:center">${r.radios_count||0}</td>
     <td style="display:flex;gap:4px;white-space:nowrap;">
+      ${!podeGerirICNF()?'<span style="color:var(--muted);font-size:11px;">—</span>':`
       <button class="btn btn-ghost btn-xs" onclick="openGestaoRecursoModal('${r.id}')">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('recurso','${r.id}','${r.prontidao}')">⚡</button>
-      <button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}')">✕</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteRecurso('${r.id}','${esc(r.codigo)}')">✕</button>`}
     </td>
   </tr>`).join('');
 }
@@ -9982,9 +9999,10 @@ async function renderICNFViaturas(){
     <td style="font-size:11px">${v.recurso_codigo?`<span class="badge badge-ok">${esc(v.recurso_codigo)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td>${prontidaoBadge(v.prontidao, v.prontidao_motivo)}</td>
     <td style="display:flex;gap:4px;white-space:nowrap;">
+      ${!podeGerirICNF()?'<span style="color:var(--muted);font-size:11px;">—</span>':`
       <button class="btn btn-ghost btn-xs" onclick="openEditViaturaModal(${JSON.stringify(v).replace(/"/g,'&quot;')})">✎</button>
       <button class="btn btn-ghost btn-xs" onclick="openProntidaoModal('viatura','${v.id}','${v.prontidao}')">⚡</button>
-      <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteViatura('${v.id}','${esc(v.viatura_cod)}')">✕</button>`}
     </td>
   </tr>`).join('');
 }
