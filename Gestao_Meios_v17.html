@@ -4555,9 +4555,12 @@ function teamCardHtml(t, isClosed, _teams, opts){
       </div>
     </div>`;
 
-  // Operatives chips
+  // Operatives chips — nas BSBF e nas EMR não. A guarnição dessas vem da Carta
+  // de Meios e repete-se por todo o conjunto, pelo que os crachás enchiam o
+  // cartão sem dizer nada de novo. Fica o número; os nomes continuam na Ficha
+  // do Meio.
   let opsHtml='';
-  if(t.operativos&&t.operativos.filter(Boolean).length){
+  if(t.operativos&&t.operativos.filter(Boolean).length&&!meioDeGuarnicaoFsbf(t)){
     opsHtml=`<div class="operatives-list">${t.operativos.filter(Boolean).map(n=>`<span class="operative-chip">${esc(n)}</span>`).join('')}</div>`;
   } else if(t.operacionais){
     opsHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted)">👥 ${t.operacionais} operacionais</span>`;
@@ -4918,6 +4921,16 @@ function quickAction(type, teamId){
 // Agrupado = tem pai e não está destacado. Um meio destacado passa a valer por
 // si: o contentor já foi descontado do seu efectivo ao destacá-lo.
 const meioAgrupado = t => !!(t.meioPaiId && !t.destacado);
+
+// Pertence a uma BSBF ou a uma EMR — como pai ou como membro. Os filhos de uma
+// EMR não trazem fsbf_emr_id (a ligação está no pai), por isso não basta olhar
+// para o próprio meio.
+function meioDeGuarnicaoFsbf(t){
+  if(t.fsbfBsbfId || t.fsbfEmrId) return true;
+  if(!t.meioPaiId) return false;
+  const pai = db.teams.find(x => x.id === t.meioPaiId);
+  return !!(pai && (pai.fsbfBsbfId || pai.fsbfEmrId));
+}
 const filhosAgrupados = id => db.teams.filter(x => x.meioPaiId === id && !x.destacado);
 
 // O contentor de uma BSF ou de uma BSBF não é um meio: é o rótulo do conjunto.

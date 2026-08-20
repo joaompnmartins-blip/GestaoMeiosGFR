@@ -53,6 +53,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `b4fa875` | **por validar (só beta2)** |
 | 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `d258c0b` | **por validar (só beta2)** |
 | 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `7187ad4` | **por validar (só beta2)** |
+| 34 | 20/08/2026 | Sem crachás de nomes nos cartões de BSBF e EMR | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2406,3 +2407,47 @@ A tabela ficou com 15 colunas no cabeçalho e 15 células por linha.
 2. Pôr em descanso e retomar: o restante volta ao máximo, o total **não**.
 3. Na vista de **Tabela**, confirmar a coluna *Tempo Total*.
 4. Num meio desmobilizado, confirmar que o total parou na hora de saída.
+
+---
+
+## 34 — Sem crachás de nomes nos cartões de BSBF e EMR
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Depois da alteração 19, as BSBF e as EMR passaram a trazer a guarnição da Carta
+de Meios, e os cartões encheram-se de crachás com os nomes — no contentor da
+BSBF, a **união** das guarnições de todas as viaturas, e a seguir os mesmos
+nomes outra vez em cada viatura.
+
+Nesses dois casos os crachás deixam de aparecer. Fica o **número** de
+operacionais, como já acontecia antes de haver nomes.
+
+| Origem | Crachás de nome |
+|---|---|
+| BSBF — contentor e viaturas | **não**, só o número |
+| EMR — MR e membros | **não**, só o número |
+| BSF, EGFR e meios soltos | sim, como até aqui |
+
+Os filhos de uma EMR não guardam `fsbf_emr_id` — a ligação está no pai — pelo
+que não bastava olhar para o próprio meio; a regra segue também pelo pai.
+
+### Os nomes não se perdem
+
+Continuam gravados e continuam a ver-se na **Ficha do Meio**, que os lista um a
+um. O que muda é só o cartão, que é a vista de relance.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `meioDeGuarnicaoFsbf()` e a condição dos crachás em
+  `teamCardHtml()`.
+- **Base de dados:** nenhuma alteração — nada é apagado.
+
+### Como validar
+
+1. Cartão da **BSBF Sul** e das suas viaturas: sem crachás, com «👥 N
+   operacionais».
+2. Cartão do **M01** e dos membros da EMR: idem.
+3. Cartão de uma **BSF** ou de um **EGFR**: os nomes continuam a aparecer.
+4. Abrir a **Ficha do Meio** de uma viatura da BSBF: os nomes estão lá.
