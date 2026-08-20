@@ -48,6 +48,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 26 | 20/08/2026 | Categoria «Missão» na Fita do Tempo, com o meio identificado | `2f25c99` | **por validar (só beta2)** |
 | 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `32d4b2d` | **por validar (só beta2)** |
 | 28 | 20/08/2026 | Todos os contadores de meios da aplicação sem contentores | `f1a89ee` | **por validar (só beta2)** |
+| 29 | 20/08/2026 | Carta de Meios: linha da EMR deixa de sair fora do cartão | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2089,3 +2090,51 @@ consulta SQL — 18→15 e 13→11.
    conta os contentores.
 3. Abrir a ocorrência e confirmar que o painel de estados soma ao total.
 4. Arquivo: confirmar que o total de meios acompanha.
+
+---
+
+## 29 — Carta de Meios: a linha da EMR deixa de sair fora do cartão
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Na **Gestão FSBF → Carta de Meios**, o campo **Chefe** das linhas de EMR
+transbordava para fora do cartão e punha a página com barra horizontal.
+
+A causa é do HTML e não do CSS da aplicação: um `<select>` **sem largura
+definida dimensiona-se pelo `option` mais comprido**. A lista do Chefe são os
+operacionais FSBF, com nomes completos em maiúsculas, e o campo esticava-se até
+ao comprimento do maior. Como as células de uma grelha têm `min-width:auto`, a
+coluna não podia encolher e empurrava o cartão todo.
+
+É por isso que só acontece na EMR: a linha da **BSBF** já tinha
+`width:160px` no seu Chefe, e a da EMR nunca teve largura nenhuma.
+
+Passam a caber na coluna todos os controlos da linha EMR — Base, MR, VAOP,
+Vpiloto, VLCI, Chefe, Contacto e Ocorrência.
+
+### Alterações
+
+- `Gestao_Meios_v17.html`
+  - Classe `fsbf-emr-grid` na grelha da linha EMR.
+  - CSS: `min-width:0` nas células, para a coluna poder encolher, e
+    `width:100%` nos `select`/`input`, para caberem nela.
+  - O campo **Total Op.** mantém os seus 38 px: a largura está no `style` da
+    própria etiqueta e um `style` inline manda sempre sobre uma regra de folha
+    de estilos.
+
+### Efeito a confirmar
+
+Com o campo à largura da coluna, um nome comprido passa a aparecer cortado
+quando o `select` está fechado — vê-se inteiro ao abrir a lista. É o mesmo
+comportamento que a linha da BSBF já tinha com os seus 160 px.
+
+### Como validar
+
+1. **Gestão FSBF → Carta de Meios**, secção EMR.
+2. Confirmar que o Chefe já não passa a moldura do cartão e que a página deixou
+   de ter barra de deslocamento horizontal.
+3. Abrir a lista do Chefe e confirmar que os nomes se lêem por inteiro.
+4. Confirmar que o **Total Op.** continua estreito, com o botão da guarnição ao
+   lado.
