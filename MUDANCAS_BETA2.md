@@ -50,7 +50,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 28 | 20/08/2026 | Todos os contadores de meios da aplicação sem contentores | `f1a89ee` | **por validar (só beta2)** |
 | 29 | 20/08/2026 | Carta de Meios: linha da EMR deixa de sair fora do cartão | `8d30481` | **por validar (só beta2)** |
 | 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `a662e86` | **por validar (só beta2)** |
-| 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `PENDENTE` | **por validar (só beta2)** |
+| 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `b4fa875` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
