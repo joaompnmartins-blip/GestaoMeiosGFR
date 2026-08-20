@@ -49,6 +49,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 27 | 20/08/2026 | Contagens de setor/PCO sem contentores; rótulos Veículos/Descanso/Operacionais | `32d4b2d` | **por validar (só beta2)** |
 | 28 | 20/08/2026 | Todos os contadores de meios da aplicação sem contentores | `f1a89ee` | **por validar (só beta2)** |
 | 29 | 20/08/2026 | Carta de Meios: linha da EMR deixa de sair fora do cartão | `8d30481` | **por validar (só beta2)** |
+| 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2138,3 +2139,69 @@ comportamento que a linha da BSBF já tinha com os seus 160 px.
 3. Abrir a lista do Chefe e confirmar que os nomes se lêem por inteiro.
 4. Confirmar que o **Total Op.** continua estreito, com o botão da guarnição ao
    lado.
+
+---
+
+## 30 — Vista de Tabela: conjuntos compostos numa só linha
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+A alteração 18 recolheu os conjuntos nos cartões e deixou de fora a **Tabela**,
+onde cada membro continuava a ocupar uma linha, apenas indentada com `└`. Numa
+BSF com três `SF`, eram quatro linhas para três meios.
+
+A Tabela passa a recolher da mesma maneira: o conjunto é **uma linha**, com o
+botão `⬡ N meios` a abrir e fechar. Fechado por omissão.
+
+O estado aberto/fechado é **o mesmo dos cartões** (`_conjuntosAbertos`): um
+conjunto aberto na Tabela continua aberto ao voltar aos Cartões, e ao contrário.
+
+### O que a linha recolhida mostra
+
+Com os filhos recolhidos, as colunas passam a valer pelo conjunto:
+
+| Coluna | Recolhido |
+|---|---|
+| Meio | nome + `⬡ 3 meios` |
+| Setor | o setor comum, ou *«2 setores»* se divergirem |
+| Operacionais | o efectivo do conjunto (15, não os 5 de um membro) |
+| Tempo | o membro **mais perto do limite**, nomeado — `2h14m · SF 07-185` |
+| Estado | o estado comum, ou *«1 descanso · 2 em op.»* se divergirem |
+
+O relógio é o do membro mais urgente e não o do contentor, que nem sequer
+opera. Sem isto, recolher escondia quem estava a chegar ao limite.
+
+### Verificação
+
+Funções extraídas do ficheiro e corridas em Node, com um conjunto BSF
+(contentor + 3 SF) mais um meio solto:
+
+| Cenário | Linhas |
+|---|---|
+| Recolhido (por omissão) | **2** (era 5) |
+| Expandido | 5, com os filhos indentados como antes |
+| Estados/setores diferentes | mostra `1 descanso · 2 em op.` e `2 setores` |
+
+Colunas da linha recolhida: `⬡ 3 meios`, efectivo **15**, e o tempo do membro
+mais perto do limite com o nome ao lado.
+
+### Alterações
+
+- `Gestao_Meios_v17.html`
+  - `renderTableView()` — esconde os filhos de conjuntos recolhidos e resume as
+    colunas na linha do pai.
+  - `resumoConjunto()` — passa a devolver também `setores` e `divergente`.
+  - A seta do botão roda por `aria-expanded`, para funcionar na Tabela, que não
+    tem o invólucro `.conjunto` dos cartões.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Ocorrência com uma BSF, vista **Tabela**: deve ver uma linha, não quatro.
+2. Carregar em `⬡ 3 meios`: aparecem os três, indentados.
+3. Voltar aos **Cartões**: o conjunto deve estar aberto também lá.
+4. Pôr um membro em descanso e confirmar que a linha recolhida passa a dizer
+   `1 descanso · 2 em op.`.
+5. Confirmar que o efectivo da linha é o do conjunto.

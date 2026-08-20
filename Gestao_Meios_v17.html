@@ -264,7 +264,8 @@
     }
     .conjunto-toggle:hover{color:var(--accent);border-color:rgba(140,150,28,.4);}
     .conjunto-seta{display:inline-block;transition:transform .15s;}
-    .conjunto.aberto .conjunto-seta{transform:rotate(90deg);}
+    .conjunto.aberto .conjunto-seta,
+    .conjunto-toggle[aria-expanded="true"] .conjunto-seta{transform:rotate(90deg);}
     .team-card{
       background:var(--surface);border:1px solid var(--border);border-radius:2px;
       position:relative;overflow:hidden;transition:border-color .15s;
@@ -4204,7 +4205,10 @@ function resumoConjunto(cj){
   // número muda com a origem — na BSF são os filhos, na BSBF e na EMR é o pai —
   // e meioContaOperacionais() já decide isso meio a meio. Deixar o contentor de
   // fora daria zero numa BSBF.
+  const setores = [...new Set(membros.map(m => m.setor).filter(Boolean))];
   return { estados, pior, ops: somaOperacionais(cj.todos),
+           divergente: Object.keys(cont).length > 1,
+           setores: setores.length === 1 ? setores[0] : (setores.length ? `${setores.length} setores` : ''),
            bloqueado: cj.todos.some(m => hasPendingDelete(m.id)) };
 }
 
@@ -4412,40 +4416,68 @@ function renderTableView(teams, isClosed){
   if(!active.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div></td></tr>';return;}
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const sorted = sortWithChildren([...active]);
-  tbody.innerHTML=sorted.map(t=>{
+  const nesteBloco = new Set(sorted.map(t=>t.id));
+  const filhosDe = t => t.meioPaiId ? [] : filhosAgrupados(t.id).filter(f=>nesteBloco.has(f.id));
+  // Conjunto recolhido: os filhos não geram linha, e o pai passa a resumi-los.
+  // O estado aberto/fechado é o mesmo dos cartões — um conjunto aberto num sítio
+  // está aberto no outro.
+  const escondidos = new Set();
+  sorted.forEach(t => {
+    if(t.meioPaiId || _conjuntosAbertos.has(t.id)) return;
+    filhosDe(t).forEach(f => escondidos.add(f.id));
+  });
+  tbody.innerHTML=sorted.filter(t=>!escondidos.has(t.id)).map(t=>{
     const isChild  = !!t.meioPaiId;
-    const isParent = !isChild && active.some(c=>c.meioPaiId===t.id);
-    const childCount = isParent ? meiosDoConjunto(t) : 0;
+    const filhosAqui = filhosDe(t);
+    const aberto = _conjuntosAbertos.has(t.id);
+    const cj = filhosAqui.length
+      ? { aberto, membros: meioEhContentor(t) ? filhosAqui : [t, ...filhosAqui],
+          todos: [t, ...filhosAqui], total: meiosDoConjunto(t) }
+      : null;
+    const resumo = cj ? resumoConjunto(cj) : null;
+    const recolhido = cj && !aberto;
     const est=estadoMap[t.estado]||{l:t.estado,cls:'badge-closed'};
-    const ti=(!isClosed)?timeInfo(t):null;
+    // Num conjunto recolhido o relógio que interessa é o do membro mais perto
+    // do limite, não o do contentor — que nem sequer opera.
+    const ti = isClosed ? null : (recolhido ? (resumo.pior||null) : timeInfo(t));
     const timeCell = !ti ? '—'
       : ti.semInfo
         ? `<span style="font-size:9px;color:var(--muted);">${esc(ti.label)}</span>`
         : `<div style="display:flex;flex-direction:column;gap:2px;">
       <div class="time-bar-track" style="width:80px"><div class="time-bar-fill ${ti.cls}" style="width:${ti.pct}%"></div></div>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;" class="${ti.cls}">${ti.label}${recolhido&&ti.eq?` · ${esc(ti.eq)}`:''}</span>
     </div>`;
     const gc = t.egfrEquipa?'#1d4ed8':t.fsbfEmrId?'#b91c1c':t.fsbfBsbfId?'#b45309':null;
     const parentGc = isChild ? (()=>{ const p=active.find(x=>x.id===t.meioPaiId); return p?.egfrEquipa?'#1d4ed8':p?.fsbfEmrId?'#b91c1c':p?.fsbfBsbfId?'#b45309':null; })() : null;
+    const marca = cj
+      ? `<button class="conjunto-toggle" onclick="toggleConjunto('${t.id}')" aria-expanded="${aberto}"
+           title="${aberto?'Recolher os meios do conjunto':`Ver os ${cj.membros.length} meios do conjunto`}"><span class="conjunto-seta">▸</span>⬡ ${cj.membros.length} meios</button>`
+      : '';
     const nameCell = isChild
       ? `<span style="padding-left:16px;border-left:3px solid ${parentGc||'var(--border)'};display:inline-block;color:var(--muted)">└ ${esc(t.eq)}</span>`
-      : isParent
-        ? `<strong>${esc(t.eq)}</strong> <span class="badge badge-info" style="font-size:9px" title="${childCount} meios componentes">⬡ ${childCount}</span> ${nationalBadge(t)}`
+      : cj
+        ? `<strong>${esc(t.eq)}</strong> ${marca} ${nationalBadge(t)}`
         : `<strong>${esc(t.eq)}</strong>`;
+    // Com os filhos recolhidos, as colunas do conjunto valem pelo conjunto.
+    const setorCell = recolhido && resumo.setores ? resumo.setores : (t.setor||'—');
+    const opsCell   = recolhido ? (resumo.ops||'—') : (t.operacionais||'—');
+    const estadoCell = recolhido && resumo.divergente
+      ? `<span class="badge badge-info" style="font-size:9px" title="Os meios do conjunto não estão todos no mesmo estado">${esc(resumo.estados)}</span>`
+      : `<span class="badge ${est.cls}">${est.l}</span>`;
     const rowStyle = isChild ? `background:color-mix(in srgb,var(--surface) 60%,transparent);border-left:2px solid ${parentGc||'var(--border)'};` : gc ? `border-left:3px solid ${gc};` : '';
     return `<tr style="${rowStyle}">
       <td>${nameCell}</td>
       <td><span class="badge badge-y">${esc(t.tipo||'—')}</span></td>
       <td class="mono" style="font-size:10px;letter-spacing:.05em">${esc(t.matricula||'—')}</td>
-      <td><span class="badge badge-sector">${esc(t.setor||'—')}</span></td>
-      <td class="mono" style="text-align:center">${t.operacionais||'—'}</td>
+      <td><span class="badge badge-sector">${esc(setorCell)}</span></td>
+      <td class="mono" style="text-align:center">${opsCell}</td>
       <td>${esc(t.responsavel||'—')}</td>
       <td class="mono">${fmtDateShort(t.dataChegada)} ${t.horaChegada||''}</td>
       <td class="mono">${t.limiteOp||'—'}</td>
       <td>${timeCell}</td>
       <td class="mono">${fmtDateShort(t.dataDemob)} ${t.horaDemob||''}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(t.missao||'—')}</td>
-      <td><span class="badge ${est.cls}">${est.l}</span></td>
+      <td>${estadoCell}</td>
       <td style="font-size:10px;color:var(--muted);max-width:100px">${esc((t.obs||'').slice(0,60))}</td>
       <td><div style="display:flex;gap:4px;">
         ${hasPendingDelete(t.id)?`<span class="badge badge-warn" style="font-size:9px" title="Pedido de remoção pendente">🔒</span>`:`
