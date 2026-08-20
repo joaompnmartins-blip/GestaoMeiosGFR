@@ -57,6 +57,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `c55f675` | **por validar (só beta2)** |
 | 36 | 20/08/2026 | Disponíveis nas estatísticas de empenhamento FSBF · **com correcção de dados** | `1f141f3` | **por validar (só beta2)** |
 | 37 | 20/08/2026 | Guarnições por turno — fundação da rendição (1 de 3) | `0168077` | **por validar (só beta2)** |
+| 38 | 20/08/2026 | Rendição de guarnição — histórico e acção (2 e 3 de 3) | `db31c08` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2715,3 +2716,89 @@ existentes ficaram todas no turno **A**, pelo que nada muda de comportamento.
 
 Nada muda à vista. Confirmar que a Carta de Meios continua a funcionar como
 antes: identificar guarnição, trocar chefe, copiar um dia.
+
+---
+
+## 38 — Rendição de guarnição: histórico e acção
+
+**Data:** 20/08/2026 · **Estado:** por validar · **Partes 2 e 3 de 3**
+
+### Parte 2 — o histórico
+
+`meios_operativos` guarda só a guarnição **actual**. Render uma guarnição
+apagava a que saía: não ficava registo de quem esteve a bordo nem quando — que
+é precisamente o que faz falta depois de um acidente ou para horas trabalhadas.
+
+Passam a existir **`meios_guarnicoes`** (com `desde`/`ate`) e
+**`meios_guarnicao_membros`**. `meios_operativos` fica a ser o **espelho da
+guarnição a bordo**, para nada do que já a lê ter de mudar.
+
+Um índice parcial único torna impossível ter duas guarnições abertas no mesmo
+meio:
+
+```sql
+CREATE UNIQUE INDEX meios_guarnicao_aberta_idx
+  ON meios_guarnicoes (meio_id) WHERE ate IS NULL
+```
+
+Os 14 meios que já tinham guarnição receberam o seu período aberto — senão a
+primeira rendição não teria o que fechar. Os 37 nomes ficaram espelhados.
+
+### Parte 3 — a acção
+
+Botão **⇄ Render guarnição** no cartão dos meios de BSBF e EMR, para o oficial
+de ligação. Mostra quem sai, deixa escolher **o turno que entra** de entre os
+registados na Carta desse dia, a hora e as horas máximas.
+
+- **A rendição é do conjunto todo** — uma brigada não se rende meia. Parte-se de
+  qualquer membro e chega-se ao mesmo conjunto.
+- **O relógio de operação recomeça**, reaproveitando o que a alteração 20
+  separou: a chegada ao TO não se toca, só a janela de operação.
+- O **chefe do turno que entra** passa a ser o responsável do meio.
+- Fica registado na Fita do Tempo e nos eventos de cada meio.
+- Se a Carta desse dia só tiver um turno, a janela **diz o que falta fazer** em
+  vez de oferecer uma rendição impossível.
+
+A **Ficha do Meio** passa a listar as guarnições com os seus períodos — a
+resposta a *«quem estava a bordo às 3 da manhã»*.
+
+### Verificado contra o beta2
+
+Tudo em transacções revertidas, sem deixar nada gravado:
+
+| Passo | Resultado |
+|---|---|
+| Registar guarnição de turno B para o `VFCI 04` | 5 membros, chefe primeiro |
+| Ler quem entra | `Abel Mota, Afonso Costa, Albino Reboredo, …` |
+| **Antes** da rendição | a bordo: `Luís Lameira, Luis Cordeiro, …` · 1 período |
+| **Depois** | a bordo: a guarnição B · **2 períodos, 1 aberto** |
+| Histórico | período que sai **fechado às 20:00**, o que entra aberto desde as 20:00 |
+| Abrir 2.ª guarnição sem fechar a 1.ª | **recusado** — `meios_guarnicao_aberta_idx` |
+
+A guarnição que saiu **não se perdeu** — é o ponto de toda a parte 2.
+
+### Aritmética de horas
+
+O limite de operação calcula-se por **relógio de parede**: os componentes
+entram e saem como texto e o `Date.UTC` serve só de calculadora. Em hora local
+do servidor, o resultado dependia de onde o servidor está. Verificado:
+`20:00 + 12h → 21/08 08:00`, `23:30 + 12h → 21/08 11:30`, `00:30 + 8h → 08:30`.
+
+### Alterações
+
+- `server.js` — tabelas e migração; `lerGuarnicaoTurno()`, `chefeDoTurno()`,
+  `renderGuarnicao()`, `origemFsbfDoMeio()`, `somarHorasParede()`;
+  `GET /api/meios/:id/turnos`, `GET /api/meios/:id/guarnicoes`,
+  `POST /api/meios/:id/rendicao`.
+- `Gestao_Meios_v17.html` — botão no cartão, janela de rendição, histórico na
+  Ficha do Meio.
+- **Base de dados:** duas tabelas e dois índices, por migração automática.
+
+### Como validar
+
+1. Na Carta de Meios, registar a guarnição do **turno B** de uma BSBF.
+2. No cartão do conjunto, **⇄ Render guarnição** → escolher o turno B.
+3. Confirmar que os nomes mudaram em todas as viaturas do conjunto e que o
+   **tempo restante voltou ao máximo**, com a **chegada intacta**.
+4. Abrir a **Ficha do Meio** e confirmar os dois períodos.
+5. Confirmar a entrada na **Fita do Tempo**.
