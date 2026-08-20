@@ -42,6 +42,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
 | 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `f568ee3` | **por validar (só beta2)** |
 | 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `5dc599f` | **por validar (só beta2)** |
+| 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1744,3 +1745,35 @@ em blocos separados.
    Fita do Tempo regista a transferência.
 6. Despachar uma BSBF para um PCF e confirmar que **as viaturas todas** lá ficam.
 7. Repetir com EMR e EGFR.
+
+---
+
+## 23 — «N.º Operacionais» deixa de parecer preenchido com 4
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+A caixa **N.º Operacionais** do Adicionar Meio parecia trazer um **4** já
+escrito. Não trazia: era o `placeholder`, e o valor é limpo ao abrir o modal.
+Mas num campo numérico um algarismo cinzento não se distingue de um valor real,
+e passava-se à frente a pensar que já estava preenchido.
+
+Passa a dizer **«Indicar n.º»**, que não se confunde com um número. A caixa
+alarga de 120 px para 150 px para o texto caber.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `placeholder` e largura do `team-ops`.
+- **Base de dados:** nenhuma alteração.
+
+### Fica por decidir
+
+O campo **Nº Operacionais do PM** (`team-pm-ops`) tem o mesmo problema, com
+`placeholder="0"`. Não foi mexido por estar fora do que foi pedido; é a mesma
+linha se quiser.
+
+### Como validar
+
+1. **Adicionar Meio**: a caixa deve mostrar *Indicar n.º* em cinzento.
+2. Escrever um número e confirmar que as linhas de nome aparecem como antes.
