@@ -43,6 +43,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `f568ee3` | **por validar (só beta2)** |
 | 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `5dc599f` | **por validar (só beta2)** |
 | 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `bed08c8` | **por validar (só beta2)** |
+| 24 | 19/08/2026 | Meio desmobilizado deixa de mostrar Setor, Posto e Missão | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -1777,3 +1778,52 @@ linha se quiser.
 
 1. **Adicionar Meio**: a caixa deve mostrar *Indicar n.º* em cinzento.
 2. Escrever um número e confirmar que as linhas de nome aparecem como antes.
+
+---
+
+## 24 — Meio desmobilizado deixa de mostrar Setor, Posto de Comando e Missão
+
+**Data:** 19/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Na caixa **Operação** do Editar Meio, um meio **Desmobilizado** continuava a
+mostrar **Setor**, **Posto de Comando** e **Missão / Posição**. Um meio
+desmobilizado saiu do teatro de operações: não está em setor nenhum, não
+responde a nenhum posto e não tem missão atribuída. Os três campos passam a
+desaparecer nesse estado.
+
+| Estado | Setor · Posto · Missão |
+|---|---|
+| Previsto, Em Trânsito, Em Operação, Em Descanso | visíveis |
+| **Desmobilizado** | **escondidos** |
+
+O Posto de Comando mantém a regra que já tinha: continua escondido nas
+ocorrências sem postos, seja qual for o estado.
+
+### Esconder não é apagar
+
+Os campos saem de vista mas ficam no formulário com os valores que tinham, e é
+esses que se gravam. O setor e a missão em que o meio esteve durante a operação
+não se perdem ao desmobilizá-lo — ficam no registo, na Ficha do Meio e nos
+relatórios. O posto já tinha esta protecção desde a alteração 22: com o campo
+escondido, o payload usa o valor guardado em vez de o pôr a nulo.
+
+Verificado: com o meio desmobilizado, `team-setor` mantém `BRAVO`,
+`team-missao` mantém o texto e `team-posto` mantém o posto.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — invólucros `fld-setor` e `fld-missao`, e a regra em
+  `toggleMobilizacaoFields()`, que corre depois de `preencherPostoOpts()` nos
+  dois percursos (adicionar e editar) e por isso manda na visibilidade final.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Editar um meio em operação: os três campos aparecem.
+2. Mudar o Estado para **Desmobilizado**: os três desaparecem de imediato.
+3. Gravar, reabrir e confirmar na Ficha do Meio que o setor e a missão
+   continuam registados.
+4. Numa ocorrência sem postos, confirmar que o Posto de Comando continua
+   escondido em qualquer estado.

@@ -1616,7 +1616,7 @@
         <label class="form-label">Hora prevista</label>
         <input class="form-input" id="team-previsto-hora" type="time"/>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="fld-setor">
         <label class="form-label">Setor</label>
         <select class="form-select" id="team-setor">
           <option value="">— Setor —</option>
@@ -1628,7 +1628,7 @@
         <label class="form-label">Posto de Comando</label>
         <select class="form-select" id="team-posto"></select>
       </div>
-      <div class="form-field">
+      <div class="form-field" id="fld-missao">
         <label class="form-label">Missão / Posição</label>
         <input class="form-input" id="team-missao" placeholder="Ex: EGFR, OF LIG, PF Barão…"/>
       </div>
@@ -5351,6 +5351,14 @@ function toggleMobilizacaoFields(estado, isEdit){
   s('mob-fld-data-chegada-entidade', hasDmob);
   s('mob-fld-hora-chegada-entidade', hasDmob);
   s('mob-fld-km', hasDmob);
+  // Um meio desmobilizado saiu do teatro de operações: não tem setor, nem posto
+  // de comando, nem missão. Os campos desaparecem, mas os valores ficam no
+  // formulário e continuam a ser gravados — esconder não é apagar, e o que lá
+  // esteve durante a operação não se perde.
+  const desmob = estado === 'desmobilizado';
+  s('fld-setor',  !desmob);
+  s('fld-missao', !desmob);
+  s('posto-field', !desmob && occPostos().length > 0);
   // Em edição os campos de Previsto continuam visíveis, mas em leitura: se
   // desaparecessem perdia-se o registo da data que chegou a ser prevista.
   s('previsto-data-field', estado==='previsto' || (isEdit && temValor('team-previsto-data')));
