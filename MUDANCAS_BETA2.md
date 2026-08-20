@@ -42,7 +42,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 20 | 19/08/2026 | Retomar operação depois do descanso repõe o tempo de operação | `b70153f` | **por validar (só beta2)** |
 | 21 | 19/08/2026 | Adicionar Meio deixa de oferecer o estado Descanso | `f568ee3` | **por validar (só beta2)** |
 | 22 | 19/08/2026 | Empenhar um meio directamente num PCF/AIM (modal e despachos) | `5dc599f` | **por validar (só beta2)** |
-| 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `PENDENTE` | **por validar (só beta2)** |
+| 23 | 19/08/2026 | «N.º Operacionais» deixa de parecer preenchido com 4 | `bed08c8` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
