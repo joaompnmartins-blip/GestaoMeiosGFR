@@ -702,6 +702,20 @@ app.get('/api/meios/:id/turnos', requireAuth('ofligacao'), wrap(async (req, res)
   res.json({ turnos: rows, atual: atual || null });
 }));
 
+// ── GET /api/meios/:id/guarnicoes — quem esteve a bordo e quando ─
+app.get('/api/meios/:id/guarnicoes', requireAuth('visualizador'), wrap(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT g.id, g.turno, g.desde, g.ate, g.chefe_nome, g.origem,
+            COALESCE(json_agg(mm.nome ORDER BY mm.ordem)
+                     FILTER (WHERE mm.nome IS NOT NULL), '[]') AS membros
+       FROM meios_guarnicoes g
+       LEFT JOIN meios_guarnicao_membros mm ON mm.guarnicao_id = g.id
+      WHERE g.meio_id = $1
+      GROUP BY g.id
+      ORDER BY g.desde DESC`, [req.params.id]);
+  res.json(rows);
+}));
+
 // ── POST /api/meios/:id/rendicao ────────────────────────────────
 app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { turno, data, hora, horas_max } = req.body || {};

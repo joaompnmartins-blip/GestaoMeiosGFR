@@ -4624,6 +4624,7 @@ function teamCardHtml(t, isClosed, _teams, opts){
       ${_canEdit?`<button class="btn btn-ghost btn-card" onclick="editTeam('${t.id}')">✎ Editar</button>`:''}
       ${_canEdit&&!_agrupado?`<button class="btn btn-danger btn-card" onclick="deleteTeam('${t.id}')">✕ Remover</button>`:''}
       ${_canEdit&&t.egfrEquipa?`<button class="btn btn-ghost btn-card" onclick="abrirViaturaEgfr('${t.id}')" title="${t.viaturaId?'Trocar ou retirar a viatura':'Atribuir a viatura que faltava no despacho'}">🚗 ${t.viaturaId?'Viatura':'Atribuir viatura'}</button>`:''}
+      ${['admin','ofligacao','ofligacao_ccon'].includes(currentRole)&&!isClosed&&t.estado!=='desmobilizado'&&!_agrupado&&meioDeGuarnicaoFsbf(t)?`<button class="btn btn-info btn-card" onclick="abrirRendicao('${t.id}')" title="As viaturas ficam, entra outra guarnição">⇄ Render guarnição</button>`:''}
       ${_canEdit&&_agrupado?`<button class="btn btn-ghost btn-card" onclick="destacarMeio('${t.id}')" title="Retirar do conjunto para o mover sozinho">⇤ Destacar</button>`:''}
       ${_canEdit&&t.meioPaiId&&t.destacado?`<button class="btn btn-ghost btn-card" onclick="reagruparMeio('${t.id}')" title="Voltar a juntar ao conjunto de origem">⇥ Reagrupar</button>`:''}
     </div>`;
@@ -4719,6 +4720,7 @@ function showMeioInfo(teamId){
     ? `<div class="team-card-row"><span class="lbl">Operacionais</span><span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">${ops.map(n=>`<span>${esc(n)}</span>`).join('')}</span></div>`
     : row('Operacionais', t.operacionais ? `${t.operacionais} (sem nomes registados)` : '—');
   document.getElementById('mi-title').textContent = t.eq || 'Ficha do Meio';
+  carregarGuarnicoes(teamId);
   document.getElementById('mi-body').innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
       ${t.tipo?`<span class="badge badge-y">${esc(t.tipo)}</span>`:''}
@@ -5382,6 +5384,100 @@ async function doQuickSector(id){
   } catch(e){ console.warn('doQuickSector:', e); }
   closeModal('modal-action'); await cacheToIDB(); renderTeams();
   toast(`✓ ${t.eq} — Setor ${t.setor||'—'}.`,'ok');
+}
+
+// Histórico de guarnições na Ficha do Meio. É o que dá resposta a "quem estava
+// a bordo às 3 da manhã" — que a lista de operativos, por só guardar a
+// guarnição actual, nunca conseguiu responder.
+async function carregarGuarnicoes(meioId){
+  const alvo=document.getElementById('mi-guarnicoes');
+  if(!alvo) return;
+  alvo.innerHTML='<div style="font-size:11px;color:var(--muted);">A carregar…</div>';
+  const { data, error } = await apiFetch(`/api/meios/${meioId}/guarnicoes`);
+  if(error || !Array.isArray(data) || !data.length){ alvo.innerHTML=''; return; }
+  const hora=v=>v?new Date(v).toLocaleString('pt-PT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  alvo.innerHTML=`<div class="modal-section" style="margin-top:18px;">Guarnições</div>`
+    + data.map(g=>`<div class="team-card-row" style="align-items:flex-start;">
+        <span class="lbl">${g.ate?hora(g.desde)+' → '+hora(g.ate):hora(g.desde)+' → a bordo'}</span>
+        <span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">
+          ${g.turno?`<span class="badge badge-info" style="font-size:8px">turno ${esc(g.turno)}</span>`:''}
+          ${(g.membros||[]).map(n=>`<span style="font-size:11px;">${esc(n)}</span>`).join('')}
+        </span></div>`).join('');
+}
+
+// ── Rendição de guarnição ────────────────────────────────────────
+// As viaturas ficam, a guarnição muda. Não é um despacho novo — o meio é o
+// mesmo, com a mesma chegada — mas o relógio de operação recomeça, porque o
+// tempo máximo mede o cansaço de quem está a bordo.
+async function abrirRendicao(id){
+  const t=db.teams.find(x=>x.id===id); if(!t) return;
+  const { data, error } = await apiFetch(`/api/meios/${id}/turnos`);
+  if(error){ toast(error.message||'Não foi possível ler os turnos.','err'); return; }
+  const turnos=(data.turnos||[]);
+  const actual=data.atual?.turno||null;
+  const entram=turnos.filter(x=>x.turno!==actual);
+
+  document.getElementById('action-team-id').value=id;
+  document.getElementById('modal-action-box').style.width='480px';
+  const title=document.getElementById('modal-action-title');
+  const body=document.getElementById('action-body');
+  const footer=document.getElementById('action-footer');
+  title.textContent=`Render guarnição — ${t.eq}`;
+
+  if(!entram.length){
+    body.innerHTML=`<p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">
+      A Carta de Meios deste dia só tem a guarnição ${actual?`do turno <strong>${esc(actual)}</strong>`:'de um turno'}.
+      Para render, registe primeiro a guarnição do outro turno em
+      <strong>Gestão FSBF → Carta de Meios</strong>.</p>`;
+    footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Fechar</button>`;
+    openModal('modal-action'); return;
+  }
+
+  const agora=new Date();
+  const hoje=dataISO(agora), hm=agora.toTimeString().slice(0,5);
+  const membros=(t.operativos||[]).filter(Boolean);
+  const conjunto=filhosAgrupados(t.meioPaiId||t.id).length;
+  body.innerHTML=`
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.6;">
+      Sai a guarnição a bordo${actual?` (turno <strong>${esc(actual)}</strong>)`:''}${membros.length?` — ${membros.length} operacionais`:''}.
+      A chegada ao TO mantém-se; o <strong>tempo de operação recomeça</strong>.
+      ${conjunto?`<br>Aplica-se ao conjunto todo (${conjunto+1} meios).`:''}
+    </p>
+    ${membros.length?`<div class="operatives-list" style="margin:8px 0 4px;">${membros.map(n=>`<span class="operative-chip">${esc(n)}</span>`).join('')}</div>`:''}
+    <div class="form-grid" style="margin-top:12px;">
+      <div class="form-field"><label class="form-label">Turno que entra</label>
+        <select class="form-select" id="qa-rend-turno">${entram.map(x=>
+          `<option value="${esc(x.turno)}">Turno ${esc(x.turno)} — ${x.membros} op.${x.chefe?` · ${esc(x.chefe)}`:''}</option>`).join('')}</select></div>
+      <div class="form-field"><label class="form-label">Data</label>
+        <input class="form-input" type="date" id="qa-rend-data" value="${hoje}"/></div>
+      <div class="form-field"><label class="form-label">Hora</label>
+        <input class="form-input" type="time" id="qa-rend-hora" value="${hm}"/></div>
+      <div class="form-field"><label class="form-label">Horas máx. operação</label>
+        <input class="form-input" type="number" min="1" max="24" id="qa-rend-hmax" value="${t.horasMax||12}"/></div>
+    </div>`;
+  footer.innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-action')">Cancelar</button>
+    <button class="btn btn-info" onclick="confirmarRendicao('${id}')">⇄ Confirmar Rendição</button>`;
+  openModal('modal-action');
+}
+
+async function confirmarRendicao(id){
+  const corpo={
+    turno: document.getElementById('qa-rend-turno').value,
+    data:  document.getElementById('qa-rend-data').value,
+    hora:  document.getElementById('qa-rend-hora').value,
+    horas_max: parseInt(document.getElementById('qa-rend-hmax').value)||null,
+  };
+  const btn=document.querySelector('#action-footer .btn-info'); if(btn) btn.disabled=true;
+  const { data, error } = await apiFetch(`/api/meios/${id}/rendicao`,
+    { method:'POST', body: JSON.stringify(corpo) });
+  if(btn) btn.disabled=false;
+  if(error){ toast(error.message||'Não foi possível render a guarnição.','err'); return; }
+  closeModal('modal-action');
+  // O servidor mexeu na guarnição, no relógio e no responsável de vários meios:
+  // recarregar é mais seguro do que tentar espelhar tudo isso à mão.
+  await loadAllData();
+  await cacheToIDB(); renderTeams();
+  toast(`✓ Rendição feita — turno ${data.turno} em ${data.meios.length} meio(s).`,'ok');
 }
 
 async function doQuickMissao(id){
@@ -11346,6 +11442,7 @@ async function mergeSaveConfirm(){
       <button class="modal-close" onclick="closeModal('modal-meio-info')">✕</button>
     </div>
     <div class="modal-body" id="mi-body"></div>
+    <div class="modal-body" id="mi-guarnicoes" style="padding-top:0;"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-meio-info')">Fechar</button>
     </div>
