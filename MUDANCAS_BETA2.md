@@ -56,6 +56,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 34 | 20/08/2026 | Sem crachás de nomes nos cartões de BSBF e EMR | `5360c03` | **por validar (só beta2)** |
 | 35 | 20/08/2026 | Gestão ICNF em consulta para o oficial de ligação | `c55f675` | **por validar (só beta2)** |
 | 36 | 20/08/2026 | Disponíveis nas estatísticas de empenhamento FSBF · **com correcção de dados** | `1f141f3` | **por validar (só beta2)** |
+| 37 | 20/08/2026 | Guarnições por turno — fundação da rendição (1 de 3) | `0168077` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2635,3 +2636,82 @@ disponível.
 2. Confirmar na tabela por companhia as duas percentagens.
 3. Abrir a **série diária** e confirmar que os dias anteriores já trazem
    disponíveis.
+
+---
+
+## 37 — Guarnições por turno: a fundação da rendição
+
+**Data:** 20/08/2026 · **Estado:** por validar · **Parte 1 de 3**
+
+### O problema
+
+As BSBF e as EMR rendem guarnições: **as viaturas ficam, a guarnição muda**. A
+aplicação não tinha como o dizer. O bloqueio era um índice:
+
+```sql
+CREATE UNIQUE INDEX fsbf_membros_dia_op_idx ON fsbf_equipa_membros (data, operacional_id)
+```
+
+Uma pessoa, uma guarnição, um dia. Não havia forma de registar que a mesma
+viatura tem guarnição de dia e guarnição de noite.
+
+### O que muda
+
+O **turno** passa a fazer parte da identidade do membro e entra na chave:
+
+```sql
+CREATE UNIQUE INDEX fsbf_membros_dia_turno_op_idx
+  ON fsbf_equipa_membros (data, turno, operacional_id)
+```
+
+`turno` é **NOT NULL DEFAULT 'A'**, e isso é deliberado: com nulos, as linhas
+escapariam todas ao índice — em Postgres dois nulos nunca são iguais — e a
+exclusividade deixaria de valer para o que quer que fosse. As 768 linhas
+existentes ficaram todas no turno **A**, pelo que nada muda de comportamento.
+
+### Verificado contra o beta2
+
+| Tentativa | Resultado |
+|---|---|
+| Mesma pessoa, mesmo dia, **mesmo turno**, noutra viatura | **recusada** — `fsbf_membros_dia_turno_op_idx` |
+| Mesma pessoa, mesmo dia, **turno B** | **aceite** |
+
+(Ambas em transacção revertida — não ficou nada gravado.)
+
+### Percursos de escrita, todos com turno
+
+- **Substituir a guarnição** mexe só na do turno indicado; a do outro turno fica.
+- **O chefe é por turno** — apagar todos apagaria o do outro.
+- **Copiar um dia** preserva o turno, em vez de achatar os dois num só.
+- As três cláusulas `ON CONFLICT` apontam para o índice novo.
+- O conflito de pessoa é agora **dentro do turno**: a mesma pessoa pode estar no
+  turno A de uma viatura e no B de outra, o que antes era impossível.
+
+### O que falta (partes 2 e 3)
+
+1. **Histórico da guarnição no meio.** `meios_operativos` continua a ser
+   `(meio_id, nome, ordem)`: substituir a guarnição **apaga** a que saiu, e
+   ficaria sem registo de quem esteve a bordo e quando — que é precisamente o
+   que faz falta depois de um acidente ou para horas trabalhadas. Falta uma
+   tabela de guarnições com período.
+2. **A acção de render**, no cartão do meio: escolher o turno que entra, hora da
+   rendição, fechar o período que sai e abrir o novo, repor o relógio de
+   operação e registar na Fita do Tempo.
+
+### Decisões tomadas
+
+- A guarnição que entra é um **segundo turno do mesmo dia** na Carta de Meios.
+- Numa BSBF a rendição é do **conjunto todo de uma vez**.
+- Quem rende é o **oficial de ligação regional** (e o `ofligacao_ccon`).
+
+### O que já existe e vai ser reaproveitado
+
+- `lerGuarnicao()` / `gravarOperativos()` (alteração 19) — ler uma guarnição da
+  Carta e escrevê-la no meio.
+- `reiniciarJanelaOp()` (alteração 20) — repor o relógio de fadiga sem
+  reescrever a chegada ao TO.
+
+### Como validar
+
+Nada muda à vista. Confirmar que a Carta de Meios continua a funcionar como
+antes: identificar guarnição, trocar chefe, copiar um dia.
