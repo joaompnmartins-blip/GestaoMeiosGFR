@@ -877,7 +877,7 @@
                     <tr>
                       <th>Meio</th><th>Tipo</th><th>Matrícula</th><th>Setor</th><th>Ops.</th>
                       <th>Responsável</th><th>Chegada</th><th>Limite Op.</th>
-                      <th>Tempo Rest.</th><th>Desmob.</th><th>Missão</th>
+                      <th>Tempo Rest.</th><th>Tempo Total</th><th>Desmob.</th><th>Missão</th>
                       <th>Estado</th><th>Obs.</th><th></th>
                     </tr>
                   </thead>
@@ -2756,6 +2756,24 @@ function timeInfo(t){
   return { pct, cls, label, remMin, limite };
 }
 
+// Tempo total de operação: da chegada ao TO até agora — ou até à saída, se o
+// meio já foi desmobilizado, senão continuava a crescer para sempre. Ao
+// contrário do tempo restante, não se repõe no descanso: conta desde que o meio
+// chegou. É a chegada que serve de origem, e não a janela de operação, que
+// recomeça a cada retoma (alteração 20).
+function tempoOperacao(t){
+  if(!t.dataChegada || !t.horaChegada) return null;
+  const ini = new Date(`${t.dataChegada}T${t.horaChegada}`);
+  if(isNaN(ini.getTime())) return null;
+  const fim = (t.estado === 'desmobilizado' && t.dataDemob)
+    ? new Date(`${t.dataDemob}T${t.horaDemob || '00:00'}`)
+    : new Date();
+  if(isNaN(fim.getTime())) return null;
+  const min = Math.max(0, Math.round((fim - ini) / 60000));
+  return { min, label: `${Math.floor(min/60)}h${String(min%60).padStart(2,'0')}m`,
+           fechado: t.estado === 'desmobilizado' && !!t.dataDemob };
+}
+
 function addEventLog(t, msg){
   if(!t.eventos) t.eventos=[];
   t.eventos.unshift({ ts: new Date().toISOString(), msg });
@@ -4413,7 +4431,7 @@ function renderCardsView(teams, isClosed){
 function renderTableView(teams, isClosed){
   const tbody=document.getElementById('teams-tbody');
   const active=teams.filter(t=>t.estado!=='desmobilizado');
-  if(!active.length){tbody.innerHTML='<tr><td colspan="14"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div></td></tr>';return;}
+  if(!active.length){tbody.innerHTML='<tr><td colspan="15"><div class="empty"><span class="empty-icon">◎</span><div class="empty-text">Sem meios activos.</div></div></td></tr>';return;}
   const estadoMap={operacao:{l:'OPERAÇÃO',cls:'badge-ok'},descanso:{l:'DESCANSO',cls:'badge-warn'},transito:{l:'TRÂNSITO',cls:'badge-info'},previsto:{l:'PREVISTO',cls:'badge-previsto'}};
   const sorted = sortWithChildren([...active]);
   const nesteBloco = new Set(sorted.map(t=>t.id));
@@ -4475,6 +4493,7 @@ function renderTableView(teams, isClosed){
       <td class="mono">${fmtDateShort(t.dataChegada)} ${t.horaChegada||''}</td>
       <td class="mono">${t.limiteOp||'—'}</td>
       <td>${timeCell}</td>
+      <td class="mono">${(tempoOperacao(t)||{}).label||'—'}</td>
       <td class="mono">${fmtDateShort(t.dataDemob)} ${t.horaDemob||''}</td>
       <td style="font-size:11px;color:var(--muted)">${esc(t.missao||'—')}</td>
       <td>${estadoCell}</td>
@@ -4526,6 +4545,15 @@ function teamCardHtml(t, isClosed, _teams, opts){
       <div class="time-bar-track"><div class="time-bar-fill ${ti.cls}" style="width:${ti.pct}%"></div></div>
     </div>`;
   }
+
+  // Tempo total no TO — sem barra, porque não tem máximo contra o qual medir.
+  const tt = tempoOperacao(t);
+  const ttHtml = !tt ? '' : `<div class="time-remaining">
+      <div class="time-remaining-label">
+        <span class="left">Tempo total op.${tt.fechado?' (até à saída)':''}</span>
+        <span class="right mono">${tt.label}</span>
+      </div>
+    </div>`;
 
   // Operatives chips
   let opsHtml='';
@@ -4644,6 +4672,7 @@ function teamCardHtml(t, isClosed, _teams, opts){
     <div class="team-card-body">
       ${resumoHtml}
       ${tiHtml}
+      ${ttHtml}
       <div class="team-card-row"><span class="lbl">Responsável</span><span class="val">${esc(t.responsavel||'—')}</span></div>
       ${t.contacto?`<div class="team-card-row"><span class="lbl">Contacto</span><span class="val">${esc(t.contacto)}</span></div>`:''}
       ${t.missao?`<div class="team-card-row${(t.estado==='operacao'||t.estado==='descanso')?' has-missao':''}"><span class="lbl">Missão</span><span class="val">${esc(t.missao)}</span></div>`:''}

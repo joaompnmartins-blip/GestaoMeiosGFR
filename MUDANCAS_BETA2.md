@@ -52,6 +52,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `a662e86` | **por validar (só beta2)** |
 | 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `b4fa875` | **por validar (só beta2)** |
 | 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `d258c0b` | **por validar (só beta2)** |
+| 33 | 20/08/2026 | Tempo total de operação no cartão e na tabela | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2341,3 +2342,67 @@ Faro, Loulé, Salir`, que a lista de hoje passa a mostrar como **✓ Em uso**.
 3. Tentar despachá-lo de outro dia da escala: deve recusar com «Já despachado
    para "Faro, Loulé, Salir"».
 4. Desmobilizar e confirmar que volta a ficar despachável.
+
+---
+
+## 33 — Tempo total de operação no cartão e na tabela
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O cartão e a tabela mostravam só o **tempo restante** — quanto falta até ao
+limite de operação. Passam a mostrar também o **tempo total**: quanto tempo o
+meio leva no teatro de operações, contado da **Chegada ao TO** até agora.
+
+No cartão fica logo a seguir ao tempo restante, com a mesma apresentação, mas
+**sem barra**: o tempo total não tem máximo contra o qual se medir. Na tabela é
+uma coluna nova, **Tempo Total**, a seguir a *Tempo Rest.*
+
+### Porque são dois números diferentes
+
+Desde a alteração 20 estas duas coisas deixaram de ser a mesma:
+
+| | Origem | No descanso |
+|---|---|---|
+| **Tempo restante** | início da janela de operação | **repõe-se** ao retomar |
+| **Tempo total** | chegada ao TO | **não se repõe** |
+
+Um meio que chegou às 08:00, descansou e retomou às 17:00 mostra *12h* de
+restante e *9h* de total — cada um responde à sua pergunta: quanto falta a esta
+guarnição, e há quanto tempo o meio está no terreno.
+
+É por isso que a alteração 20 não podia reescrever a chegada: sem ela, este
+número não existiria.
+
+### Meios desmobilizados
+
+Para um meio já desmobilizado a contagem **pára na saída do TO**, senão
+continuava a crescer para sempre. Nesse caso a etiqueta diz *«Tempo total op.
+(até à saída)»*.
+
+### Verificação
+
+| Caso | Tempo total |
+|---|---|
+| Chegou há 11h14m, em operação | 11h14m |
+| Chegou há 3h, em descanso | 3h00m |
+| Chegou há 30h | 30h00m |
+| Ainda em trânsito, sem chegada | — |
+| Chegou há 20h e saiu há 5h | **15h00m** (e não 20h) |
+
+A tabela ficou com 15 colunas no cabeçalho e 15 células por linha.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `tempoOperacao()`; bloco no cartão; coluna na
+  tabela, com o cabeçalho e o `colspan` do estado vazio actualizados.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Num meio em operação, confirmar as duas linhas no cartão: *Tempo restante
+   op.* e *Tempo total op.*
+2. Pôr em descanso e retomar: o restante volta ao máximo, o total **não**.
+3. Na vista de **Tabela**, confirmar a coluna *Tempo Total*.
+4. Num meio desmobilizado, confirmar que o total parou na hora de saída.
