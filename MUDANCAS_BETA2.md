@@ -58,6 +58,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 36 | 20/08/2026 | Disponíveis nas estatísticas de empenhamento FSBF · **com correcção de dados** | `1f141f3` | **por validar (só beta2)** |
 | 37 | 20/08/2026 | Guarnições por turno — fundação da rendição (1 de 3) | `0168077` | **por validar (só beta2)** |
 | 38 | 20/08/2026 | Rendição de guarnição — histórico e acção (2 e 3 de 3) | `db31c08` | **por validar (só beta2)** |
+| 39 | 20/08/2026 | Identificar a guarnição do 2.º turno na Carta de Meios | `9353d24` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2802,3 +2803,69 @@ do servidor, o resultado dependia de onde o servidor está. Verificado:
    **tempo restante voltou ao máximo**, com a **chegada intacta**.
 4. Abrir a **Ficha do Meio** e confirmar os dois períodos.
 5. Confirmar a entrada na **Fita do Tempo**.
+
+---
+
+## 39 — Identificar a guarnição do 2.º turno na Carta de Meios
+
+**Data:** 20/08/2026 · **Estado:** por validar · **fecha a rendição**
+
+### O que faltava
+
+Desde a alteração 37 o esquema aceita duas guarnições por linha, e desde a 38 a
+rendição sabe usá-las. Mas **nada na interface as sabia escrever**: a janela da
+guarnição gravava sempre no turno A, pelo que a rendição nunca chegava a ter um
+turno para onde ir.
+
+### O que muda
+
+A janela da guarnição ganha um **selector de turno**. Escolher **A** ou **B**
+carrega a guarnição desse turno e grava **só nesse turno** — a do outro fica
+onde está.
+
+O crachá de cada linha conta o 1.º turno e assinala ao lado quantos estão
+identificados no 2.º:
+
+```
+👥 4/5   B 4        ← pronta a render
+👥 4/5              ← só tem o turno da manhã
+```
+
+Assim vê-se de relance quais as linhas prontas a render.
+
+Quando só há um turno, a janela diz para que serve o segundo, em vez de deixar
+o botão sem explicação.
+
+### Uma coisa que faltava no servidor
+
+A consulta da Carta não devolvia o `turno` de cada membro. Sem ele o cliente não
+tinha como separar as duas guarnições — mostraria as duas misturadas na mesma
+lista e gravaria uma por cima da outra.
+
+### Verificado contra o beta2
+
+Numa linha real com guarnição, em transacção revertida:
+
+| Turno | Guarnição |
+|---|---|
+| A | Nuno Garcia, Eduardo Camejo, Miguel Salgueiro, Pedro Belém |
+| B | Abel Mota, Afonso Costa, Albino Reboredo, Alex Alves |
+
+As duas coexistem na mesma linha, que era o que não era possível.
+
+### Alterações
+
+- `server.js` — `GET /api/fsbf/carta` devolve `m.turno` e ordena por turno.
+- `Gestao_Meios_v17.html` — `openFsbfMembros()` aceita o turno e filtra por ele;
+  selector no cabeçalho; `saveFsbfMembros()` envia o turno; `fsbfMembrosBtn()` e
+  `fsbfMembrosBadgeRefresh()` contam o 1.º turno e assinalam o 2.º.
+- **Base de dados:** nenhuma alteração.
+
+### O percurso completo, de ponta a ponta
+
+1. **Carta de Meios** → guarnição → **turno B** → identificar quem entra.
+2. No cartão do meio → **⇄ Render guarnição** → turno B, hora.
+3. A guarnição muda em todo o conjunto, o **tempo de operação recomeça** e a
+   **chegada ao TO mantém-se**.
+4. A **Ficha do Meio** mostra os dois períodos; a **Fita do Tempo** regista a
+   rendição.
