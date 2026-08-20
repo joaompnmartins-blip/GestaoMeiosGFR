@@ -51,6 +51,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 29 | 20/08/2026 | Carta de Meios: linha da EMR deixa de sair fora do cartão | `8d30481` | **por validar (só beta2)** |
 | 30 | 20/08/2026 | Vista de Tabela: conjuntos compostos numa só linha | `a662e86` | **por validar (só beta2)** |
 | 31 | 20/08/2026 | Meios já despachados apareciam livres na lista do ofligacao_ccon | `b4fa875` | **por validar (só beta2)** |
+| 32 | 20/08/2026 | EGFR: mesma falha de exclusividade, e o despacho aceitava duplicar a equipa | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2282,3 +2283,61 @@ exige primeiro que esse despacho passe a registar as viaturas.
 2. O **M01** deve aparecer como **✓ Em uso**, com a ocorrência de Faro.
 3. As três viaturas da **BSBF Sul** idem.
 4. Desmobilizar o M01 e confirmar que volta a aparecer despachável.
+
+---
+
+## 32 — O mesmo defeito no EGFR, com uma consequência pior
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### Sim, existia — e era mais grave
+
+O EGFR tinha o mesmo defeito da alteração 31: a lista marcava «já despachado»
+olhando só para o dia.
+
+```sql
+WHERE m.egfr_data = $1 AND m.egfr_equipa IS NOT NULL AND m.estado <> 'desmobilizado'
+```
+
+O **EGFR 03** está em operação em Faro desde a escala de **16/08**. Na lista de
+**20/08** apareciam **zero** equipas despachadas — logo, dava-se por livre.
+
+**A diferença para a FSBF é que aqui não havia rede de segurança.** No caso da
+BSBF/EMR o despacho recusava na mesma, porque verificava a viatura. O despacho
+EGFR só tinha a verificação por `egfr_data` + `egfr_equipa`, e **nenhuma
+verificação de viatura**. Ou seja: não era só a lista a enganar-se — o despacho
+teria sido **aceite**, pondo a mesma equipa EGFR em duas ocorrências ao mesmo
+tempo.
+
+O `EGFR 03` de Faro está, ainda por cima, **sem viatura atribuída**, pelo que a
+correcção da alteração 31 (procurar pela viatura) não o apanharia. No EGFR a
+identidade que persiste de um dia para o outro é o **nome da equipa**.
+
+### A correcção
+
+- A lista deixa de filtrar por dia: uma equipa activa é uma equipa activa,
+  tenha sido despachada a partir da escala de que dia for.
+- O despacho passa a recusar pela **equipa** e não pela linha de escala do dia.
+- Acrescentou-se ao despacho EGFR a **verificação de viatura** que faltava, nos
+  mesmos termos das restantes — duas equipas podem partilhar viatura em dias
+  diferentes da escala.
+
+Verificado contra o beta2: a consulta corrigida devolve `EGFR 03 · operacao ·
+Faro, Loulé, Salir`, que a lista de hoje passa a mostrar como **✓ Em uso**.
+
+### Alterações
+
+- `server.js`
+  - `GET /api/egfr/escala` — a consulta do estado de despacho perde o filtro por
+    `egfr_data`.
+  - `POST /deploy/egfr` — exclusividade por `egfr_equipa`; nova verificação de
+    conflito de viatura.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Como `ofligacao_ccon`, abrir a escala EGFR de hoje.
+2. O **EGFR 03** deve aparecer **✓ Em uso**, com a ocorrência de Faro.
+3. Tentar despachá-lo de outro dia da escala: deve recusar com «Já despachado
+   para "Faro, Loulé, Salir"».
+4. Desmobilizar e confirmar que volta a ficar despachável.

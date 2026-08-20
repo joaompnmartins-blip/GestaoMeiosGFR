@@ -2053,9 +2053,9 @@ app.get('/api/egfr/hoje', requireAuth('visualizador'), wrap(async (req, res) => 
   const { rows: deployed } = await pool.query(`
     SELECT m.egfr_equipa, m.id AS meio_id, o.id AS occ_id, o.local_ignicao AS occ_nome
     FROM meios m JOIN ocorrencias o ON o.id = m.ocorrencia_id
-    WHERE m.egfr_data = $1 AND m.egfr_equipa IS NOT NULL
+    WHERE m.egfr_equipa IS NOT NULL
       AND m.estado <> 'desmobilizado' AND m.meio_pai_id IS NULL
-  `, [d]);
+  `);
   const deployedMap = {};
   for (const d2 of deployed) deployedMap[d2.egfr_equipa] = d2;
 
@@ -3326,15 +3326,31 @@ app.post('/api/ocorrencias/:occId/deploy/egfr', requireCCON, wrap(async (req, re
   ]);
   if (!escalaRes.rows.length) return res.status(404).json({ error: 'Equipa EGFR não encontrada na escala.' });
 
-  // Exclusivity check
+  // Exclusividade pela equipa e não pela linha da escala do dia: a escala tem
+  // uma linha por dia, e a mesma equipa despachada na segunda continuava a
+  // aparecer livre — e a poder ser despachada outra vez — na quinta.
   const { rows: ex } = await pool.query(
     `SELECT m.id, o.local_ignicao FROM meios m JOIN ocorrencias o ON o.id=m.ocorrencia_id
-     WHERE m.egfr_data=$1 AND m.egfr_equipa=$2 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`,
-    [data, equipa]
+     WHERE m.egfr_equipa=$1 AND m.estado<>'desmobilizado' AND m.meio_pai_id IS NULL LIMIT 1`,
+    [equipa]
   );
   if (ex.length) return res.status(409).json({ error: `Já despachado para "${ex[0].local_ignicao}".` });
 
   const viat = viatRes.rows[0];
+  // O EGFR era o único despacho sem verificação de viatura. Duas equipas podem
+  // partilhar a mesma viatura em dias diferentes da escala.
+  if (viat?.viatura_id) {
+    const { rows: vConf } = await pool.query(
+      `SELECT v.viatura_cod, o.local_ignicao FROM meios m
+       JOIN viaturas v ON v.id = m.viatura_id
+       JOIN ocorrencias o ON o.id = m.ocorrencia_id
+       WHERE m.viatura_id = $1 AND m.estado = ANY($2) LIMIT 1`,
+      [viat.viatura_id, OCUPADO_ESTADOS]
+    );
+    if (vConf.length) return res.status(409).json({
+      error: `Viatura "${vConf[0].viatura_cod}" já está em uso na ocorrência "${vConf[0].local_ignicao}".`
+    });
+  }
   const today = new Date().toISOString().slice(0,10);
 
   const client = await pool.connect();
