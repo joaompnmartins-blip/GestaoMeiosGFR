@@ -2946,28 +2946,24 @@ app.put('/api/fsbf/carta', requireAuth('visualizador'), FSBF_GESTORES, wrap(asyn
     chefe: ['chefe_nome','chefe_contacto','chefe_guarnicao','chefe_veiculo_id','chefe_veiculo_texto'],
   };
   const { rows: [antes] } = await pool.query(`SELECT * FROM fsbf_carta WHERE data=$1`, [b.data]);
+
+  // Só se escreve o que vier no corpo. Antes gravavam-se sempre as dez colunas,
+  // e o que não viesse era gravado como NULL: validar o Coordenador — ou
+  // qualquer gravação feita sem o cabeçalho no ecrã — apagava o Chefe de Grupo
+  // inteiro. Um pedido que não fala de um campo não pode ter opinião sobre ele.
+  const COLS = ['coord_nome','coord_contacto','chefe_nome','chefe_contacto',
+                'chefe_guarnicao','chefe_veiculo_id','chefe_veiculo_texto','notas_outros_meios'];
+  const presentes = COLS.filter(c => c in b);
+  const valores = [b.data, req.user.id, ...presentes.map(c => b[c] ?? null)];
+  const marcas = presentes.map((_, i) => `$${i + 3}`);
   const { rows: [carta] } = await pool.query(`
-    INSERT INTO fsbf_carta
-      (data, coord_nome, coord_contacto,
-       chefe_nome, chefe_contacto, chefe_guarnicao,
-       chefe_veiculo_id, chefe_veiculo_texto, notas_outros_meios, updated_by)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+    INSERT INTO fsbf_carta (data, updated_by${presentes.length ? ',' + presentes.join(',') : ''})
+    VALUES ($1,$2${marcas.length ? ',' + marcas.join(',') : ''})
     ON CONFLICT (data) DO UPDATE SET
-      coord_nome           = EXCLUDED.coord_nome,
-      coord_contacto       = EXCLUDED.coord_contacto,
-      chefe_nome           = EXCLUDED.chefe_nome,
-      chefe_contacto       = EXCLUDED.chefe_contacto,
-      chefe_guarnicao      = EXCLUDED.chefe_guarnicao,
-      chefe_veiculo_id     = EXCLUDED.chefe_veiculo_id,
-      chefe_veiculo_texto  = EXCLUDED.chefe_veiculo_texto,
-      notas_outros_meios   = EXCLUDED.notas_outros_meios,
-      updated_by           = EXCLUDED.updated_by,
-      updated_at           = now()
+      ${presentes.map(c => `${c} = EXCLUDED.${c}`).concat(
+         ['updated_by = EXCLUDED.updated_by', 'updated_at = now()']).join(',\n      ')}
     RETURNING *
-  `, [b.data, b.coord_nome||null, b.coord_contacto||null,
-      b.chefe_nome||null, b.chefe_contacto||null, b.chefe_guarnicao||null,
-      b.chefe_veiculo_id||null, b.chefe_veiculo_texto||null,
-      b.notas_outros_meios||null, req.user.id]);
+  `, valores);
 
   // Mesma regra do resto da carta: confirmar é explícito, alterar anula
   const sets = [], vals = [carta.data];

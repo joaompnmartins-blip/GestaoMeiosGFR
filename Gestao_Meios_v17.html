@@ -8796,9 +8796,16 @@ const CARGOS_COMANDO = ['Chefe de Grupo', '2º Comandante Nacional'];
 // cargo aceita uma string ou uma lista.
 function fsbfOpOpts(selectedNome, cargo=null, baseRef=null){
   const cargos = cargo ? [].concat(cargo) : null;
-  const list = cargos
+  let list = cargos
     ? _fsbfOperacionaisCache.filter(o => cargos.includes(o.cargo))
     : _fsbfOperacionaisCache;
+  // Quem está gravado tem de continuar a aparecer, mesmo que o cargo tenha
+  // mudado e o filtro já não o apanhe: sem opção que o represente, o select
+  // vale '' e a gravação seguinte apagava o nome sem ninguém dar por isso.
+  if(selectedNome && !list.some(o => o.nome === selectedNome)){
+    const guardado = _fsbfOperacionaisCache.find(o => o.nome === selectedNome);
+    list = guardado ? [guardado, ...list] : list;
+  }
   return '<option value="">— operacional —</option>' +
     list.map(o=>{
       const fora = fsbfForaDaBase(o, baseRef);
@@ -9456,17 +9463,23 @@ async function renderFsbfCarta(){
   fsbfBindDirty();
 }
 
+// Só entram os campos que estão mesmo no ecrã. Antes devolvia-se sempre a
+// chave, e um campo ausente virava null — bastava gravar o cabeçalho com a
+// Carta por desenhar para o apagar todo. Campo que não está não tem opinião.
 function _fsbfHeaderBody(data){
-  return {
-    data,
-    coord_nome:         document.getElementById('fsbf-coord-nome')?.value.trim()||null,
-    coord_contacto:     document.getElementById('fsbf-coord-cont')?.value.trim()||null,
-    chefe_nome:         document.getElementById('fsbf-chefe-nome')?.value.trim()||null,
-    chefe_contacto:     document.getElementById('fsbf-chefe-cont')?.value.trim()||null,
-    chefe_guarnicao:    parseInt(document.getElementById('fsbf-chefe-guar')?.value)||null,
-    chefe_veiculo_id:   document.getElementById('fsbf-chefe-viat-id')?.value||null,
-    chefe_veiculo_texto:document.getElementById('fsbf-chefe-viat-txt')?.value.trim()||null,
+  const corpo = { data };
+  const por = (chave, id, tratar) => {
+    const el = document.getElementById(id);
+    if(el) corpo[chave] = tratar(el.value);
   };
+  por('coord_nome',          'fsbf-coord-nome',     v => v.trim() || null);
+  por('coord_contacto',      'fsbf-coord-cont',     v => v.trim() || null);
+  por('chefe_nome',          'fsbf-chefe-nome',     v => v.trim() || null);
+  por('chefe_contacto',      'fsbf-chefe-cont',     v => v.trim() || null);
+  por('chefe_guarnicao',     'fsbf-chefe-guar',     v => parseInt(v) || null);
+  por('chefe_veiculo_id',    'fsbf-chefe-viat-id',  v => v || null);
+  por('chefe_veiculo_texto', 'fsbf-chefe-viat-txt', v => v.trim() || null);
+  return corpo;
 }
 
 async function saveFsbfHeaderSilent(data){
