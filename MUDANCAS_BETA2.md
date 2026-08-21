@@ -59,6 +59,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 37 | 20/08/2026 | Guarnições por turno — fundação da rendição (1 de 3) | `0168077` | **por validar (só beta2)** |
 | 38 | 20/08/2026 | Rendição de guarnição — histórico e acção (2 e 3 de 3) | `db31c08` | **por validar (só beta2)** |
 | 39 | 20/08/2026 | Identificar a guarnição do 2.º turno na Carta de Meios | `9353d24` | **por validar (só beta2)** |
+| 40 | 20/08/2026 | O chefe de equipa entra na rendição | `aa592e2` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2869,3 +2870,69 @@ As duas coexistem na mesma linha, que era o que não era possível.
    **chegada ao TO mantém-se**.
 4. A **Ficha do Meio** mostra os dois períodos; a **Fita do Tempo** regista a
    rendição.
+
+---
+
+## 40 — O chefe de equipa entra na rendição
+
+**Data:** 20/08/2026 · **Estado:** por validar
+
+### O defeito
+
+Numa rendição a guarnição toda mudava **menos o chefe**: o responsável do meio
+continuava a ser o chefe que tinha acabado de sair.
+
+A razão é onde o chefe vive. `chefe_nome` está na **linha da Carta** — um por
+linha, não um por turno. O turno que entra não tinha portanto chefe nenhum:
+`chefeDoTurno()` devolvia nulo e o `COALESCE(NULL, responsavel)` deixava o
+anterior no lugar. Dos **451** chefes registados, **todos** estavam no turno A e
+nenhum noutro turno.
+
+Era o ponto que ficou por fechar quando se planeou isto: *«o chefe vive na linha
+do veículo, pelo que o chefe de um segundo turno não tem literalmente onde
+caber»*.
+
+### O que muda
+
+Os turnos que não têm campo na linha guardam o seu chefe onde ele pode existir:
+como **membro `is_chefe` desse turno**. Escolhe-se na própria janela da
+guarnição, no 1.º lugar.
+
+O **turno A não muda**: o seu chefe continua a ser o da linha da Carta, gerido
+por lá como sempre. Só um dono para cada coisa.
+
+A rendição passa a trocar **responsável e contacto** do meio.
+
+### E o contacto ao lado do nome
+
+O contacto que acompanhava o chefe era o `contacto` do **meio** — ou seja, o do
+chefe que acabou de sair. Passa a ser o do próprio chefe, tirado do efetivo.
+
+### Verificado contra o beta2
+
+Turno B registado com chefe, em transacção revertida:
+
+| | |
+|---|---|
+| `chefeDoTurno` do turno B | **André Pinto** · 910847102 |
+| Guarnição que entra | `André Pinto (910847102), Abel Mota, Afonso Costa, Albino Reboredo` |
+
+O chefe vem primeiro, com o contacto dele.
+
+### Alterações
+
+- `server.js` — `chefeDoTurno()` devolve nome e contacto; `lerGuarnicaoTurno()`
+  usa o contacto do próprio chefe; a rendição actualiza `responsavel` e
+  `contacto`; `PUT /api/fsbf/membros` aceita `chefe_id` para os turnos sem campo
+  na linha, e exclui-o da lista de membros para não violar
+  `(data, turno, operacional_id)`.
+- `Gestao_Meios_v17.html` — selector de chefe na janela da guarnição para os
+  turnos ≠ A; o envio leva o `chefe_id`.
+- **Base de dados:** nenhuma alteração — o `is_chefe` e o `turno` já existiam.
+
+### Como validar
+
+1. Carta de Meios → guarnição → **turno B** → escolher chefe e restantes.
+2. Render para o turno B.
+3. Confirmar no cartão que o **Responsável** passou a ser o chefe do turno B, e
+   o contacto o dele.
