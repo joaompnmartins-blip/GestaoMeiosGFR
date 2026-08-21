@@ -60,6 +60,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 38 | 20/08/2026 | Rendição de guarnição — histórico e acção (2 e 3 de 3) | `db31c08` | **por validar (só beta2)** |
 | 39 | 20/08/2026 | Identificar a guarnição do 2.º turno na Carta de Meios | `9353d24` | **por validar (só beta2)** |
 | 40 | 20/08/2026 | O chefe de equipa entra na rendição | `aa592e2` | **por validar (só beta2)** |
+| 41 | 21/08/2026 | Turnos seguidos à vista e turno com valores fixos | `b02e0ff` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -2936,3 +2937,71 @@ O chefe vem primeiro, com o contacto dele.
 2. Render para o turno B.
 3. Confirmar no cartão que o **Responsável** passou a ser o chefe do turno B, e
    o contacto o dele.
+
+---
+
+## 41 — Turnos seguidos à vista, e o turno com valores fixos
+
+**Data:** 21/08/2026 · **Estado:** por validar
+
+### Turnos seguidos: permitido, mas visível
+
+Desde a alteração 37 a mesma pessoa pode estar no **turno A e no B do mesmo
+dia** — consequência de relaxar o índice único, que era o que impedia a segunda
+guarnição mas também, por acidente, o turno duplo. Nada avisava.
+
+Às vezes é mesmo preciso — um chefe a cobrir — por isso **continua a ser
+permitido**. Mas são dois turnos seguidos, e passa a estar assinalado em três
+sítios:
+
+| Onde | O quê |
+|---|---|
+| Lista de escolha | `Nome · Base 🕐 turno A` — **antes** de escolher |
+| Por baixo do lugar | 🕐 *já está no turno A (VFCI 04) — ficam dois turnos seguidos* |
+| Resumo da janela | 🕐 *N operacionais fazem dois turnos seguidos neste dia* |
+
+Procura-se em **toda a carta do dia** — brigadas e cartões EMR — e não só na
+linha aberta: o conflito é da pessoa, não da viatura. O chefe do 2.º turno
+entra na contagem, por ser escolhido na mesma janela.
+
+É aviso, não recusa — a mesma opção que já se seguia para a base.
+
+Verificado com uma carta simulada:
+
+| Caso | Resultado |
+|---|---|
+| Pessoa no turno B de outra viatura, a escalar em A | 🕐 já no turno B (VAOP 12) |
+| Pessoa no turno A, a escalar em B | 🕐 já no turno A (VFCI 04) |
+| Pessoa numa EMR no turno A, a escalar em B | 🕐 já no turno A (M01) |
+| Pessoa nova | sem conflito |
+
+### O turno deixa de ser texto livre
+
+`turno` não tinha restrição nenhuma: um `'b'` minúsculo criava uma guarnição
+**distinta** de `'B'` que nenhum ecrã mostrava, e a rendição nunca a
+encontraria. Passa a haver:
+
+```sql
+CHECK (turno IN ('A','B'))
+```
+
+e validação no servidor, tanto ao gravar a guarnição como ao render — um turno
+fora da lista devolve **400** em vez de gravar em silêncio.
+
+Confirmado no beta2: inserir um turno `'C'` é agora recusado por
+`fsbf_membros_turno_check`.
+
+### Alterações
+
+- `server.js` — `TURNOS = ['A','B']`; validação em `PUT /api/fsbf/membros` e em
+  `POST /api/meios/:id/rendicao`; `CHECK` na tabela.
+- `Gestao_Meios_v17.html` — `fsbfOutroTurno()`; avisos por lugar, na lista de
+  escolha e no resumo.
+- **Base de dados:** uma restrição nova, por migração automática.
+
+### Como validar
+
+1. Carta de Meios → guarnição do turno B → escolher alguém que já esteja no A.
+2. Confirmar o 🕐 na lista, por baixo do lugar e no resumo — e que **grava na
+   mesma**.
+3. Confirmar que quem não está no outro turno não traz aviso nenhum.
