@@ -9782,11 +9782,18 @@ function fsbfAvisoNaoValidadas(cd){
   const pend = Object.entries(porSeccao).map(([k,n])=>`  • ${k}: ${n} linha(s)`);
   const nEmr = emr.filter(r=>!r.validado).length;
   if(nEmr) pend.push(`  • Máquinas de Rasto: ${nEmr} linha(s)`);
-  if(carta && !carta.validado) pend.push('  • Cabeçalho (Coordenador / Chefe de Grupo)');
+  // O Coordenador e o Chefe de Grupo validam-se cada um por si, e é assim que
+  // têm de ser contados. Antes olhava-se para carta.validado — a coluna antiga,
+  // que nenhum código escreve desde que os dois blocos passaram a ter a sua:
+  // o cabeçalho aparecia por validar mesmo depois de ambos estarem validados.
+  if(carta && !carta.coord_validado) pend.push('  • Coordenador de Dia');
+  if(carta && !carta.chefe_validado) pend.push('  • Chefe de Grupo');
   if(!pend.length) return true;
 
-  const tot = bsbf.length + emr.length;
-  const val = bsbf.filter(r=>r.validado).length + emr.filter(r=>r.validado).length;
+  // Contam como duas linhas, porque é o que são.
+  const tot = bsbf.length + emr.length + (carta ? 2 : 0);
+  const val = bsbf.filter(r=>r.validado).length + emr.filter(r=>r.validado).length
+            + (carta ? (carta.coord_validado?1:0) + (carta.chefe_validado?1:0) : 0);
   return confirm(
     'Esta Carta de Meios tem dados ainda não validados:\n\n'
     + pend.join('\n')

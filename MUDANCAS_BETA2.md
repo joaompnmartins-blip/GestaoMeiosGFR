@@ -61,6 +61,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 39 | 20/08/2026 | Identificar a guarnição do 2.º turno na Carta de Meios | `9353d24` | **por validar (só beta2)** |
 | 40 | 20/08/2026 | O chefe de equipa entra na rendição | `aa592e2` | **por validar (só beta2)** |
 | 41 | 21/08/2026 | Turnos seguidos à vista e turno com valores fixos | `b02e0ff` | **por validar (só beta2)** |
+| 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3005,3 +3006,78 @@ Confirmado no beta2: inserir um turno `'C'` é agora recusado por
 2. Confirmar o 🕐 na lista, por baixo do lugar e no resumo — e que **grava na
    mesma**.
 3. Confirmar que quem não está no outro turno não traz aviso nenhum.
+
+---
+
+## 42 — Coordenador de Dia e Chefe de Grupo contam como linhas independentes
+
+**Data:** 21/08/2026 · **Estado:** por validar
+
+### O defeito
+
+Ao exportar a Carta de Meios, o aviso de dados por validar dizia sempre
+*«Cabeçalho (Coordenador / Chefe de Grupo)»* — mesmo com os dois validados.
+
+A causa é uma coluna que ficou para trás. `fsbf_carta` tem **três** conjuntos de
+colunas de validação:
+
+| Coluna | Quem escreve |
+|---|---|
+| `coord_validado` | o botão do Coordenador |
+| `chefe_validado` | o botão do Chefe de Grupo |
+| `validado` (legado) | **ninguém** |
+
+A guarda da exportação olhava para a legada:
+
+```js
+if(carta && !carta.validado) pend.push('  • Cabeçalho (Coordenador / Chefe de Grupo)');
+```
+
+Como nada a escreve, era sempre falsa. Na base de dados, o dia 21/08 tem
+`coord_validado = t` e `validado = f` — validar o Coordenador não mexia, nem
+podia mexer, na coluna que a guarda estava a ler.
+
+### O que muda
+
+Os dois blocos passam a ser contados **cada um por si**, e nomeados: em vez de
+um «Cabeçalho» genérico, diz-se qual falta.
+
+Contam também para o total, porque são linhas como as outras:
+
+| | Antes | Agora |
+|---|---|---|
+| 21/08 (Coordenador validado, Chefe não) | «Cabeçalho (Coordenador / Chefe de Grupo)» | «**Chefe de Grupo**» |
+| Total | 3 de 4 | **4 de 6** |
+| Com ambos validados | continuava a acusar o cabeçalho | **não acusa nada** |
+
+### O que já estava bem
+
+Vale a pena registar, porque foi verificado e não precisou de mexer:
+
+- O **servidor** já tratava os dois blocos como independentes, incluindo a regra
+  de anular a confirmação de um sem tocar no outro quando os campos mudam.
+- A marcação de *não gravado* (`data-fsbf-row`) já era por bloco.
+- Não há anulação cruzada acidental: os valores que o formulário envia
+  normalizam para os mesmos tipos que estão guardados, pelo que a comparação
+  `alterou?` só dispara numa edição verdadeira.
+
+Era só a guarda da exportação a ler a coluna errada.
+
+### Fica assinalado
+
+A coluna `fsbf_carta.validado` (e os seus `validado_por` / `validado_em`) está
+**morta**: nada a escreve e agora nada a lê. Não foi removida — apagar colunas é
+irreversível e ela não faz mal — mas não deve ser usada como sinal de nada.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — a guarda da exportação passa a ler
+  `coord_validado` e `chefe_validado`, e a contá-los no total.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Validar só o **Coordenador** e exportar: o aviso deve nomear apenas o
+   **Chefe de Grupo**.
+2. Validar também o Chefe de Grupo: o cabeçalho deixa de aparecer no aviso.
+3. Confirmar que o total de linhas validadas passou a incluir os dois blocos.
