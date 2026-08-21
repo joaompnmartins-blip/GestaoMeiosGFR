@@ -61,7 +61,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 39 | 20/08/2026 | Identificar a guarnição do 2.º turno na Carta de Meios | `9353d24` | **por validar (só beta2)** |
 | 40 | 20/08/2026 | O chefe de equipa entra na rendição | `aa592e2` | **por validar (só beta2)** |
 | 41 | 21/08/2026 | Turnos seguidos à vista e turno com valores fixos | `b02e0ff` | **por validar (só beta2)** |
-| 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `PENDENTE` | **por validar (só beta2)** |
+| 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `52ab5b9` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
