@@ -745,11 +745,13 @@ app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, r
       const pai = alvo.meio_pai_id ? familia.find(m => m.id === alvo.meio_pai_id) || raiz : null;
       const origem = origemFsbfDoMeio(alvo, pai);
       if (!origem) continue;
-      const nomes = await lerGuarnicaoTurno(client, origem.col, origem.id, turno, alvo.contacto);
+      const nomes = await lerGuarnicaoTurno(client, origem.col, origem.id, turno);
       if (!nomes.length) continue;
-      const chefe = await chefeDoTurno(client, origem.col, origem.id, turno);
+      const chefeRow = await chefeDoTurno(client, origem.col, origem.id, turno);
+      const chefe = chefeRow ? chefeRow.nome : null;
+      const contactoChefe = chefeRow ? chefeRow.contacto : null;
       await renderGuarnicao(client, alvo, {
-        turno, quando, nomes, chefe, contacto: alvo.contacto, userId: req.user.id });
+        turno, quando, nomes, chefe, contacto: contactoChefe, userId: req.user.id });
 
       // O relógio de operação recomeça: o tempo máximo mede o cansaço da
       // guarnição, e a guarnição é outra. A chegada ao TO não se toca.
@@ -758,15 +760,17 @@ app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, r
         const lim = somarHorasParede(data, hora, h);
         await client.query(
           `UPDATE meios SET op_inicio_data=$2, op_inicio_hora=$3, horas_max=$4,
-                            limite_op=$5, limite_op_date=$6, responsavel=COALESCE($7, responsavel),
-                            updated_at=now()
+                            limite_op=$5, limite_op_date=$6,
+                            responsavel=COALESCE($7, responsavel),
+                            contacto=COALESCE($8, contacto), updated_at=now()
             WHERE id=$1`,
-          [alvo.id, data, hora, h, lim.hora, lim.data, chefe || null]);
+          [alvo.id, data, hora, h, lim.hora, lim.data, chefe || null, contactoChefe || null]);
       } else {
         await client.query(
           `UPDATE meios SET op_inicio_data=$2, op_inicio_hora=$3,
-                            responsavel=COALESCE($4, responsavel), updated_at=now()
-            WHERE id=$1`, [alvo.id, data, hora, chefe || null]);
+                            responsavel=COALESCE($4, responsavel),
+                            contacto=COALESCE($5, contacto), updated_at=now()
+            WHERE id=$1`, [alvo.id, data, hora, chefe || null, contactoChefe || null]);
       }
       await client.query(
         `INSERT INTO meios_eventos (meio_id, ts, msg, user_id) VALUES ($1, now(), $2, $3)`,
@@ -2784,13 +2788,16 @@ async function companhiaStats(data) {
 
 // Substitui os membros não-chefe de uma equipa (operação atómica).
 app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(async (req, res) => {
-  const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [], turno = 'A' } = req.body;
+  const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [],
+          turno = 'A', chefe_id = null } = req.body;
   if (!data) return res.status(400).json({ error: 'data obrigatória.' });
   if (!!fsbf_bsbf_id === !!fsbf_emr_id)
     return res.status(400).json({ error: 'Indique exactamente uma equipa.' });
   const col = fsbf_bsbf_id ? 'fsbf_bsbf_id' : 'fsbf_emr_id';
   const id  = fsbf_bsbf_id || fsbf_emr_id;
-  const ids = [...new Set(operacional_ids.filter(Boolean))];
+  // O chefe entra pela sua própria via: repetido na lista violaria
+  // (data, turno, operacional_id).
+  const ids = [...new Set(operacional_ids.filter(Boolean))].filter(x => x !== chefe_id);
 
   // A base da linha é a referência contra a qual se verifica a base de cada
   // operacional. Sem ela não há nada a comparar, pelo que identificar a
@@ -2816,6 +2823,18 @@ app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(as
       await client.query(
         `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, turno, ordem, created_by)
          VALUES ($1,$2,$3,$4,$5,$6)`, [data, id, ids[i], turno, i, req.user.id]);
+    }
+    // O chefe do 1.º turno é o da linha da Carta, e continua a ser gerido por
+    // aí. Os turnos seguintes não têm campo na linha onde caber, pelo que o seu
+    // chefe se guarda aqui — é o membro is_chefe desse turno.
+    if (turno !== 'A') {
+      await client.query(
+        `DELETE FROM fsbf_equipa_membros WHERE ${col}=$1 AND is_chefe AND turno=$2`, [id, turno]);
+      if (chefe_id) {
+        await client.query(
+          `INSERT INTO fsbf_equipa_membros (data, ${col}, operacional_id, is_chefe, turno, ordem, created_by)
+           VALUES ($1,$2,$3,true,$4,-1,$5)`, [data, id, chefe_id, turno, req.user.id]);
+      }
     }
     await client.query('COMMIT');
   } catch (e) {
@@ -3245,24 +3264,26 @@ async function lerGuarnicao(client, col, escalaId, contactoChefe) {
   return rows.map(r => (r.is_chefe && contactoChefe) ? `${r.nome} (${contactoChefe})` : r.nome);
 }
 // A mesma leitura, restrita a um turno — é o que a rendição precisa.
-async function lerGuarnicaoTurno(client, col, escalaId, turno, contactoChefe) {
+async function lerGuarnicaoTurno(client, col, escalaId, turno) {
   if (!GUARNICAO_COLS.includes(col) || !escalaId) return [];
   const { rows } = await client.query(
-    `SELECT o.nome, m.is_chefe
+    `SELECT o.nome, o.contacto, m.is_chefe
        FROM fsbf_equipa_membros m
        JOIN operacionais_fsbf o ON o.id = m.operacional_id
       WHERE m.${col} = $1 AND m.turno = $2
       ORDER BY m.is_chefe DESC, m.ordem, o.nome`, [escalaId, turno]);
-  return rows.map(r => (r.is_chefe && contactoChefe) ? `${r.nome} (${contactoChefe})` : r.nome);
+  // O contacto ao lado do chefe é o dele: usar o do meio punha o número do
+  // chefe que acabou de sair ao lado do nome do que entrou.
+  return rows.map(r => (r.is_chefe && r.contacto) ? `${r.nome} (${r.contacto})` : r.nome);
 }
 
 async function chefeDoTurno(client, col, escalaId, turno) {
   if (!GUARNICAO_COLS.includes(col) || !escalaId) return null;
   const { rows: [r] } = await client.query(
-    `SELECT o.nome FROM fsbf_equipa_membros m
+    `SELECT o.nome, o.contacto FROM fsbf_equipa_membros m
        JOIN operacionais_fsbf o ON o.id = m.operacional_id
       WHERE m.${col} = $1 AND m.turno = $2 AND m.is_chefe LIMIT 1`, [escalaId, turno]);
-  return r ? r.nome : null;
+  return r || null;
 }
 
 async function gravarOperativos(client, meioId, nomes) {

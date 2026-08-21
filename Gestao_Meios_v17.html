@@ -8998,6 +8998,22 @@ function openFsbfMembros(id, tipo, turno){
   if(bloqueado){ openModal('modal-fsbf-membros'); return; }
 
   // Chefe: ocupa sempre o primeiro lugar e não é editável aqui
+  // No 1.º turno o chefe é o da linha da Carta e não se edita aqui. Os turnos
+  // seguintes não têm campo na linha onde caber, por isso escolhem-se aqui — é
+  // o que faltava para a rendição trocar também o chefe.
+  const chefeTurno = (row.membros||[]).find(m=>m.is_chefe && (m.turno||'A')===turno);
+  if(turno !== 'A'){
+    document.getElementById('fsbf-mem-chefe').innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);width:18px;">1.</span>
+        <select class="form-select" id="fsbf-mem-chefe-sel" style="flex:1;font-size:12px;"
+                onchange="fsbfMembrosAvisos()">
+          ${fsbfMembroOpts(chefeTurno?chefeTurno.operacional_id:'', baseLinha)}
+        </select>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin:3px 0 0 24px;">
+        Chefe do turno ${esc(turno)} — o do turno A é o da linha da Carta.</div>`;
+  } else {
   const chefeNome = row.chefe_nome || '';
   const opChefe   = fsbfOpPorNome(chefeNome);
   const chefeFora = fsbfForaDaBase(opChefe, baseLinha);
@@ -9007,6 +9023,7 @@ function openFsbfMembros(id, tipo, turno){
          opChefe ? ` · ${esc(opChefe.base||'sem base')}` : ' · <b style="color:var(--warn)">não reconhecido no efetivo</b>'}</span>${
        chefeFora ? `<div style="color:var(--warn);font-size:11px;margin-top:2px;">⚠ base ${esc(opChefe.base)} — diferente da base da linha. Alterar na linha, na coluna Chefe de Equipa.</div>` : ''}`
     : `<span style="color:var(--warn);">Sem chefe de equipa definido — defina-o na linha para ocupar o 1.º lugar.</span>`;
+  }
 
   const rows = [];
   for(let i=0;i<lugares;i++){
@@ -9086,8 +9103,9 @@ async function saveFsbfMembros(){
   const { id, tipo } = _fsbfMembrosCtx;
   const ids = [...document.querySelectorAll('.fsbf-mem-sel')].map(s=>s.value).filter(Boolean);
   if(new Set(ids).size !== ids.length){ toast('Operacional repetido na mesma guarnição.','err'); return; }
-  const body = { data: document.getElementById('fsbf-data').value, operacional_ids: ids,
-                 turno: _fsbfMembrosCtx.turno || 'A' };
+  const turno = _fsbfMembrosCtx.turno || 'A';
+  const body = { data: document.getElementById('fsbf-data').value, operacional_ids: ids, turno };
+  if(turno !== 'A') body.chefe_id = document.getElementById('fsbf-mem-chefe-sel')?.value || null;
   body[tipo==='emr' ? 'fsbf_emr_id' : 'fsbf_bsbf_id'] = id;
   const { error } = await apiFetch('/api/fsbf/membros',{method:'PUT',body:JSON.stringify(body)});
   if(error){ toast(error.message,'err'); return; }
