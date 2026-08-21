@@ -62,6 +62,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 40 | 20/08/2026 | O chefe de equipa entra na rendição | `aa592e2` | **por validar (só beta2)** |
 | 41 | 21/08/2026 | Turnos seguidos à vista e turno com valores fixos | `b02e0ff` | **por validar (só beta2)** |
 | 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `52ab5b9` | **por validar (só beta2)** |
+| 43 | 21/08/2026 | Validar o Coordenador apagava o Chefe de Grupo | `19fcd1a` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3081,3 +3082,87 @@ irreversível e ela não faz mal — mas não deve ser usada como sinal de nada.
    **Chefe de Grupo**.
 2. Validar também o Chefe de Grupo: o cabeçalho deixa de aparecer no aviso.
 3. Confirmar que o total de linhas validadas passou a incluir os dois blocos.
+
+---
+
+## 43 — Validar o Coordenador apagava o Chefe de Grupo
+
+**Data:** 21/08/2026 · **Estado:** por validar
+
+### O defeito
+
+Validar o **Coordenador de Dia** apagava o **Chefe de Grupo** — não só a
+confirmação: os dados. Ficava no beta2 a prova, no dia 21/08:
+
+| Dia | coord_validado | coord_nome | chefe_nome | Viatura | Contacto |
+|---|---|---|---|---|---|
+| 21/08 | **true** | *(vazio)* | *(vazio)* | *(vazio)* | *(vazio)* |
+| 20/08 | false | André Pinto | Telmo Dias | VCOT 06 | 910846946 |
+
+Um `coord_validado` a `true` com o `coord_nome` vazio não se explica de outra
+maneira: a própria gravação apagou o que estava lá.
+
+### A causa
+
+O `PUT /api/fsbf/carta` gravava **sempre as dez colunas** do cabeçalho, e o que
+não viesse no corpo era gravado como `NULL`. Havia dois caminhos a fazê-lo:
+
+1. **Anular uma validação** envia só `{ data, coord_validado:false }` — sem um
+   único campo do cabeçalho. Resultado: cabeçalho todo a `NULL`.
+2. **Gravar com a Carta por desenhar**: `_fsbfHeaderBody()` devolvia sempre as
+   sete chaves, e `document.getElementById(...)?.value` num campo que não existe
+   dá `undefined`, que virava `null`. O mesmo efeito.
+
+A alteração 42 tratou do aviso da exportação, que era outro sintoma, mas não
+desta perda de dados.
+
+### A correcção, dos dois lados
+
+**No servidor** — escreve-se só o que vem no corpo:
+
+```js
+const presentes = COLS.filter(c => c in b);
+```
+
+Um pedido que não fala de um campo não pode ter opinião sobre ele. Anular uma
+validação passa a gerar apenas:
+
+```sql
+INSERT INTO fsbf_carta (data, updated_by) VALUES ($1,$2)
+ON CONFLICT (data) DO UPDATE SET updated_by = EXCLUDED.updated_by, updated_at = now()
+```
+
+**No cliente** — `_fsbfHeaderBody()` só inclui os campos que estão no ecrã. Sem
+a Carta desenhada devolve `{ data }` e mais nada.
+
+Confirmado no beta2, em transacção revertida: com o cabeçalho preenchido, uma
+gravação sem campos deixa `André Pinto`, `Telmo Dias` e `910846946` **intactos**.
+
+### Um terceiro caminho, fechado a par
+
+`fsbfOpOpts()` filtra por cargo e **não guardava o nome já gravado** quando o
+filtro não o apanha. Se o cargo de alguém mudasse, o `select` ficava sem opção
+que o representasse, valia `''`, e a gravação seguinte apagava o nome — sem
+ninguém dar por isso. Passa a manter sempre o nome gravado como opção, como já
+se fazia com o nº de ocorrência.
+
+### Alterações
+
+- `server.js` — `PUT /api/fsbf/carta` monta as colunas a partir do corpo.
+- `Gestao_Meios_v17.html` — `_fsbfHeaderBody()` omite campos ausentes;
+  `fsbfOpOpts()` preserva o valor gravado.
+- **Base de dados:** nenhuma alteração de esquema.
+
+### Dados perdidos
+
+O cabeçalho de **21/08** foi apagado por este defeito e **não foi reposto** —
+os dados são seus e não os quis adivinhar. Os dias 15/08 a 20/08 têm todos
+`André Pinto` · `Telmo Dias` · `VCOT 06` · `910846946`, pelo que repor é
+provavelmente só copiar de 20/08. Diga se quer.
+
+### Como validar
+
+1. Preencher o cabeçalho e validar o **Coordenador**: o Chefe de Grupo tem de
+   ficar como estava.
+2. Anular a validação: idem.
+3. Validar o Chefe de Grupo e confirmar que o Coordenador não é afectado.
