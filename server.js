@@ -719,7 +719,8 @@ app.get('/api/meios/:id/guarnicoes', requireAuth('visualizador'), wrap(async (re
 // ── POST /api/meios/:id/rendicao ────────────────────────────────
 app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, res) => {
   const { turno, data, hora, horas_max } = req.body || {};
-  if (!turno) return res.status(400).json({ error: 'Indique o turno que entra.' });
+  if (!TURNOS.includes(turno))
+    return res.status(400).json({ error: `Indique o turno que entra (${TURNOS.join(' ou ')}).` });
   if (!data || !hora) return res.status(400).json({ error: 'Indique a data e a hora da rendição.' });
 
   const { rows: [meio] } = await pool.query('SELECT * FROM meios WHERE id=$1', [req.params.id]);
@@ -1659,6 +1660,10 @@ async function assertFonteAccess(client, recursoId, userRole) {
 // ══════════════════════════════════════════════════════════════════
 //  MÓDULOS DE GESTÃO — RECURSOS
 // ══════════════════════════════════════════════════════════════════
+
+// Turnos aceites. Sem isto, `turno` era texto livre: um 'b' minúsculo criava
+// uma terceira guarnição, distinta de 'B', que a interface nunca mostraria.
+const TURNOS = ['A', 'B'];
 
 const ALL_GESTORES      = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf');
 const ALL_GESTORES_READ = requireModule('gestor_sf', 'gestor_fsbf', 'gestor_icnf', 'chefe_grupo_fsbf');
@@ -2791,6 +2796,8 @@ app.put('/api/fsbf/membros', requireAuth('visualizador'), FSBF_GESTORES, wrap(as
   const { data, fsbf_bsbf_id = null, fsbf_emr_id = null, operacional_ids = [],
           turno = 'A', chefe_id = null } = req.body;
   if (!data) return res.status(400).json({ error: 'data obrigatória.' });
+  if (!TURNOS.includes(turno))
+    return res.status(400).json({ error: `Turno inválido. Use ${TURNOS.join(' ou ')}.` });
   if (!!fsbf_bsbf_id === !!fsbf_emr_id)
     return res.status(400).json({ error: 'Indique exactamente uma equipa.' });
   const col = fsbf_bsbf_id ? 'fsbf_bsbf_id' : 'fsbf_emr_id';
@@ -4044,6 +4051,13 @@ async function runMigrations() {
     `DROP INDEX IF EXISTS fsbf_membros_dia_op_idx`,
     `CREATE UNIQUE INDEX IF NOT EXISTS fsbf_membros_dia_turno_op_idx
        ON fsbf_equipa_membros (data, turno, operacional_id)`,
+    // O turno era texto livre: um 'b' minúsculo criava uma guarnição distinta
+    // de 'B' que nenhum ecrã mostrava. Passa a haver só os valores previstos.
+    `DO $$ BEGIN
+       ALTER TABLE fsbf_equipa_membros DROP CONSTRAINT IF EXISTS fsbf_membros_turno_check;
+       ALTER TABLE fsbf_equipa_membros ADD CONSTRAINT fsbf_membros_turno_check
+         CHECK (turno IN ('A','B'));
+     EXCEPTION WHEN OTHERS THEN NULL; END $$`,
     `CREATE INDEX        IF NOT EXISTS fsbf_membros_bsbf_idx    ON fsbf_equipa_membros (fsbf_bsbf_id)`,
     `CREATE INDEX        IF NOT EXISTS fsbf_membros_emr_idx     ON fsbf_equipa_membros (fsbf_emr_id)`,
     // Materializa o chefe de cada equipa como membro. Idempotente: DO NOTHING

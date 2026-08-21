@@ -9057,30 +9057,69 @@ function fsbfMembroOpts(selectedId, base){
       // comparação era por companhia.
       const fora = fsbfForaDaBase(o, base);
       const rotulo = o.base ? esc(o.base) : 'sem base';
+      // Assinalado já na lista: mais vale ver antes de escolher do que depois.
+      const noutro = fsbfOutroTurno(o.id, _fsbfMembrosCtx?.turno || 'A');
       return `<option value="${o.id}"${o.id===selectedId?' selected':''}>${esc(o.nome)} · ${rotulo}${
-        fora?' ⚠':''}</option>`;
+        fora?' ⚠':''}${noutro.length?` 🕐 turno ${esc(noutro[0].turno)}`:''}</option>`;
     }).join('');
 }
 
 // Recalcula os avisos por lugar e o resumo. Corre ao abrir e a cada alteração,
 // pelo que também assinala linhas gravadas antes desta verificação existir.
+// Estar nos dois turnos é permitido — às vezes é mesmo preciso, um chefe a
+// cobrir — mas são dois turnos seguidos e isso tem de estar à vista de quem
+// escala. Procura-se em toda a carta do dia, não só nesta linha.
+function fsbfOutroTurno(opId, turnoActual){
+  if(!opId) return [];
+  const achados = [];
+  const juntar = (linhas, tipo) => (linhas||[]).forEach(r => (r.membros||[]).forEach(m => {
+    if(m.operacional_id !== opId) return;
+    const t = m.turno || 'A';
+    if(t === turnoActual) return;
+    achados.push({ turno: t, onde: tipo==='emr' ? (r.mr_cod || r.base || 'EMR')
+                                                : (r.viatura_cod || r.brigada || 'linha') });
+  }));
+  juntar(_fsbfBsbfCache, 'bsbf');
+  juntar(_fsbfEmrCache, 'emr');
+  return achados;
+}
+
 function fsbfMembrosAvisos(){
   if(!_fsbfMembrosCtx) return;
-  const { baseLinha, row } = _fsbfMembrosCtx;
-  let fora = 0, preenchidos = 0;
+  const { baseLinha, row, turno } = _fsbfMembrosCtx;
+  let fora = 0, preenchidos = 0, dobrados = 0;
   document.querySelectorAll('.fsbf-mem-sel').forEach(sel=>{
     const el = document.querySelector(`.fsbf-mem-aviso[data-i="${sel.dataset.i}"]`);
     const op = fsbfOpPorId(sel.value);
     if(op) preenchidos++;
     const mau = fsbfForaDaBase(op, baseLinha);
     if(mau) fora++;
-    if(el) el.textContent = mau ? `⚠ ${op.nome} é da base ${op.base}, não de ${baseLinha}.` : '';
+    const outro = fsbfOutroTurno(sel.value, turno || 'A');
+    if(outro.length) dobrados++;
+    if(el){
+      const avisos = [];
+      if(mau) avisos.push(`⚠ ${esc(op.nome)} é da base ${esc(op.base)}, não de ${esc(baseLinha)}.`);
+      if(outro.length) avisos.push(
+        `🕐 ${esc(op?op.nome:'Este operacional')} já está no turno ${esc(outro[0].turno)} (${esc(outro[0].onde)}) — ficam dois turnos seguidos.`);
+      el.innerHTML = avisos.join('<br>');
+    }
   });
+  // O chefe do 2.º turno também conta, e é escolhido aqui.
+  const selChefe = document.getElementById('fsbf-mem-chefe-sel');
+  if(selChefe){
+    const outroChefe = fsbfOutroTurno(selChefe.value, turno || 'A');
+    if(outroChefe.length) dobrados++;
+  }
   const opChefe = fsbfOpPorNome(row.chefe_nome||'');
   const chefeFora = fsbfForaDaBase(opChefe, baseLinha);
   const total = preenchidos + (opChefe ? 1 : 0);
   const totalFora = fora + (chefeFora ? 1 : 0);
   const res = document.getElementById('fsbf-mem-resumo');
+  if(res && dobrados && !totalFora){
+    res.style.display = '';
+    res.innerHTML = `🕐 <strong>${dobrados}</strong> ${dobrados===1?'operacional faz':'operacionais fazem'} dois turnos seguidos neste dia.`;
+    return;
+  }
   if(res){
     res.style.display = totalFora ? '' : 'none';
     res.innerHTML = totalFora
