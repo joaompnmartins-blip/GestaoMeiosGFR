@@ -3166,3 +3166,61 @@ provavelmente só copiar de 20/08. Diga se quer.
    ficar como estava.
 2. Anular a validação: idem.
 3. Validar o Chefe de Grupo e confirmar que o Coordenador não é afectado.
+
+---
+
+# Apêndice — operações de dados no beta1
+
+Estas **não são alterações de código** e não têm nada que ver com a promoção do
+ramo. Ficam registadas por serem escritas feitas à mão na base de dados em uso.
+
+## B1-01 — EGFR 01 carregada na ocorrência 20261194697 (Fontes)
+
+**Data:** 24/08/2026
+
+### Porquê à mão
+
+O ecrã de despacho de meios nacionais só oferece a escala **do próprio dia**:
+
+```js
+const today = new Date().toISOString().slice(0,10);
+apiFetch(`/api/egfr/hoje?data=${today}`)
+```
+
+`renderMeiosNacionaisDisponivel()` não tem selector de data. A equipa saiu da
+base a **22/08 às 18:00**, e a escala de 22/08 já não é alcançável por ali.
+
+### O que foi escrito
+
+Três linhas, as mesmas que o despacho real cria:
+
+| Tabela | Conteúdo |
+|---|---|
+| `composicoes` | `EGFR-EGFR-01-2026-08-22`, tipo `EGFR_NACIONAL` |
+| `meios` | `EGFR 01` · `EGFR` · **trânsito** · 3 op. · saída da base 22/08 18:00 · `egfr_data`/`egfr_equipa` preenchidos |
+| `meios_operativos` | 3 nomes, da escala de 22/08 |
+
+A guarnição veio da própria escala, não foi inventada: JOSÉ FILIPE AMORIM DE
+PINHO, BRUNO MIGUEL RAMOS FERNANDES, ANITA ISABEL FERREIRA DA COSTA PINTO.
+
+Ficou de propósito **por preencher**: despacho, chegada ao TO, horas máximas,
+setor e missão — que se completam na interface.
+
+`egfr_data` e `egfr_equipa` foram preenchidos porque não se conseguem pôr pela
+interface e são o que impede a equipa de ser despachada outra vez. Confirmado:
+a `EGFR 01` aparece agora empenhada em *Fontes*.
+
+### O que não foi feito, e porquê
+
+Não há **viatura** ligada: a escala de 22/08 não tem viatura atribuída a
+nenhuma equipa. O beta1 também não tem como a ligar depois — isso é a alteração
+15, que só existe no beta2. Pode escrever-se a matrícula no Editar Meio, mas
+`viatura_id` fica nulo e a viatura não conta como em uso.
+
+### Armadilha a ter em conta ao completar na interface
+
+O `saveTeam()` do beta1 nunca põe `viaturaId` no payload, mas a linha gravada
+leva `viatura_id: payload.viaturaId || null`. **Editar um meio pela interface
+apaga-lhe a `viatura_id`.** Aqui não faz diferença — já é nula — mas significa
+que, se algum dia se ligar a viatura por SQL, essa tem de ser a última escrita.
+É um defeito do beta1 que vale a pena tratar à parte.
