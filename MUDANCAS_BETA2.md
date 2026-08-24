@@ -3298,3 +3298,49 @@ nunca preenche: **uma gravação por ali desliga a viatura**, sem aviso.
 
 Se for mesmo preciso usar o Editar Meio, as viaturas voltam a ligar-se com um
 `UPDATE` por meio, que tem de ser a última escrita.
+
+## B1-04 — BSBF Norte e EMR M24 carregadas na ocorrência 20261194697 (Fontes)
+
+**Data:** 24/08/2026 · Carta de **22/08**, saída da base **22/08 18:00**
+
+Nenhuma das duas linhas tinha sido despachada e todas as viaturas estavam livres.
+
+### BSBF Norte — contentor + 3 viaturas
+
+| Nível | Meio | Tipo | Guarnição | Chefe |
+|---|---|---|---|---|
+| contentor | **BSBF Norte** | BSBF | 12 (soma) | — |
+| viatura | VFCI 01 · AU-28-IV | VFCI | 5 | Cristiano Macieira |
+| viatura | VFCI 02 · AU-34-IV | VFCI | 5 | Pedro Ferreira |
+| viatura | VAOP 13 · BF-91-ZZ | MU | 2 | Abel Mota |
+
+O contentor **não leva viatura** — é o rótulo do conjunto, e é assim que o
+despacho o cria. Cada viatura levou o seu chefe como operativo.
+
+### EMR M24 — pai + 1 viatura
+
+Na Carta de 22/08 o M24 está em *Macedo de Cavaleiros* com **VAOP 06** apenas —
+composição diferente da de 18/08 (CNFSBF, VAOP 09 + VTTP 14). Foi usada a de
+22/08, que é a que corresponde à saída.
+
+| Nível | Meio | Tipo | Op. | Chefe |
+|---|---|---|---|---|
+| pai | **M24** | MR | 7 | Leonardo Fundo |
+| filho | VAOP 06 · BF-48-ZC | PM | — | — |
+
+### Estado da ocorrência
+
+7 linhas activas, **6 meios** — o contentor da BSBF não conta, que é o que a
+alteração 28 corrigiu nos contadores do beta2. No beta1, que ainda não a tem,
+os contadores vão dizer 7.
+
+### Duas coisas a saber
+
+**Pedro Ferreira está em dois sítios.** É chefe do VFCI 02 aqui (Carta de 22/08)
+e é o chefe da EMR M23 carregada em Rebordões (Carta de 18/08, B1-03), que
+continua activa. As duas cartas são de dias diferentes, pelo que nada o impede —
+mas é a mesma pessoa em duas ocorrências ao mesmo tempo.
+
+**As viaturas.** As seis novas ficaram ligadas e contam como em uso. Vale aqui a
+mesma regra da B1-03: completar pelos **botões do cartão**, nunca pelo **Editar
+Meio**, que põe `viatura_id` a nulo sem avisar.
