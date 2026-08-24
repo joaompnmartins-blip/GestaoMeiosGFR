@@ -3224,3 +3224,31 @@ leva `viatura_id: payload.viaturaId || null`. **Editar um meio pela interface
 apaga-lhe a `viatura_id`.** Aqui não faz diferença — já é nula — mas significa
 que, se algum dia se ligar a viatura por SQL, essa tem de ser a última escrita.
 É um defeito do beta1 que vale a pena tratar à parte.
+
+## B1-02 — EGFR 01 carregada na ocorrência 20261169075 (Rebordões)
+
+**Data:** 24/08/2026
+
+Mesma operação da B1-01, mesma equipa, escala de **17/08**, saída da base
+**17/08 22:30**. Ocorrência *Porto, Santo Tirso, Rebordões*, activa desde 17/08.
+
+| Tabela | Conteúdo |
+|---|---|
+| `composicoes` | `EGFR-EGFR-01-2026-08-17` |
+| `meios` | `EGFR 01` · `EGFR` · **trânsito** · 3 op. · saída 17/08 22:30 |
+| `meios_operativos` | os 3 nomes da escala de 17/08 |
+
+### A mesma equipa em duas ocorrências activas
+
+A `EGFR 01` fica empenhada **ao mesmo tempo** em Rebordões (escala de 17/08) e
+em Fontes (escala de 22/08). Foi levantado antes de gravar e **decidido assim**
+pelo utilizador.
+
+O índice `idx_meios_egfr_active` é sobre `(egfr_data, egfr_equipa)`: como as
+escalas são de dias diferentes, não impede nada. É o mesmo buraco que a
+alteração 32 fecha no beta2, onde a exclusividade passou a ser pela equipa e não
+pela linha de escala do dia — **se essa alteração for promovida, estes dois
+registos passam a ser um conflito**, e um deles terá de ser desmobilizado.
+
+Fica o aviso para quando se promover: não é um impedimento à promoção, é uma
+consequência a tratar antes ou depois dela.
