@@ -3252,3 +3252,49 @@ registos passam a ser um conflito**, e um deles terá de ser desmobilizado.
 
 Fica o aviso para quando se promover: não é um impedimento à promoção, é uma
 consequência a tratar antes ou depois dela.
+
+## B1-03 — EMR M23 carregada na ocorrência 20261169075 (Rebordões)
+
+**Data:** 24/08/2026
+
+Linha da Carta de **18/08**, base *Cabeceiras de Basto*, saída da base **18/08
+11:40**. A linha nunca tinha sido despachada e as três viaturas estavam livres.
+
+### O que foi escrito — um conjunto, não um meio
+
+Uma EMR são três meios, e foi assim que ficou:
+
+| Nível | Meio | Tipo | Matrícula | Viatura ligada |
+|---|---|---|---|---|
+| pai | **M23** · 6 op. · chefe Pedro Ferreira | MR | — | sim |
+| filho | VAOP 08 | PM | BG-43-FB | sim |
+| filho | VLCI 29 | VLCI | 13-ST-50 | sim |
+
+Mais uma linha em `meios_operativos`: `Pedro Ferreira (967447337)` — só o chefe,
+que é o que o despacho do beta1 grava (copiar a guarnição toda da Carta é a
+alteração 19, que só existe no beta2). Esta linha não tem Vpiloto, daí dois
+filhos e não três.
+
+A saída da base foi posta **nos três**, e não só no pai: saíram todos à mesma
+hora e é o único facto conhecido. O despacho real não o faz, mas só porque cria
+tudo em «previsto», onde ainda não há saída.
+
+Confirmado: as três viaturas passam a contar como **em uso** nesta ocorrência.
+
+### Por completar, e como
+
+Ficaram sem despacho, chegada ao TO, horas máximas, setor e missão.
+
+**Completar pelos botões do cartão, não pelo Editar Meio.** O `▶ Entrada TO`
+grava exactamente os campos que faltam — chegada, hora, horas máximas, limite,
+setor e missão — e não toca na viatura. O **Editar Meio** grava
+`viatura_id: payload.viaturaId || null` com um `viaturaId` que o `saveTeam()`
+nunca preenche: **uma gravação por ali desliga a viatura**, sem aviso.
+
+| Acção | Toca na viatura? |
+|---|---|
+| ▶ Entrada TO · ▶ Activar Trânsito · ⊞ Setor · ⏸ Descanso · ↩ Desmob. · 📝 Evento | não |
+| ✎ **Editar Meio** | **sim — põe a nulo** |
+
+Se for mesmo preciso usar o Editar Meio, as viaturas voltam a ligar-se com um
+`UPDATE` por meio, que tem de ser a última escrita.
