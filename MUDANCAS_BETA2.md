@@ -68,6 +68,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 46 | 25/08/2026 | Limite Op. calculado a partir do Tempo máximo, e registado | `e5d712c` | **por validar (só beta2)** |
 | 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `e74fcb7` | **por validar (só beta2)** |
 | 48 | 25/08/2026 | A viatura de um EGFR não se escolhe no Editar Meio | `20aafb9` | **por validar (só beta2)** |
+| 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3744,3 +3745,55 @@ o botão também verifica se ela está livre.
 3. Editar um meio solto: tudo como antes.
 4. Ficha do EGFR 03: **sem viatura atribuída**, sem matrícula.
 5. Atribuir a viatura pelo botão e confirmar que passa a aparecer nos dois.
+
+---
+
+## 49 — O relatório de meios passa a estar no Arquivo
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O relatório de meios era gerado **uma única vez**, no momento de fechar a
+ocorrência:
+
+```js
+// Generate Excel summary on close
+exportMeiosExcel(o);
+toast('Ocorrência fechada e arquivada. Excel gerado!','info');
+```
+
+Era a **única** chamada em toda a aplicação. Quem não guardasse o ficheiro
+nessa altura — ou quem só precisasse dele semanas depois — não tinha por onde o
+pedir outra vez.
+
+O cartão do Arquivo já tinha **⬇ Log** (o relatório em texto). Passa a ter
+também **⬇ Excel**, com o mesmo conteúdo que é gerado ao fechar.
+
+### Funciona sem mais nada
+
+Os meios das ocorrências arquivadas já estão carregados: o arranque lê
+`SELECT m.* FROM meios` sem filtro por estado. São 81 meios em 20 ocorrências
+fechadas no beta2, todos disponíveis.
+
+Verificado: o ficheiro sai com o nome da ocorrência, leva **só** os meios dela
+— um meio de outra ocorrência no mesmo `db.teams` não entra — e uma ocorrência
+que não exista dá uma mensagem em vez de um ficheiro vazio.
+
+### Uma nota sobre o nome
+
+O ficheiro é um **CSV** (`text/csv`), não um `.xlsx` — abre no Excel, mas não é
+um livro Excel. O botão e a mensagem de fecho dizem «Excel» porque é assim que
+já se chamava; não foi mudado para não trocar o nome do que as pessoas já
+conhecem.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `exportArqExcel()` e o botão no cartão do Arquivo.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. **Arquivo** → numa ocorrência fechada, carregar em **⬇ Excel**.
+2. Confirmar que o ficheiro traz os meios dessa ocorrência e mais nenhuns.
+3. Confirmar que o **⬇ Log** continua a funcionar como antes.

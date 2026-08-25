@@ -3471,6 +3471,8 @@ function arqCardHtml(o){
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="event.stopPropagation();exportArqLog('${o.id}')">⬇ Log</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:10px;" title="Relatório de meios em Excel — o mesmo que é gerado ao fechar"
+                onclick="event.stopPropagation();exportArqExcel('${o.id}')">⬇ Excel</button>
         ${o.status==='closed'&&podeReabrir()?`<button class="btn btn-warn btn-sm" style="font-size:10px;" onclick="event.stopPropagation();reopenOcorrencia('${o.id}')">↩ Reabrir</button>`:''}
       </div>
     </div>
@@ -3570,6 +3572,15 @@ async function reopenOcorrencia(id){
   renderArquivo();
   renderOcorrencias();
   toast('Ocorrência reaberta.','ok');
+}
+
+// O relatório de meios era gerado uma única vez, no momento de fechar a
+// ocorrência. Quem não guardasse o ficheiro nessa altura ficava sem ele: não
+// havia por onde o pedir outra vez. Passa a estar no Arquivo, ao lado do log.
+function exportArqExcel(occId){
+  const o = db.ocorrencias.find(x => x.id === occId);
+  if(!o){ toast('Ocorrência não encontrada.','err'); return; }
+  exportMeiosExcel(o);
 }
 
 function exportArqLog(occId){
