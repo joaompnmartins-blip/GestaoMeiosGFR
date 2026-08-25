@@ -64,6 +64,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `52ab5b9` | **por validar (só beta2)** |
 | 43 | 21/08/2026 | Validar o Coordenador apagava o Chefe de Grupo | `19fcd1a` | **por validar (só beta2)** |
 | 44 | 25/08/2026 | Fita do Tempo sem as linhas repetidas | `70c3d88` | **por validar (só beta2)** |
+| 45 | 25/08/2026 | Entradas da Fita com data e hora próprias | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3420,3 +3421,82 @@ resolve o sintoma sem mexer em quem escreve, e é reversível.
 2. Carregar em **⧉ N repetidas** e confirmar que as de Meios ICNF voltam.
 3. Numa rendição de conjunto, confirmar que as linhas de cada filho **ficam**.
 4. Confirmar que a última linha de evento no cartão do meio continua lá.
+
+---
+
+## 45 — Entradas da Fita com data e hora próprias
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O que muda
+
+O **+ Adicionar** da Fita do Tempo carimbava sempre a hora em que se carregava
+em Guardar. Quem registava uma coisa passada tinha de escrever a hora dentro do
+texto — a convenção que se vê nas entradas antigas, `«17:43 - Ponto de
+situação…»` gravado às 14:17.
+
+Passa a haver **Data** e **Hora**, preenchidas com o momento actual e
+alteráveis. A entrada fica no seu lugar na Fita, entre o que aconteceu antes e
+depois dela.
+
+A categoria por omissão passa a ser **Geral**.
+
+### O servidor já sabia fazer isto
+
+`POST /api/ocorrencias/:id/timeline` já aceitava `b.ts` (`b.ts || now()`), e o
+autor já vinha do token. Só o formulário é que nunca ofereceu a hora. **Nenhuma
+alteração no servidor.**
+
+### Geral e Outros
+
+Já existia a categoria **Outros**, que era a mais usada. Ter as duas no mesmo
+selector espalharia as entradas entre sinónimos, por isso:
+
+- **Geral** entra e é a primeira opção;
+- **Outros** sai do formulário de **novas** entradas;
+- **Outros** mantém o rótulo em `TL_CATS`, para as entradas que já existem
+  continuarem a mostrar-se como sempre. Nada foi reescrito.
+
+O crachá da Geral usa `var(--surface2)` e `var(--text)` — as duas viram juntas
+com o tema, ao contrário de um fundo fixo, que foi o que deu o preto sobre preto
+da alteração 17.
+
+### Sem futuro
+
+Uma entrada da Fita é registo do que aconteceu, pelo que uma data posterior a
+agora é recusada. Há um minuto de folga, para não recusar quem simplesmente
+aceita a hora que vem preenchida.
+
+| Entrada | Resultado |
+|---|---|
+| 3 dias atrás · 1 hora atrás · agora | aceite |
+| daqui a 5 minutos · amanhã | **recusada** |
+
+### E diz onde ficou
+
+Uma entrada antiga **não aparece no topo** — vai para o seu lugar, dias abaixo.
+Sem dizer nada, parecia que não tinha gravado e carregava-se outra vez. A
+confirmação passa a nomear o destino: *«Entrada adicionada em 22/08 às 18:00»*.
+Para uma entrada de agora, mantém-se o texto curto.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — campos de data e hora no `modal-timeline`;
+  `TL_CATS.geral`, `TL_FORMS.geral`, `.tl-cat-geral`; `openAddTimeline()` e
+  `submitTimeline()`.
+- **Base de dados:** nenhuma alteração.
+
+### O que esperar
+
+As entradas antigas continuam com a hora a que foram escritas, e a hora real
+dentro do texto. As novas ficam certas. A Fita passa a ter as duas convenções
+durante algum tempo — a ordem fica correcta daqui para a frente, não para trás.
+
+### Como validar
+
+1. **+ Adicionar**: a categoria vem em **Geral**, com a data e hora de agora.
+2. Gravar sem mexer: aparece no topo, como sempre.
+3. Gravar com uma data de há dias: confirmar que fica **no sítio certo** da
+   lista e que a mensagem diz onde ficou.
+4. Tentar uma data de amanhã: deve recusar.
+5. Confirmar que as entradas antigas de *Outros* continuam a mostrar-se.

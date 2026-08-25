@@ -349,6 +349,7 @@
     .tl-cat-ocorrencia      {background:rgba(66,154,189,.15);color:var(--accent3);}
     .tl-cat-meios_icnf      {background:rgba(109,184,109,.12);color:var(--success);}
     .tl-cat-missao          {background:rgba(200,154,42,.14);color:var(--warn);}
+    .tl-cat-geral           {background:var(--surface2);color:var(--text);border:1px solid var(--border);}
     .tl-cat-meios_outros    {background:rgba(140,150,28,.12);color:var(--accent);}
     .tl-cat-meteorologia    {background:rgba(90,184,214,.10);color:var(--accent3);}
     .tl-cat-comunicacoes    {background:rgba(152,112,208,.12);color:#b890e8;}
@@ -1909,14 +1910,27 @@
       <div class="form-field">
         <label class="form-label">Categoria</label>
         <select class="form-select" id="tl-form-cat" onchange="onTLCatChange()">
+          <option value="geral">Geral</option>
           <option value="meios_outros">Meios Outros</option>
           <option value="meteorologia">Meteorologia</option>
           <option value="comunicacoes">Comunicações</option>
           <option value="atividade_icnf">Atividade ICNF</option>
           <option value="atividade_outros">Atividade Outros</option>
-          <option value="outros">Outros</option>
         </select>
       </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="form-field">
+          <label class="form-label">Data</label>
+          <input class="form-input" type="date" id="tl-form-data"/>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Hora</label>
+          <input class="form-input" type="time" id="tl-form-hora"/>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:-4px 0 10px;">
+        Vem preenchida com a hora de agora. Alterando-a, a entrada fica no seu
+        lugar na Fita — entre o que aconteceu antes e depois dela.</p>
       <div id="tl-form-fields"></div>
     </div>
     <div class="modal-footer">
@@ -6644,6 +6658,7 @@ async function deleteOperacional(id){
 //  FITA DO TEMPO
 // ══════════════════════════════════════════════════════════════════
 const TL_CATS = {
+  geral:            { label:'Geral' },
   ocorrencia:       { label:'Ocorrência' },
   meios_icnf:       { label:'Meios ICNF' },
   missao:           { label:'Missão' },
@@ -6693,6 +6708,7 @@ let _tlFilter = 'all';
 let _tlPostoFilter = null;
 
 const TL_FORMS = {
+  geral:           `<div class="form-field"><label class="form-label">Registo</label><textarea class="form-textarea" id="tlf-texto" rows="5" placeholder="O que aconteceu…"></textarea></div>`,
   meios_outros:    `<div class="form-field"><label class="form-label">Registo</label><textarea class="form-textarea" id="tlf-texto" rows="5" placeholder="Ex: 2 VFCI dos Bombeiros de Aveiro chegaram ao TO — Setor B."></textarea></div>`,
   meteorologia:    `<div class="form-field"><label class="form-label">Condições meteorológicas</label><textarea class="form-textarea" id="tlf-texto" rows="5" placeholder="Ex: Temp. 28°C · Hum. 32% · Vento NE 35 km/h · Visibilidade boa."></textarea></div>`,
   comunicacoes:    `<div class="form-field"><label class="form-label">Comunicação</label><textarea class="form-textarea" id="tlf-texto" rows="5" placeholder="Ex: CDOS Aveiro — Pedido de reforço com 1 HELICANADA aprovado."></textarea></div>`,
@@ -6837,7 +6853,10 @@ function renderTimeline(){
 }
 
 function openAddTimeline(){
-  document.getElementById('tl-form-cat').value = 'meios_outros';
+  document.getElementById('tl-form-cat').value = 'geral';
+  const agora = new Date();
+  document.getElementById('tl-form-data').value = dataISO(agora);
+  document.getElementById('tl-form-hora').value = agora.toTimeString().slice(0,5);
   onTLCatChange();
   openModal('modal-timeline');
 }
@@ -6853,12 +6872,28 @@ async function submitTimeline(){
   const cat   = document.getElementById('tl-form-cat').value;
   const texto = _tlVal('tlf-texto');
   if(!texto){ toast('Preencha o texto.','err'); return; }
+
+  const data = document.getElementById('tl-form-data').value;
+  const hora = document.getElementById('tl-form-hora').value;
+  if(!data || !hora){ toast('Indique a data e a hora da entrada.','err'); return; }
+  const quando = new Date(`${data}T${hora}`);
+  if(isNaN(quando.getTime())){ toast('Data ou hora inválida.','err'); return; }
+  // Uma entrada da Fita não pode ser de amanhã: é registo do que aconteceu.
+  // A folga de um minuto evita recusar quem aceita a hora que vem preenchida.
+  if(quando.getTime() > Date.now() + 60000){
+    toast('A entrada não pode ser posterior a agora.','err'); return;
+  }
+
   const { error } = await apiFetch(`/api/ocorrencias/${currentOccId}/timeline`, {
-    method:'POST', body: JSON.stringify({ categoria:cat, titulo:texto, ts:new Date().toISOString() })
+    method:'POST', body: JSON.stringify({ categoria:cat, titulo:texto, ts:quando.toISOString() })
   });
   if(error){ toast('Erro ao guardar: '+error,'err'); return; }
   closeModal('modal-timeline');
-  toast('Entrada adicionada!','ok');
+  // Uma entrada antiga fica no seu lugar na lista e não no topo: dizer onde
+  // ficou evita a impressão de que não gravou — e de que se carregue outra vez.
+  const recente = Date.now() - quando.getTime() < 120000;
+  toast(recente ? 'Entrada adicionada.'
+                : `Entrada adicionada em ${fmtDateShort(data)} às ${hora}.`, 'ok');
   await loadTimeline();
 }
 
