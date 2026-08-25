@@ -488,7 +488,13 @@
     .arq-card-id{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:2px;}
     .arq-card-name{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);}
     .arq-card-meta{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;}
-    .arq-card-body{padding:10px 16px 12px 20px;display:flex;justify-content:space-between;align-items:center;}
+    /* Duas filas — números e botões — numa linha só, sem poderem passar para
+       baixo: bastou um terceiro botão para a Reabrir sair fora do cartão.
+       Passam a envolver, e as células a poder encolher. */
+    .arq-card-body{padding:10px 16px 12px 20px;display:flex;justify-content:space-between;
+                   align-items:center;flex-wrap:wrap;gap:10px;}
+    .arq-card-body > div{min-width:0;}
+    .arq-card-acoes{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
     .arq-stat{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);}
 
 
@@ -3469,7 +3475,7 @@ function arqCardHtml(o){
           <div class="arq-stat">desmobilizados</div>
         </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;">
+      <div class="arq-card-acoes">
         <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="event.stopPropagation();exportArqLog('${o.id}')">⬇ Log</button>
         <button class="btn btn-ghost btn-sm" style="font-size:10px;" title="Relatório de meios em Excel — o mesmo que é gerado ao fechar"
                 onclick="event.stopPropagation();exportArqExcel('${o.id}')">⬇ Excel</button>

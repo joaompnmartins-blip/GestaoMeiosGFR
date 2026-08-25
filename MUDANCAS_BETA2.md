@@ -69,6 +69,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `e74fcb7` | **por validar (só beta2)** |
 | 48 | 25/08/2026 | A viatura de um EGFR não se escolhe no Editar Meio | `20aafb9` | **por validar (só beta2)** |
 | 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `3a80f13` | **por validar (só beta2)** |
+| 50 | 25/08/2026 | Botão Reabrir saía fora do cartão do Arquivo | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3797,3 +3798,52 @@ conhecem.
 1. **Arquivo** → numa ocorrência fechada, carregar em **⬇ Excel**.
 2. Confirmar que o ficheiro traz os meios dessa ocorrência e mais nenhuns.
 3. Confirmar que o **⬇ Log** continua a funcionar como antes.
+
+---
+
+## 50 — O botão Reabrir saía fora do cartão do Arquivo
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O que aconteceu
+
+O botão **↻ Reabrir** aparecia cortado na margem direita do cartão.
+
+Causa directa: a alteração 49 acrescentou o **⬇ Excel**, e o corpo do cartão
+tinha os números e os botões numa linha que **não envolve**:
+
+```css
+.arq-card-body{ …; display:flex; justify-content:space-between; align-items:center; }
+```
+
+Os cartões vêm de `.occ-grid`, `minmax(340px,1fr)` — cerca de 304 px de
+conteúdo depois das margens. Os três números ocupam ~238 px e os três botões
+~207 px: não cabem na mesma linha, e sem `flex-wrap` o que sobra sai porta fora
+em vez de passar para baixo.
+
+Com dois botões ainda cabia à justa. O terceiro foi o que a fez transbordar —
+não a criou.
+
+### O que muda
+
+O corpo do cartão passa a **envolver**: quando os botões não cabem ao lado dos
+números, descem para a linha seguinte **dentro** do cartão. As células passam
+também a poder encolher (`min-width:0`), que foi a mesma lição da alteração 29,
+na linha da EMR.
+
+O botão não foi encolhido nem abreviado: o que estava errado era a caixa não
+deixar o conteúdo passar para baixo.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `flex-wrap` e `gap` em `.arq-card-body`,
+  `min-width:0` nas células, e a fila de botões passa a ter classe própria
+  (`.arq-card-acoes`) em vez de estilo à mão.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. **Arquivo** → numa ocorrência fechada com **Reabrir** disponível: os três
+   botões têm de estar inteiros e dentro do cartão.
+2. Estreitar a janela e confirmar que descem em vez de sair.
+3. Confirmar que não aparece barra de deslocamento horizontal.
