@@ -6649,6 +6649,39 @@ const TL_CATS = {
   outros:           { label:'Outros' },
 };
 
+// ── Repetições na Fita ───────────────────────────────────────────
+// Uma acção num meio escreve duas vezes: no registo do meio (Meios ICNF) e no
+// da ocorrência. A Fita mostra as duas fontes, pelo que o mesmo facto aparecia
+// a dobrar — 667 das 689 linhas de Meios ICNF do beta2 tinham par.
+//
+// Esconde-se a do meio quando existe uma da ocorrência para o MESMO meio à
+// mesma hora: essa diz o mesmo e ainda o nomeia. As que não têm par ficam —
+// numa rendição de conjunto, por exemplo, a linha da ocorrência só nomeia o
+// pai, e a de cada filho diz qual o chefe que entrou nele.
+//
+// Nada se apaga: isto é só leitura, e o botão «repetidos» volta a mostrá-las.
+const TL_JANELA_REPETIDO = 5;   // segundos
+let _tlRepetidos = false;
+
+function tlChavesDaOcorrencia(todas){
+  const chaves = new Set();
+  (todas||[]).forEach(o => {
+    if(o.categoria !== 'ocorrencia' && o.categoria !== 'missao') return;
+    if(!o.meio_eq) return;
+    const seg = Math.floor(new Date(o.ts).getTime() / 1000);
+    for(let d = -TL_JANELA_REPETIDO; d <= TL_JANELA_REPETIDO; d++)
+      chaves.add(`${o.meio_eq}|${seg + d}`);
+  });
+  return chaves;
+}
+
+function tlEhRepetida(e, chaves){
+  if(e.categoria !== 'meios_icnf' || !e.meio_eq) return false;
+  return chaves.has(`${e.meio_eq}|${Math.floor(new Date(e.ts).getTime() / 1000)}`);
+}
+
+function setTLRepetidos(v){ _tlRepetidos = v; renderTimelineFilters(); renderTimeline(); }
+
 let _tlData = [];
 let _tlFilter = 'all';
 let _tlPostoFilter = null;
@@ -6710,11 +6743,20 @@ function setTLPostoFilter(postoId){
 function renderTimelineFilters(){
   const presentCats = [...new Set(_tlData.map(e => e.categoria))];
   const cats = ['all', ...presentCats];
+  const chaves = tlChavesDaOcorrencia(_tlData);
+  const repetidas = _tlData.filter(e => tlEhRepetida(e, chaves)).length;
   document.getElementById('tl-cat-filters').innerHTML = cats.map(c => {
     const info = TL_CATS[c] || { label:c };
     const label = c === 'all' ? 'Tudo' : info.label;
     return `<button class="tl-cat-btn${_tlFilter===c?' active':''}" onclick="setTLFilter('${c}')">${label}</button>`;
-  }).join('');
+  }).join('')
+  // O registo por meio não desaparece — fica a um clique, para quem precisa do
+  // rasto completo.
+  + (repetidas ? `<button class="tl-cat-btn${_tlRepetidos?' active':''}"
+       onclick="setTLRepetidos(${!_tlRepetidos})" style="margin-left:auto;"
+       title="${_tlRepetidos?'Esconder as linhas do registo do meio que repetem a da ocorrência'
+                            :'Mostrar também as linhas do registo do meio que repetem a da ocorrência'}"
+       >⧉ ${_tlRepetidos?'a mostrar':'esconder'} ${repetidas} repetida${repetidas!==1?'s':''}</button>` : '');
 }
 
 function setTLFilter(cat){
@@ -6725,6 +6767,10 @@ function setTLFilter(cat){
 
 function getFilteredTLEntries(){
   let entries = _tlFilter === 'all' ? _tlData : _tlData.filter(e => e.categoria === _tlFilter);
+  if(!_tlRepetidos){
+    const chaves = tlChavesDaOcorrencia(_tlData);
+    entries = entries.filter(e => !tlEhRepetida(e, chaves));
+  }
   // PCO filter: only applied when postos exist
   if(_tlPostoFilter !== null && occPostos().length){
     if(_tlPostoFilter === 'main'){

@@ -63,6 +63,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 41 | 21/08/2026 | Turnos seguidos à vista e turno com valores fixos | `b02e0ff` | **por validar (só beta2)** |
 | 42 | 21/08/2026 | Coordenador e Chefe de Grupo contam como linhas independentes | `52ab5b9` | **por validar (só beta2)** |
 | 43 | 21/08/2026 | Validar o Coordenador apagava o Chefe de Grupo | `19fcd1a` | **por validar (só beta2)** |
+| 44 | 25/08/2026 | Fita do Tempo sem as linhas repetidas | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3344,3 +3345,78 @@ mas é a mesma pessoa em duas ocorrências ao mesmo tempo.
 **As viaturas.** As seis novas ficaram ligadas e contam como em uso. Vale aqui a
 mesma regra da B1-03: completar pelos **botões do cartão**, nunca pelo **Editar
 Meio**, que põe `viatura_id` a nulo sem avisar.
+
+---
+
+## 44 — Fita do Tempo sem as linhas repetidas
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O defeito
+
+A Fita mostrava quase tudo **a dobrar**.
+
+A Fita é a união de três origens, ordenada por hora:
+
+| Origem | Categoria | Quem escreve |
+|---|---|---|
+| `ocorrencia_timeline` | a escolhida | as pessoas, pelo *+ Adicionar* |
+| `ocorrencias_eventos` | Ocorrência · Missão | a aplicação |
+| `meios_eventos` | Meios ICNF | a aplicação |
+
+E **cada acção sobre um meio escreve nas duas automáticas**: oito dos nove
+ajudantes de acção — trânsito, operação, descanso, desmobilização, setor, posto,
+missão e evento — chamam `persistEvento()` *e* `persistOccEvento()`. O mesmo
+facto, duas vezes:
+
+```
+Ocorrência  EGFR 03 — missão: — → Tratar pontos quentes.
+Meios ICNF  Missão: — → Tratar pontos quentes.
+```
+
+Medido no beta2: **667 das 689** linhas de Meios ICNF tinham par a menos de 5
+segundos. Num conjunto composto multiplica: uma acção com «aplicar a todos»
+numa BSF de três viaturas dá **oito** linhas.
+
+### O que muda — só na leitura
+
+Esconde-se a linha de **Meios ICNF** quando existe uma de **Ocorrência** para o
+mesmo meio à mesma hora (±5 s): essa diz o mesmo e ainda nomeia o meio.
+
+**Não se apaga nada.** É filtro de leitura; as tabelas ficam intactas e o
+cabeçalho da Fita ganha um botão **⧉ N repetidas** que as traz de volta — o
+rasto completo continua a um clique.
+
+### As que sobrevivem são as que interessam
+
+A regra deixa passar as que **dizem algo a mais**. Numa rendição de conjunto, a
+linha da ocorrência só nomeia o pai; a de cada filho diz que chefe entrou nele:
+
+```
+Ocorrência  BSBF Sul — rendição de guarnição: entrou o turno B em 3 meio(s).
+Meios ICNF  VAOP 12: … entrou o turno B (chefe Eduardo Serra).     ← fica
+Meios ICNF  VFCI 04: … entrou o turno B (chefe Duarte Batista).    ← fica
+```
+
+Na ocorrência de Faro, das 296 entradas ficam **176**: 147 de Ocorrência, 10 de
+Missão e **19** de Meios ICNF — as que não têm par.
+
+### Porque não se deixou de escrever duas vezes
+
+`meios_eventos` não serve só a Fita: alimenta também a **última linha de evento
+no cartão do meio**. Deixar de a escrever calaria o cartão. Corrigir na leitura
+resolve o sintoma sem mexer em quem escreve, e é reversível.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `TL_JANELA_REPETIDO`, `tlChavesDaOcorrencia()`,
+  `tlEhRepetida()`, `setTLRepetidos()`; filtro em `getFilteredTLEntries()` e
+  botão em `renderTimelineFilters()`.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Abrir a Fita de uma ocorrência com meios: cada acção deve dar **uma** linha.
+2. Carregar em **⧉ N repetidas** e confirmar que as de Meios ICNF voltam.
+3. Numa rendição de conjunto, confirmar que as linhas de cada filho **ficam**.
+4. Confirmar que a última linha de evento no cartão do meio continua lá.
