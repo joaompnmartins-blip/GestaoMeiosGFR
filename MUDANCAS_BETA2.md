@@ -66,7 +66,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 44 | 25/08/2026 | Fita do Tempo sem as linhas repetidas | `70c3d88` | **por validar (só beta2)** |
 | 45 | 25/08/2026 | Entradas da Fita com data e hora próprias | `877494e` | **por validar (só beta2)** |
 | 46 | 25/08/2026 | Limite Op. calculado a partir do Tempo máximo, e registado | `e5d712c` | **por validar (só beta2)** |
-| 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `PENDENTE` | **por validar (só beta2)** |
+| 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `e74fcb7` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
