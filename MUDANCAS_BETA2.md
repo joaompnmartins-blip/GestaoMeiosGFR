@@ -66,6 +66,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 44 | 25/08/2026 | Fita do Tempo sem as linhas repetidas | `70c3d88` | **por validar (só beta2)** |
 | 45 | 25/08/2026 | Entradas da Fita com data e hora próprias | `877494e` | **por validar (só beta2)** |
 | 46 | 25/08/2026 | Limite Op. calculado a partir do Tempo máximo, e registado | `e5d712c` | **por validar (só beta2)** |
+| 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3593,3 +3594,73 @@ divergência deixa de ser possível em vez de ter de ser reconciliada.
 2. Confirmar que o **Limite Op.** já não se escreve à mão.
 3. Gravar e confirmar a entrada na **Fita do Tempo**.
 4. Num meio ainda sem chegada, confirmar a mensagem em vez de um campo vazio.
+
+---
+
+## 47 — Ficha do Meio: código da viatura em vez de Setor e Missão
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O que muda
+
+Na **Ficha do Meio** saem **Setor** e **Missão**, e entra o **Código da
+viatura**.
+
+### O que a verificação nos conjuntos mostrou
+
+Em 134 meios do beta2:
+
+| Tipo de meio | Meios | Com viatura | Código = designação |
+|---|---|---|---|
+| Meio solto | 64 | **0** | — |
+| Filho de conjunto | 48 | 12 | **12** |
+| Contentor BSF | 11 | **0** | — |
+| EGFR | 5 | **0** | — |
+| Pai de EMR (MR) | 4 | 2 | 1 |
+| Contentor BSBF | 2 | **0** | — |
+
+**Só 14 dos 134 meios têm viatura ligada**, e em **13 desses 14 o código é
+igual à Designação** — porque os despachos gravam `eq = viatura_cod`. Sozinha, a
+linha ficaria vazia em 120 meios e a repetir a de cima nos outros 13. O único
+caso diferente é `MR M09` com a viatura `M09`.
+
+**Os contentores nunca têm viatura** — são o rótulo do conjunto. As viaturas
+estão nos **filhos**, e não se viam em lado nenhum.
+
+### Por isso ganhou duas linhas e não uma
+
+- **Código da viatura** — a do próprio meio, quando tem; não aparece quando não há.
+- **Viaturas do conjunto** — as dos membros, para pais e contentores. Um membro
+  sem viatura aparece pelo nome com *(sem viatura)*, para o conjunto não parecer
+  mais pequeno do que é.
+
+| Meio | Código da viatura | Viaturas do conjunto |
+|---|---|---|
+| BSBF Sul (contentor) | — | VFCI 04 · VAOP 12 · VFCI 03 |
+| BRIG 01-185 (BSF) | — | SF 06-185 *(sem viatura)* · … |
+| MR M09 (EMR) | **M09** | as dos filhos |
+| EGFR 03 sem viatura | — | — |
+
+Numa BSF fica sem código porque as equipas SF não estão ligadas a viaturas:
+`composicao_membros` liga a recursos e viaturas, mas estas não têm viatura
+atribuída.
+
+### Uma coisa que faltava no servidor
+
+Os meios chegavam por `SELECT * FROM meios`, sem o código da viatura — só a
+matrícula. Passa a haver `LEFT JOIN viaturas`. Sem isso o cliente só poderia
+adivinhar pela designação, que é exactamente o que falha no `MR M09`.
+
+### Alterações
+
+- `server.js` — o arranque devolve `v.viatura_cod` com cada meio.
+- `Gestao_Meios_v17.html` — `viaturaCod` em `mapTeam()`; na Ficha saem Setor e
+  Missão, entram *Código da viatura* e *Viaturas do conjunto*.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Ficha de um meio com viatura: mostra o **Código**, sem Setor nem Missão.
+2. Ficha do contentor de uma **BSBF**: lista as três viaturas.
+3. Ficha de uma **BSF**: lista os membros, assinalados como sem viatura.
+4. Ficha de um **EGFR sem viatura**: nenhuma das duas linhas aparece.

@@ -390,7 +390,12 @@ async function hasPendingDeleteRequest(meioId) {
 
 app.get('/api/meios', requireAuth('visualizador'), wrap(async (req, res) => {
   const [{ rows: meios }, { rows: operativos }, { rows: eventos }] = await Promise.all([
-    pool.query('SELECT * FROM meios ORDER BY created_at'),
+    // O código da viatura vem com o meio: a designação coincide com ele na
+    // maioria dos casos, mas não sempre (um MR pode chamar-se "MR M09" e a
+    // viatura "M09"), e sem isto o cliente não tinha por onde o saber.
+    pool.query(`SELECT m.*, v.viatura_cod
+                  FROM meios m LEFT JOIN viaturas v ON v.id = m.viatura_id
+                 ORDER BY m.created_at`),
     pool.query('SELECT * FROM meios_operativos ORDER BY meio_id, ordem'),
     pool.query('SELECT * FROM meios_eventos ORDER BY ts DESC'),
   ]);

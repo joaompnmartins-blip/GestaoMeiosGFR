@@ -2585,7 +2585,7 @@ function dataISO(v){
 function mapTeam(r){
   const eventos = (r.meios_eventos||[]).sort((a,b)=>b.ts.localeCompare(a.ts)).map(e=>({ts:e.ts,msg:e.msg}));
   const operativos = (r.meios_operativos||[]).sort((a,b)=>a.ordem-b.ordem).map(o=>o.nome);
-  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), opInicioData:dataISO(r.op_inicio_data), opInicioHora:r.op_inicio_hora, dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, destacado:!!r.destacado, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
+  return { id:r.id, ocorrencia_id:r.ocorrencia_id, eq:r.eq, tipo:r.tipo, matricula:r.matricula||'', viaturaCod:r.viatura_cod||null, concelho:r.concelho, setor:r.setor, operacionais:r.operacionais, operativos, responsavel:r.responsavel, contacto:r.contacto, dataDespacho:dataISO(r.data_despacho), horaDespacho:r.hora_despacho, dataSaidaEntidade:dataISO(r.data_saida_entidade), horaSaidaEntidade:r.hora_saida_entidade, dataChegada:dataISO(r.data_chegada), horaChegada:r.hora_chegada, horasMax:r.horas_max, limiteOp:r.limite_op, limiteOpDate:dataISO(r.limite_op_date), opInicioData:dataISO(r.op_inicio_data), opInicioHora:r.op_inicio_hora, dataDemob:dataISO(r.data_demob), horaDemob:r.hora_demob, dataChegadaEntidade:dataISO(r.data_chegada_entidade), horaChegadaEntidade:r.hora_chegada_entidade, km:r.km, missao:r.missao, estado:r.estado, obs:r.obs, previstoData:dataISO(r.previsto_data), previstoHora:r.previsto_hora, equipaId:r.equipa_id||null, recursoId:r.recurso_id||null, viaturaId:r.viatura_id||null, composicaoId:r.composicao_id||null, meioPaiId:r.meio_pai_id||null, destacado:!!r.destacado, transporteId:r.transporte_id||null, postoComandoId:r.posto_comando_id||null, eventos, created:r.created_at, fsbfBsbfId:r.fsbf_bsbf_id||null, fsbfEmrId:r.fsbf_emr_id||null, egfrData:dataISO(r.egfr_data)||null, egfrEquipa:r.egfr_equipa||null, recursoAdicionalId:r.recurso_adicional_id||null };
 }
 
 function mapEquipa(r){ return { id:r.id, nome:r.nome, tipo:r.tipo||'', tipo_equipa:r.tipo_equipa||'', subregiao:r.subregiao||'', concelho:r.concelho||'', capacidade:r.capacidade||0, origem:r.origem||'', notas:r.notas||'' }; }
@@ -4739,6 +4739,16 @@ function showMeioInfo(teamId){
     ? `<div class="team-card-row"><span class="lbl">${label}</span><span class="val">${esc(String(val))}</span></div>`
     : '';
   const estadoMap={operacao:'OPERAÇÃO',descanso:'DESCANSO',desmobilizado:'DESMOB.',transito:'TRÂNSITO',previsto:'PREVISTO'};
+  // Num conjunto, o contentor não tem viatura nenhuma e o pai de uma EMR só tem
+  // a sua: as viaturas que o conjunto leva estavam nos filhos e não se viam em
+  // lado nenhum. Aqui ficam, com o nome do membro quando não têm código.
+  const _filhos = db.teams.filter(x => x.meioPaiId === t.id);
+  const viatConjuntoHtml = !_filhos.length ? '' : (() => {
+    const lista = _filhos.map(f => f.viaturaCod || `${f.eq} (sem viatura)`);
+    return `<div class="team-card-row"><span class="lbl">Viaturas do conjunto</span>
+      <span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">${
+        lista.map(x => `<span>${esc(x)}</span>`).join('')}</span></div>`;
+  })();
   const ops = (t.operativos||[]).filter(Boolean);
   const opsHtml = ops.length
     ? `<div class="team-card-row"><span class="lbl">Operacionais</span><span class="val" style="flex-direction:column;align-items:flex-end;gap:2px;">${ops.map(n=>`<span>${esc(n)}</span>`).join('')}</span></div>`
@@ -4752,14 +4762,14 @@ function showMeioInfo(teamId){
       ${t.setor?`<span class="badge badge-y">Setor: ${esc(t.setor)}</span>`:''}
     </div>
     ${row('Designação', t.eq)}
+    ${row('Código da viatura', t.viaturaCod)}
     ${row('Tipo', t.tipo)}
     ${row('Matrícula', t.matricula)}
+    ${viatConjuntoHtml}
     ${row('Chefe de Equipa', t.responsavel)}
     ${row('Contacto', t.contacto)}
     ${row('N.º Operacionais', t.operacionais)}
     ${opsHtml}
-    ${row('Missão', t.missao)}
-    ${row('Setor', t.setor)}
     ${row('Observações', t.obs)}
   `;
   openModal('modal-meio-info');
