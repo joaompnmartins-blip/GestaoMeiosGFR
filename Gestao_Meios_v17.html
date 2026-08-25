@@ -2621,7 +2621,13 @@ async function persistOperativos(teamId, operativos){
 }
 
 async function persistEvento(teamId, msg){
-  const row = { meio_id:teamId, msg, ts:new Date().toISOString(), user_id:currentUser?.id||null };
+  // A missão e o estado do momento vão com o evento. Lidos do meio à hora de
+  // mostrar, davam a missão de hoje a uma entrada de há três dias — e mudar a
+  // missão reescrevia o passado todo. Aqui já reflectem o efeito do evento,
+  // porque quem chama esta função altera o meio primeiro.
+  const _t = db.teams.find(x => x.id === teamId);
+  const row = { meio_id:teamId, msg, ts:new Date().toISOString(), user_id:currentUser?.id||null,
+                missao: _t?.missao || null, estado: _t?.estado || null };
   await supaWriteOrQueue('meios_eventos','insert', row, null, `Evento: ${msg.slice(0,40)}`);
 }
 

@@ -774,8 +774,10 @@ app.post('/api/meios/:id/rendicao', requireAuth('ofligacao'), wrap(async (req, r
             WHERE id=$1`, [alvo.id, data, hora, chefe || null, contactoChefe || null]);
       }
       await client.query(
-        `INSERT INTO meios_eventos (meio_id, ts, msg, user_id) VALUES ($1, now(), $2, $3)`,
-        [alvo.id, `Rendição de guarnição — entrou o turno ${turno}${chefe ? ` (chefe ${chefe})` : ''}.`, req.user.id]);
+        `INSERT INTO meios_eventos (meio_id, ts, msg, user_id, missao, estado)
+         VALUES ($1, now(), $2, $3, $4, $5)`,
+        [alvo.id, `Rendição de guarnição — entrou o turno ${turno}${chefe ? ` (chefe ${chefe})` : ''}.`,
+         req.user.id, alvo.missao ?? null, alvo.estado ?? null]);
       feitos.push({ id: alvo.id, eq: alvo.eq, membros: nomes.length, chefe: chefe || null });
     }
     if (!feitos.length) {
@@ -1037,8 +1039,10 @@ app.post('/api/delete-requests/:id/reject', requireAuth('admin'), wrap(async (re
 app.post('/api/meios_eventos', requireAuth('operacional'), wrap(async (req, res) => {
   const b = req.body;
   await pool.query(
-    'INSERT INTO meios_eventos (meio_id, ts, msg, user_id) VALUES ($1,$2,$3,$4)',
-    [b.meio_id, b.ts || new Date().toISOString(), b.msg, req.user.id]
+    `INSERT INTO meios_eventos (meio_id, ts, msg, user_id, missao, estado)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [b.meio_id, b.ts || new Date().toISOString(), b.msg, req.user.id,
+     b.missao ?? null, b.estado ?? null]
   );
   res.json({ ok: true });
 }));
@@ -1087,7 +1091,7 @@ app.get('/api/ocorrencias/:id/timeline', requireAuth('visualizador'), wrap(async
       UNION ALL
 
       SELECT me.ts, 'meios_icnf', me.msg, NULL,
-             jsonb_build_object('missao', m.missao, 'estado', m.estado),
+             jsonb_build_object('missao', me.missao, 'estado', me.estado),
              NULL, m.eq, m.posto_comando_id
       FROM meios_eventos me
       JOIN meios m ON m.id = me.meio_id
@@ -3882,6 +3886,12 @@ async function runMigrations() {
        JOIN meios_operativos o ON o.meio_id = g.meio_id
       WHERE g.ate IS NULL
         AND NOT EXISTS (SELECT 1 FROM meios_guarnicao_membros mm WHERE mm.guarnicao_id = g.id)`,
+    // A missão e o estado passam a ficar gravados no próprio evento. Eram
+    // lidos do meio na altura de mostrar, pelo que uma entrada de há três dias
+    // aparecia com a missão de agora — e mudar a missão reescrevia o passado
+    // todo desse meio.
+    `ALTER TABLE IF EXISTS meios_eventos ADD COLUMN IF NOT EXISTS missao TEXT`,
+    `ALTER TABLE IF EXISTS meios_eventos ADD COLUMN IF NOT EXISTS estado TEXT`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_data DATE`,
     `ALTER TABLE IF EXISTS meios ADD COLUMN IF NOT EXISTS op_inicio_hora TEXT`,
     `UPDATE meios SET op_inicio_data = data_chegada, op_inicio_hora = hora_chegada
