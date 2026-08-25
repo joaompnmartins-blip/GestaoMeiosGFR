@@ -65,6 +65,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 43 | 21/08/2026 | Validar o Coordenador apagava o Chefe de Grupo | `19fcd1a` | **por validar (só beta2)** |
 | 44 | 25/08/2026 | Fita do Tempo sem as linhas repetidas | `70c3d88` | **por validar (só beta2)** |
 | 45 | 25/08/2026 | Entradas da Fita com data e hora próprias | `877494e` | **por validar (só beta2)** |
+| 46 | 25/08/2026 | Limite Op. calculado a partir do Tempo máximo, e registado | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3500,3 +3501,95 @@ durante algum tempo — a ordem fica correcta daqui para a frente, não para tr�
    lista e que a mensagem diz onde ficou.
 4. Tentar uma data de amanhã: deve recusar.
 5. Confirmar que as entradas antigas de *Outros* continuam a mostrar-se.
+
+---
+
+## 46 — O Limite Op. passa a ser calculado, e a alteração fica registada
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O defeito
+
+No Editar Meio, o **Tempo máximo op.** e o **Limite Op.** andavam soltos:
+mudar um não mexia no outro, e **nenhum dos dois ficava registado**. O meio
+podia acabar com um limite que não correspondia ao tempo máximo — e é o limite
+que manda no relógio do cartão, pelo que o cartão dizia uma coisa e o campo
+outra, sem nada na Fita a explicar porquê.
+
+Já havia um caso no beta2, em 91 meios com os três valores:
+
+| Meio | Início | Tempo máx. | Limite gravado | Devia ser |
+|---|---|---|---|---|
+| EGFR 03 | 21:58 | 6h | **04:58** | 03:58 |
+
+**Nota sobre o que se via:** o recálculo que existia — e o registo — vinham dos
+**botões do cartão** (`▶ Entrada TO`, `Retomar Op.`), não do Editar Meio. Pela
+janela de edição, mexer nas horas era tão silencioso como mexer no limite.
+
+### O que muda
+
+O **tempo máximo é a única entrada**; o limite é o que dele resulta.
+
+- O campo **Limite Op.** passa a ser **só de leitura**, calculado — que era o
+  que o seu próprio texto já prometia, *«Calculado automaticamente»*.
+- Recalcula ao mudar o tempo máximo, ao mudar a chegada, e ao **abrir** a
+  edição — para uma divergência antiga aparecer ali, e não só no relógio.
+- Uma nota por baixo diz de onde vem o número: *«12h a contar de 17:02»*.
+- Sem chegada não há de onde contar, e diz-se isso em vez de ficar em branco
+  sem explicação.
+
+O início da janela é o mesmo que o relógio usa: a **janela de operação** quando
+existe (recomeça a cada retoma — alteração 20) e, na falta dela, a chegada.
+
+Verificado:
+
+| Caso | Limite |
+|---|---|
+| 12h desde a chegada 08:00 | 20:00, mesmo dia |
+| 12h com janela reposta às 17:02 | 05:02 do dia seguinte — a chegada não manda |
+| 12h a partir das 20:00 | 08:00 do dia seguinte |
+| Sem chegada | vazio, com *«Indique a chegada ao TO…»* |
+| EGFR 03: 6h desde 21:58 | 03:58 |
+
+### Fica registado, nos dois sentidos
+
+Passa a haver entrada na Fita quando o tempo máximo muda **e** quando só o
+limite se altera:
+
+```
+Tempo máximo op.: 12h → 6h (limite 03:58)
+Limite op. acertado com o tempo máximo: 04:58 → 03:58
+```
+
+A segunda existe porque, sendo derivado, o limite pode mudar sozinho ao acertar
+uma divergência antiga. É o número que manda no relógio: não pode mudar em
+silêncio.
+
+### O que esperar no EGFR 03
+
+Abrir e gravar esse meio **acerta** o limite de 04:58 para 03:58 — o relógio
+passa a expirar uma hora mais cedo, que é o que as 6h dizem. Fica registado na
+Fita. Não foi corrigido à mão: acontece quando alguém o editar.
+
+### Porque não se fez o inverso (ambos editáveis)
+
+Foi ponderado. `horas_max` é `integer`, pelo que um limite de 6h30 não teria
+número inteiro de horas para escrever de volta — arredondaria e mentia. Exigia
+mudar a coluna para decimal e trocar **seis** `parseInt` espalhados, cada um
+capaz de truncar em silêncio um limite de fadiga. Sendo o limite derivado, a
+divergência deixa de ser possível em vez de ter de ser reconciliada.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `inicioDaJanelaNoModal()`, `recalcLimiteOp()`;
+  campo de limite só de leitura com nota e data oculta; recálculo ligado ao
+  tempo máximo e à chegada; registo na Fita em `saveTeam()`.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Editar um meio em operação e mudar o **Tempo máximo**: o limite acompanha e
+   a nota diz de onde conta.
+2. Confirmar que o **Limite Op.** já não se escreve à mão.
+3. Gravar e confirmar a entrada na **Fita do Tempo**.
+4. Num meio ainda sem chegada, confirmar a mensagem em vez de um campo vazio.

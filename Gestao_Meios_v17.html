@@ -1664,19 +1664,23 @@
       </div>
       <div class="form-field" id="mob-fld-data-chegada" style="display:none;">
         <label class="form-label">Data Chegada TO</label>
-        <input class="form-input" type="date" id="team-data-chegada"/>
+        <input class="form-input" type="date" id="team-data-chegada" oninput="recalcLimiteOp()"/>
       </div>
       <div class="form-field" id="mob-fld-hora-chegada" style="display:none;">
         <label class="form-label">Hora Chegada TO</label>
-        <input class="form-input" type="time" id="team-hora-chegada"/>
+        <input class="form-input" type="time" id="team-hora-chegada" oninput="recalcLimiteOp()"/>
       </div>
       <div class="form-field" id="mob-fld-horas-max" style="display:none;">
         <label class="form-label">Tempo máximo op.</label>
-        <input class="form-input" type="number" id="team-horas-max" min="1" max="24" placeholder="Ex: 12" title="Horas máximas de operação contínua antes de descanso obrigatório"/>
+        <input class="form-input" type="number" id="team-horas-max" min="1" max="24" placeholder="Ex: 12"
+               oninput="recalcLimiteOp()" title="Horas máximas de operação contínua antes de descanso obrigatório"/>
       </div>
       <div class="form-field" id="mob-fld-limite-op" style="display:none;">
         <label class="form-label">Limite Op. (hora)</label>
-        <input class="form-input" type="time" id="team-limite-op" placeholder="Calculado automaticamente"/>
+        <input class="form-input" type="time" id="team-limite-op" readonly tabindex="-1"
+               style="opacity:.75;cursor:not-allowed;" placeholder="Calculado automaticamente"/>
+        <input type="hidden" id="team-limite-op-date"/>
+        <div id="team-limite-nota" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
       </div>
       <div class="form-field" id="mob-fld-data-demob" style="display:none;">
         <label class="form-label">Data Saída TO</label>
@@ -5686,6 +5690,40 @@ function meioEstadoOptsCompleto(){
   if(nota) nota.style.display = 'none';
 }
 
+// ── Limite de operação: calculado, nunca escrito à mão ───────────
+// Os dois campos andavam soltos: mudar um não mexia no outro e nenhum ficava
+// registado, pelo que o meio podia ficar com um limite que não correspondia ao
+// tempo máximo — e é o limite que manda no relógio do cartão. Passa a haver uma
+// só entrada, o tempo máximo, e o limite é o que dele resulta.
+//
+// O início da janela é o mesmo que o relógio usa: a janela de operação quando
+// existe (recomeça a cada retoma — alteração 20) e, na falta dela, a chegada.
+function inicioDaJanelaNoModal(){
+  const editId = document.getElementById('team-edit-id')?.value;
+  const t = editId ? db.teams.find(x => x.id === editId) : null;
+  const data = t?.opInicioData || document.getElementById('team-data-chegada')?.value;
+  const hora = t?.opInicioHora || document.getElementById('team-hora-chegada')?.value;
+  return (data && hora) ? new Date(`${data}T${hora}`) : null;
+}
+
+function recalcLimiteOp(){
+  const campo = document.getElementById('team-limite-op');
+  const oculto = document.getElementById('team-limite-op-date');
+  const nota  = document.getElementById('team-limite-nota');
+  if(!campo) return;
+  const horas = parseInt(document.getElementById('team-horas-max')?.value) || 0;
+  const ini = inicioDaJanelaNoModal();
+  if(!horas || !ini || isNaN(ini.getTime())){
+    campo.value = ''; if(oculto) oculto.value = '';
+    if(nota) nota.textContent = !horas ? '' : 'Indique a chegada ao TO para o limite ser calculado.';
+    return;
+  }
+  const lim = new Date(ini.getTime() + horas * 3600000);
+  campo.value = lim.toTimeString().slice(0,5);
+  if(oculto) oculto.value = dataISO(lim);
+  if(nota) nota.textContent = `${horas}h a contar de ${ini.toTimeString().slice(0,5)}`;
+}
+
 // ── Datetime ordering validation ──────────────────────────────────
 function parseDT(date, time){
   if(!date) return null;
@@ -5995,6 +6033,11 @@ function editTeam(id){
   document.getElementById('team-hora-chegada').value=t.horaChegada||'';
   document.getElementById('team-horas-max').value=t.horasMax||'';
   document.getElementById('team-limite-op').value=t.limiteOp||'';
+  const _ld=document.getElementById('team-limite-op-date'); if(_ld) _ld.value=t.limiteOpDate||'';
+  // Recalcular ao abrir: o limite passa a ser sempre o que resulta do tempo
+  // máximo. Se o que estava gravado divergir, a divergência fica à vista aqui
+  // — e a nota diz de onde vem o número — em vez de só no relógio do cartão.
+  recalcLimiteOp();
   document.getElementById('team-data-demob').value=t.dataDemob||'';
   document.getElementById('team-hora-demob').value=t.horaDemob||'';
   document.getElementById('team-data-chegada-entidade').value=t.dataChegadaEntidade||'';
@@ -6107,7 +6150,8 @@ async function saveTeam(){
     horaChegada:document.getElementById('team-hora-chegada').value,
     horasMax:parseInt(document.getElementById('team-horas-max').value)||null,
     limiteOp:document.getElementById('team-limite-op').value,
-    limiteOpDate:(editId?db.teams.find(x=>x.id===editId)?.limiteOpDate:null)||null,
+    limiteOpDate:document.getElementById('team-limite-op-date')?.value
+      || (editId?db.teams.find(x=>x.id===editId)?.limiteOpDate:null)||null,
     opInicioData:(editId?db.teams.find(x=>x.id===editId)?.opInicioData:null)||null,
     opInicioHora:(editId?db.teams.find(x=>x.id===editId)?.opInicioHora:null)||null,
     dataDemob:document.getElementById('team-data-demob').value,
@@ -6254,6 +6298,20 @@ async function saveTeam(){
         await propagarEstadoAoGrupo(old, payload.estado);
         changes.push(`Estado: ${old.estado} → ${payload.estado}`);
         await persistOccEvento(currentOccId,'estado',`${eq} — estado alterado: ${old.estado} → ${payload.estado}`,eq);
+      }
+      // O limite é derivado, pelo que pode mudar sozinho — ao corrigir uma
+      // divergência antiga, por exemplo. Regista-se de qualquer maneira: é o
+      // número que manda no relógio do meio e não pode mudar em silêncio.
+      const _horasMudou  = (payload.horasMax||null) !== (old.horasMax||null);
+      const _limiteMudou = (payload.limiteOp||null) !== (old.limiteOp||null);
+      if(_horasMudou || _limiteMudou){
+        const txt = _horasMudou
+          ? `Tempo máximo op.: ${old.horasMax||'—'}h → ${payload.horasMax||'—'}h (limite ${payload.limiteOp||'—'})`
+          : `Limite op. acertado com o tempo máximo: ${old.limiteOp||'—'} → ${payload.limiteOp||'—'}`;
+        changes.push(txt);
+        addEventLog(db.teams[idx], txt+'.');
+        await persistEvento(id, txt+'.');
+        await persistOccEvento(currentOccId,'estado',`${eq} — ${txt}`,eq);
       }
       if(payload.setor!==old.setor){
         changes.push(`Setor: ${old.setor||'—'} → ${payload.setor||'—'}`);
