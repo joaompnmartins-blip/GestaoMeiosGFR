@@ -67,6 +67,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 45 | 25/08/2026 | Entradas da Fita com data e hora próprias | `877494e` | **por validar (só beta2)** |
 | 46 | 25/08/2026 | Limite Op. calculado a partir do Tempo máximo, e registado | `e5d712c` | **por validar (só beta2)** |
 | 47 | 25/08/2026 | Ficha do Meio: código da viatura em vez de Setor e Missão | `e74fcb7` | **por validar (só beta2)** |
+| 48 | 25/08/2026 | A viatura de um EGFR não se escolhe no Editar Meio | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3664,3 +3665,82 @@ adivinhar pela designação, que é exactamente o que falha no `MR M09`.
 2. Ficha do contentor de uma **BSBF**: lista as três viaturas.
 3. Ficha de uma **BSF**: lista os membros, assinalados como sem viatura.
 4. Ficha de um **EGFR sem viatura**: nenhuma das duas linhas aparece.
+
+---
+
+## 48 — A viatura de um EGFR não se escolhe no Editar Meio
+
+**Data:** 25/08/2026 · **Estado:** por validar
+
+### O que aconteceu
+
+O `EGFR 03` tinha a matrícula **CB-90-MB** escrita no meio e **nenhuma viatura
+ligada**. A matrícula foi escrita à mão no Editar Meio.
+
+Não é um problema de aspecto. `CB-90-MB` é uma viatura real — a **VGFR 02 NAC**,
+VCOT, EGFR, activa — e, por não estar ligada, continuava a contar como **livre**:
+
+```
+VGFR 02 NAC | LIVRE — pode ser despachada
+```
+
+Ou seja, a viatura estava no terreno com o EGFR 03 e o sistema deixava-a ser
+despachada para outra ocorrência ao mesmo tempo. A exclusividade é pelo
+`viatura_id`, e esse estava vazio.
+
+O cartão e a Ficha diziam coisas diferentes do mesmo meio: o cartão, que olha
+para o `viatura_id`, mostrava **🚗 sem viatura**; a Ficha mostrava
+**Matrícula: CB-90-MB**.
+
+### O que muda
+
+A viatura de um EGFR passa a vir **só** de onde a liga de verdade:
+
+1. da **escala EGFR** (Gestão ICNF), aplicada no despacho;
+2. do botão **🚗 Atribuir viatura** do cartão (alteração 15).
+
+No Editar Meio ficam trancados **Preset**, **Tipo** e **Matrícula** — os campos
+que carregam a identidade da viatura — com uma nota a dizer por onde se faz.
+
+**Vale também para o administrador.** Os campos de identidade já estavam
+trancados para os outros perfis; o buraco era precisamente o perfil a quem tudo
+o resto se abre, e foi por aí que a matrícula entrou.
+
+| Meio | Perfil | Trancados |
+|---|---|---|
+| EGFR | admin | preset, tipo, matrícula |
+| EGFR | of. ligação | os de identidade todos |
+| Meio solto | admin | nenhum *(inalterado)* |
+| Meio solto | of. ligação | os de identidade todos *(inalterado)* |
+
+A **Designação** continua editável: é o nome da equipa e não a viatura — a
+alteração 15 também não lhe toca ao atribuir.
+
+### E a Ficha deixa de se contradizer
+
+Num EGFR sem viatura ligada, a Ficha já não mostra matrícula nenhuma; mostra
+**«sem viatura atribuída»**, como o cartão. Uma matrícula que não está ligada a
+nada não é informação — é uma afirmação sem suporte.
+
+### O que fazer ao EGFR 03
+
+O valor antigo continua gravado, mas deixou de aparecer. A forma certa de o
+resolver é **🚗 Atribuir viatura** com a `VGFR 02 NAC`: fica ligada, a matrícula
+passa a vir dela, e a viatura passa a contar como em uso. Não foi feito à mão —
+o botão também verifica se ela está livre.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `aplicarBloqueiosEdicao()` tranca preset, tipo e
+  matrícula nos meios EGFR e acrescenta a nota; a Ficha não mostra matrícula sem
+  viatura ligada.
+- **Base de dados:** nenhuma alteração.
+
+### Como validar
+
+1. Editar o **EGFR 03** como administrador: Preset, Tipo e Matrícula em leitura,
+   com a nota a explicar.
+2. Confirmar que a **Designação** continua editável.
+3. Editar um meio solto: tudo como antes.
+4. Ficha do EGFR 03: **sem viatura atribuída**, sem matrícula.
+5. Atribuir a viatura pelo botão e confirmar que passa a aparecer nos dois.

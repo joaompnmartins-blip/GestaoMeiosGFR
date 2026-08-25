@@ -4764,7 +4764,10 @@ function showMeioInfo(teamId){
     ${row('Designação', t.eq)}
     ${row('Código da viatura', t.viaturaCod)}
     ${row('Tipo', t.tipo)}
-    ${row('Matrícula', t.matricula)}
+    ${row('Matrícula', (t.egfrEquipa && !t.viaturaId) ? null : t.matricula)}
+    ${(t.egfrEquipa && !t.viaturaId)
+        ? `<div class="team-card-row"><span class="lbl">Viatura</span><span class="val" style="color:var(--warn);">sem viatura atribuída</span></div>`
+        : ''}
     ${viatConjuntoHtml}
     ${row('Chefe de Equipa', t.responsavel)}
     ${row('Contacto', t.contacto)}
@@ -5657,6 +5660,22 @@ function aplicarBloqueiosEdicao(estado){
   MEIO_CAMPOS_IDENTIDADE.forEach(id => bloquearCampo(id, !livre,
     'A identificação do meio fixa-se ao adicioná-lo. Para trocar de meio, remova este e adicione outro.'));
 
+  // Num EGFR a viatura só pode vir de dois sítios: da escala EGFR (Gestão ICNF),
+  // aplicada no despacho, ou do botão «Atribuir viatura» do cartão. Os dois
+  // ligam a viatura de verdade e marcam-na como em uso.
+  //
+  // Escolhê-la aqui não fazia isso: ficava a matrícula no meio e a viatura
+  // continuava a contar como livre, podendo ser despachada para outro sítio ao
+  // mesmo tempo. Aconteceu — o EGFR 03 tem a matrícula da VGFR 02 NAC sem a ter
+  // ligada. Os campos que carregam a identidade da viatura ficam trancados,
+  // mesmo a quem pode tudo o resto.
+  const _editId = document.getElementById('team-edit-id')?.value;
+  const _meio = _editId ? db.teams.find(x => x.id === _editId) : null;
+  if(_meio?.egfrEquipa){
+    ['team-preset','team-tipo','team-matricula'].forEach(id => bloquearCampo(id, true,
+      'A viatura de um EGFR vem da escala EGFR ou do botão 🚗 Atribuir viatura — não se escolhe aqui.'));
+  }
+
   MEIO_CAMPOS_FASE.forEach(({etapa:e, campos}) => {
     const passou = e < etapa;
     campos.forEach(id => bloquearCampo(id, passou && !livre,
@@ -5669,6 +5688,13 @@ function aplicarBloqueiosEdicao(estado){
     nota.innerHTML = livre
       ? '<span style="color:var(--muted);">Perfil administrador: todos os campos editáveis, incluindo os de fases anteriores.</span>'
       : `<span style="color:var(--muted);">Meio em <strong>${esc(MEIO_ESTADO_ROT[estado]||estado)}</strong>. A identificação e os dados das fases já cumpridas estão em leitura — o percurso de estados não regressa.</span>`;
+    // Acrescentada aqui e não junto ao bloqueio: a nota genérica corre depois e
+    // apagá-la-ia. Vale mesmo para o administrador, a quem tudo o resto se abre.
+    if(_meio?.egfrEquipa){
+      nota.innerHTML += `<div style="margin-top:4px;color:var(--warn);">
+        A viatura deste EGFR não se escolhe aqui — vem da escala EGFR (Gestão ICNF)
+        ou do botão <strong>🚗 Atribuir viatura</strong> do cartão, que a liga e a marca como em uso.</div>`;
+    }
   }
   meioEstadoOpts(estado);
 }
