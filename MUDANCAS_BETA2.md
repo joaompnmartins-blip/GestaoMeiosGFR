@@ -70,6 +70,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 48 | 25/08/2026 | A viatura de um EGFR não se escolhe no Editar Meio | `20aafb9` | **por validar (só beta2)** |
 | 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `3a80f13` | **por validar (só beta2)** |
 | 50 | 25/08/2026 | Botão Reabrir saía fora do cartão do Arquivo | `e0c6e47` | **por validar (só beta2)** |
+| 51 | 27/08/2026 | Texto em várias linhas na Fita deixa de ser achatado | `PENDENTE` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -3847,3 +3848,71 @@ deixar o conteúdo passar para baixo.
    botões têm de estar inteiros e dentro do cartão.
 2. Estreitar a janela e confirmar que descem em vez de sair.
 3. Confirmar que não aparece barra de deslocamento horizontal.
+
+---
+
+## 51 — Texto em várias linhas na Fita deixa de ser achatado
+
+**Data:** 27/08/2026 · **Estado:** por validar
+
+### O defeito
+
+As entradas escritas à mão na Fita trazem muitas vezes texto em várias linhas —
+pontos de situação, listas de comando, comunicações. Apareciam todas como **um
+parágrafo corrido**.
+
+O `titulo` guarda as quebras de linha sem problema — é `text`. O que faltava era
+dizê-lo ao HTML: `.tl-titulo` não tinha `white-space`, e o `esc()` só escapa
+`&`, `<` e `>` — não converte quebras em `<br>`. O HTML faz o resto, e junta
+tudo.
+
+Assim:
+
+```
+Comandante do Setor Charlie:
+C2 Arouca Marco
+Comunicações
+COM | TAT T5 | MAN M26
+```
+
+lia-se `Comandante do Setor Charlie: C2 Arouca Marco Comunicações COM | TAT T5 | MAN M26`.
+
+### A correcção
+
+```css
+.tl-titulo{ …; white-space:pre-line; }
+```
+
+`pre-line` honra as quebras de linha e continua a encolher espaços seguidos —
+que é o que se quer em texto colado de outro sítio. As entradas de uma só linha
+não mudam nada.
+
+### Quantas entradas ganham
+
+| | Entradas com várias linhas |
+|---|---|
+| Já gravadas no beta2 | 1 |
+| Já gravadas no beta1 | **12** |
+| No `linha_do_tempo.csv`, por carregar | **53** |
+
+Ou seja: já havia 13 entradas a serem mal apresentadas, e o carregamento
+previsto multiplicaria isso por cinco.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — uma propriedade em `.tl-titulo`.
+- **Base de dados:** nenhuma alteração.
+
+### Nota para o carregamento do `linha_do_tempo.csv`
+
+O ficheiro destina-se ao **beta1**, e esta correcção está no **beta2**. Enquanto
+o beta2 não for promovido, as 53 entradas com várias linhas aparecerão
+achatadas no beta1 — como já acontece às 12 que lá estão. Não se perde nada: o
+texto fica inteiro na base de dados e passa a ler-se bem assim que a promoção
+acontecer.
+
+### Como validar
+
+1. Abrir a Fita de uma ocorrência com uma entrada de várias linhas.
+2. Confirmar que as linhas aparecem separadas.
+3. Confirmar que as entradas de uma linha continuam iguais.
