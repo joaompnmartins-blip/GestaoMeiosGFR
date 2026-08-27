@@ -70,7 +70,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 48 | 25/08/2026 | A viatura de um EGFR não se escolhe no Editar Meio | `20aafb9` | **por validar (só beta2)** |
 | 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `3a80f13` | **por validar (só beta2)** |
 | 50 | 25/08/2026 | Botão Reabrir saía fora do cartão do Arquivo | `e0c6e47` | **por validar (só beta2)** |
-| 51 | 27/08/2026 | Texto em várias linhas na Fita deixa de ser achatado | `PENDENTE` | **por validar (só beta2)** |
+| 51 | 27/08/2026 | Texto em várias linhas na Fita deixa de ser achatado | `506101d` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
