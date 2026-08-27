@@ -3916,3 +3916,50 @@ acontecer.
 1. Abrir a Fita de uma ocorrência com uma entrada de várias linhas.
 2. Confirmar que as linhas aparecem separadas.
 3. Confirmar que as entradas de uma linha continuam iguais.
+
+## B1-05 — Fita do Tempo da ocorrência 20261170282 carregada de ficheiro
+
+**Data:** 27/08/2026
+
+201 entradas de `linha_do_tempo.csv` (Arouca, 18/08 a 24/08), a pedido.
+
+| | |
+|---|---|
+| Categoria | `outros` em todas |
+| `ts` | **hora real do acontecimento**, não a de escrita |
+| Autor | a coluna *Remetente* — 17 autores |
+| Texto | a coluna *Conteúdo da Mensagem*, inteira |
+| Entradas antes | 9 · **depois** | 209 |
+
+### O fuso, que era onde isto se estragava
+
+A base corre em **UTC** e a aplicação mostra a hora local. Uma entrada já lá
+gravada confirmou a conversão: a POSIT está em `14:11 UTC` e lê-se `15:11` em
+Lisboa. As horas do ficheiro são **locais**, pelo que foram inseridas com
+
+```sql
+TIMESTAMP '2026-08-18 05:15' AT TIME ZONE 'Europe/Lisbon'
+```
+
+Sem isto ficavam todas uma hora atrasadas. Confirmado depois: a primeira entrada
+lê-se **18/08 05:15** em Lisboa, como no ficheiro.
+
+### O duplicado
+
+Foi apagada a entrada que já existia no beta1 com *«POSIT às 15H00…»*: era o
+mesmo texto da linha de 20/08 15:11 do ficheiro, gravada com a hora de escrita
+(15:11 Lisboa) em vez da do acontecimento. Ficou a versão do ficheiro. Restam
+**1** com esse início, como devia.
+
+### Transporte
+
+O SQL (68 KB) não cabia numa linha de comando, pelo que foi enviado em oito
+pedaços em base64 e reconstruído no destino. Confirmado por **md5 igual** dos
+dois lados antes de correr, e a carga correu numa só transacção.
+
+### O que ainda não se vê bem
+
+57 destas entradas têm várias linhas. A correcção que as apresenta
+correctamente é a **alteração 51**, que está no **beta2**: até à promoção,
+aparecem no beta1 como um parágrafo corrido. O texto está inteiro na base —
+é só apresentação.
