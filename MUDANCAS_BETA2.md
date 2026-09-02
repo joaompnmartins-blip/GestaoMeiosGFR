@@ -3963,3 +3963,78 @@ dois lados antes de correr, e a carga correu numa só transacção.
 correctamente é a **alteração 51**, que está no **beta2**: até à promoção,
 aparecem no beta1 como um parágrafo corrido. O texto está inteiro na base —
 é só apresentação.
+
+> Resolvido na **B1-06**: com a promoção de 02/09, a alteração 51 passou ao
+> beta1 e estas entradas passaram a ler-se como foram escritas.
+
+---
+
+## B1-06 — Promoção do beta2 para o beta1
+
+**Data:** 02/09/2026
+
+As 51 alterações passaram ao beta1 por fast-forward, a pedido, depois da análise
+de consequências. `8e6f4fb` → `5f25383`, **89 commits** (46 de código), sem
+merge e sem conflitos — o `Gestao_Meios_v17.html` nunca chegou a ser fundido.
+
+### Cópia de segurança, antes de tudo
+
+`pg_dump` do beta1 para `~/GestaoMeiosGFR_backups/beta1_pre_promocao_20260902.sql`
+— 2,3 MB, 31 tabelas, 31 blocos `COPY`, 193 meios. Guardado **fora do
+repositório**, de propósito: tem dados operacionais reais e não pode arriscar
+entrar num commit.
+
+### Porque foi este o momento
+
+Quando a promoção foi avaliada pela primeira vez, o beta1 tinha 3 ocorrências
+activas com 24 meios em operação, 10 deles em conjuntos compostos. À data da
+promoção tinha **1 ocorrência activa e nenhum meio activo** — as mudanças mais
+intrusivas (conjuntos recolhidos, acções de grupo, contadores) não apanharam
+nada em curso. Os conflitos que eu tinha assinalado como impedimento — a EGFR 01
+em duas ocorrências, viaturas repetidas — tinham desaparecido sozinhos com as
+desmobilizações.
+
+### Verificação depois do arranque
+
+| Verificação | Esperado | Obtido |
+|---|---|---|
+| Tabelas de guarnição criadas | 2 | **2** |
+| Meios com janela de operação | 190 | **190** |
+| Guarnições abertas | 32 | **32** |
+| Membros espelhados na guarnição | 52 | **52** |
+| Membros fora do turno A | 0 | **0** |
+| Duplicados sob `(data, turno, operacional_id)` | 0 | **0** |
+| Restrições `CHECK` do turno | presentes | **2** |
+| Ocorrências · meios · Fita | 23 · 193 · 229 | **23 · 193 · 229** |
+
+Nenhuma restrição recusou dados e nada se perdeu: os totais de ocorrências,
+meios e entradas da Fita são os mesmos antes e depois.
+
+O HTML servido pelo beta1 é **byte a byte** o do `HEAD` (669 055 bytes, mesmo
+sha256), pelo que o que está no ar é o que está no ramo.
+
+**Nota:** os membros da carta são **1115** e não os 1108 previstos na análise.
+Não é desvio — é uma semana de cartas novas entre a medição (27/08) e a
+promoção. Todos ficaram no turno A, como devia.
+
+### O que ficou por fazer, por decisão
+
+Os dois preenchimentos de dados das alterações **19** (guarnição completa) e
+**36** (disponíveis) **não foram corridos** — foi pedido que não. Consequência,
+para não haver surpresas:
+
+- **21 dos 26** meios FSBF já despachados ficam só com o chefe de equipa. Os
+  despachos novos levam a guarnição toda, porque isso é código e viajou.
+- **135 linhas** de empenhamento diário mostram 0 disponíveis. Os instantâneos
+  novos são calculados de forma correcta.
+
+Nenhum dos dois quebra o que quer que seja: são valores em falta, não errados,
+e o SQL continua nas alterações 19 e 36 se algum dia se quiser recuperar.
+
+### O que muda à vista de quem usa
+
+- Os totais de meios **baixam uma unidade** em 6 ocorrências: o contentor de uma
+  BSF/BSBF deixou de contar como meio (alteração 28). Passaram a estar certos.
+- Os conjuntos compostos aparecem **recolhidos** por omissão.
+- O oficial de ligação passa a ver a Gestão ICNF em **consulta** (alteração 35).
+- 64 entradas da Fita com várias linhas passaram a ler-se como foram escritas.
