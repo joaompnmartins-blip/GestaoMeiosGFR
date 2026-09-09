@@ -17,12 +17,33 @@ const pool = new Pool({
      : (process.env.NODE_ENV === 'production' || !_local) ? { rejectUnauthorized: false } : false,
 });
 
+// Sem JWT_SECRET o servidor usava um valor por omissão que está escrito aqui —
+// e o código é legível por quem o peça. Quem o soubesse forjava um token de
+// admin. Em produção passa a recusar arrancar; fora dela o valor de
+// desenvolvimento mantém-se, para os testes e o trabalho local não mudarem.
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('JWT_SECRET não está definido. É obrigatório em produção — o servidor não arranca.');
+  process.exit(1);
+}
 const JWT_SECRET  = process.env.JWT_SECRET || 'dev-secret-CHANGE-IN-PRODUCTION';
 const JWT_EXPIRES = '12h';
 const PORT        = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static(__dirname));
+
+// Só estes ficheiros são públicos. Antes servia-se o directório inteiro com
+// express.static(__dirname), o que punha o código-fonte, o schema.sql e os CSV
+// das escalas — com nomes de pessoas — ao alcance de quem os pedisse, sem
+// autenticação nenhuma. A lista é explícita de propósito: assim não se alarga
+// por descuido ao acrescentar um ficheiro à pasta.
+const FICHEIROS_PUBLICOS = {
+  '/gogfr_logo_v1.png':                 ['gogfr_logo_v1.png'],
+  '/manual_utilizador.html':            ['manual_utilizador.html'],
+  '/fsbf/carta_meios_fsbf_print.html':  ['fsbf', 'carta_meios_fsbf_print.html'],
+};
+for (const [rota, partes] of Object.entries(FICHEIROS_PUBLICOS))
+  app.get(rota, (req, res) => res.sendFile(path.join(__dirname, ...partes)));
+
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'Gestao_Meios_v17.html')));
 
 // ─── Role ordering ────────────────────────────────────────────────

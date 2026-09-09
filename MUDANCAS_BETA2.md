@@ -3917,6 +3917,135 @@ acontecer.
 2. Confirmar que as linhas aparecem separadas.
 3. Confirmar que as entradas de uma linha continuam iguais.
 
+## 52 — O directório do projecto deixa de estar publicado
+
+**Data:** 09/09/2026 · **Estado:** por validar · **Segurança**
+
+### O defeito
+
+`app.use(express.static(__dirname))` publicava a **raiz inteira do projecto**,
+sem autenticação nenhuma. Confirmado por pedido HTTP ao beta1 a correr:
+
+| Caminho | Resposta | O que é |
+|---|---|---|
+| `/escalas/escala_egfr_2026_elementos.csv` | 200 · 50 KB | 595 linhas com **nomes** de operacionais |
+| `/escalas/escala_oflig_ccon_2026.csv` | 200 · 11 KB | 197 linhas com **nomes** e códigos |
+| `/escalas/elementos_egfr.csv` | 200 | 48 **nomes** com qualificações de fogo |
+| `/new_db_tables/Viaturas_v1.csv` | 200 · 134 KB | parque de viaturas |
+| `/server.js` | 200 · 226 KB | código-fonte completo |
+| `/schema.sql`, `/CONTEXTO.md`, `/MUDANCAS_BETA2.md` | 200 | esquema e documentação interna |
+
+Dados pessoais de trabalhadores identificados, descarregáveis por qualquer
+pessoa que soubesse o caminho. Num organismo público, é matéria de RGPD.
+
+O `.env` escapava por o Express ignorar ficheiros começados por ponto — sorte,
+não desenho. O `passwords.odt` nunca esteve em risco: está no `.gitignore` e
+por isso nunca foi para o Railway.
+
+### A correcção
+
+Lista explícita, em vez de servir o directório. O frontend precisa de **três**
+ficheiros, e mais nenhum:
+
+```js
+const FICHEIROS_PUBLICOS = {
+  '/gogfr_logo_v1.png':                 ['gogfr_logo_v1.png'],
+  '/manual_utilizador.html':            ['manual_utilizador.html'],
+  '/fsbf/carta_meios_fsbf_print.html':  ['fsbf', 'carta_meios_fsbf_print.html'],
+};
+for (const [rota, partes] of Object.entries(FICHEIROS_PUBLICOS))
+  app.get(rota, (req, res) => res.sendFile(path.join(__dirname, ...partes)));
+```
+
+A lista é explícita de propósito: assim não volta a alargar-se por alguém pôr um
+ficheiro na pasta. O `path.join` com partes separadas mantém isto correcto
+também em Windows.
+
+### Como se soube que eram só três
+
+Varrimento a `src`, `href`, `window.open`, `fetch`, `url()` em CSS e literais de
+template, no `Gestao_Meios_v17.html` e no próprio manual. A única referência
+externa do manual é o Google Fonts. O `manual_utilizador_claro.html` não é
+referenciado em lado nenhum e ficou de fora.
+
+### Como validar
+
+Servem: `/`, `/gogfr_logo_v1.png`, `/manual_utilizador.html`,
+`/fsbf/carta_meios_fsbf_print.html`.
+Devolvem 404: `/server.js`, `/schema.sql`, `/package.json`, `/CONTEXTO.md`,
+`/MUDANCAS_BETA2.md` e tudo o que está em `/escalas/` e `/new_db_tables/`.
+
+Verificado com o `supertest` contra a aplicação carregada — 4 servidos, 13
+negados, tudo certo.
+
+### Nota sobre a promoção
+
+A exposição está **viva no beta1**, que é o que tem dados reais. Esta é uma
+correcção em que a promoção deve seguir de perto, em vez de esperar pelo lote
+seguinte.
+
+### Alterações
+
+- `server.js` — substituído o `express.static`.
+- **Base de dados:** nenhuma alteração.
+
+## 53 — Em produção, sem `JWT_SECRET` o servidor recusa arrancar
+
+**Data:** 09/09/2026 · **Estado:** por validar · **Segurança**
+
+### O defeito
+
+```js
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-CHANGE-IN-PRODUCTION';
+```
+
+Sem a variável definida, o servidor arrancava **em silêncio** com um valor que
+está escrito no código — e o código era legível por quem o pedisse
+(alteração 52). Quem o soubesse assinava um token de administrador.
+
+No Railway a variável está definida nos dois ambientes, pelo que nunca esteve em
+uso. O risco é o servidor **seguinte**: numa instalação nova, em Windows ou onde
+for, as variáveis de ambiente são exactamente o que ainda não está posto.
+
+### A correcção
+
+```js
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.error('JWT_SECRET não está definido. É obrigatório em produção — o servidor não arranca.');
+  process.exit(1);
+}
+```
+
+Só em produção. Fora dela o valor de desenvolvimento mantém-se, para os testes e
+o trabalho local não mudarem — o `tests/helpers/testdb.js` usa o mesmo valor por
+omissão e continua a funcionar.
+
+O `process.exit(1)` é preferível a lançar excepção: o gestor de serviços — o
+Railway, ou o NSSM em Windows — mostra um arranque falhado em vez de uma
+excepção não tratada.
+
+### Como validar
+
+| Ambiente | `JWT_SECRET` | Esperado | Obtido |
+|---|---|---|---|
+| `production` | ausente | recusa, saída 1 | **recusa, saída 1** |
+| `production` | presente | arranca | **arranca** |
+| `test` | ausente | arranca | **arranca** |
+
+### Alterações
+
+- `server.js` — guarda de arranque.
+- **Base de dados:** nenhuma alteração.
+
+### O que fica por fazer
+
+Da mesma revisão, e ainda por decidir: tirar os CSV com dados pessoais do
+repositório (e ponderar o histórico), impor força mínima na palavra-passe,
+deixar o utilizador mudar a sua própria, e registar os logins — hoje não há como
+saber se uma conta foi usada por outra pessoa. Ver também que mudar a
+palavra-passe **não** termina as sessões abertas: os tokens duram 12 h e não há
+revogação, pelo que a alavanca de emergência é rodar o `JWT_SECRET`.
+
 ## B1-05 — Fita do Tempo da ocorrência 20261170282 carregada de ficheiro
 
 **Data:** 27/08/2026
