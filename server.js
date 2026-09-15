@@ -44,7 +44,22 @@ const FICHEIROS_PUBLICOS = {
 for (const [rota, partes] of Object.entries(FICHEIROS_PUBLICOS))
   app.get(rota, (req, res) => res.sendFile(path.join(__dirname, ...partes)));
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'Gestao_Meios_v17.html')));
+// A chave dos mapas base do Carto tem mesmo de chegar ao browser — é ele que
+// pede os mosaicos. Mas não precisa de estar no repositório: fica em variável
+// de ambiente e é injectada aqui, ao servir a página. Assim roda-se sem commit,
+// e sem ela o mapa continua a funcionar — volta é a marca de água.
+const CARTO_KEY = process.env.CARTO_BASEMAP_KEY || '';
+let _htmlApp = null;
+app.get('/', (req, res) => {
+  // Em produção lê-se uma vez; fora dela relê-se, para não obrigar a reiniciar
+  // o servidor a cada alteração do HTML.
+  if (_htmlApp === null || process.env.NODE_ENV !== 'production') {
+    _htmlApp = require('fs')
+      .readFileSync(path.join(__dirname, 'Gestao_Meios_v17.html'), 'utf8')
+      .split('__CARTO_KEY__').join(CARTO_KEY);
+  }
+  res.type('html').send(_htmlApp);
+});
 
 // ─── Role ordering ────────────────────────────────────────────────
 const ROLE_ORDER   = ['visualizador', 'operacional', 'ofligacao', 'ofligacao_ccon', 'admin'];
@@ -3820,9 +3835,12 @@ app.post('/api/gestao/sync', requireAuth('visualizador'), ALL_GESTORES, wrap(asy
 
 // ─── Proxy fogos.pt (browser directo é bloqueado por Cloudflare) ─
 app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) => {
-  const r = await fetch('https://api.fogos.pt/v2/incidents/active', {
-    headers: { 'User-Agent': 'GestaoMeiosGFR/1.0' },
-  });
+  // A chave vai em X-API-Key, como o fogos.pt pede. Hoje o endpoint ainda
+  // responde sem ela, mas vai passar a exigi-la — e assim não somos apanhados
+  // desprevenidos. Sem a variável definida, o pedido sai como saía antes.
+  const cabecalhos = { 'User-Agent': 'GestaoMeiosGFR/1.0' };
+  if (process.env.FOGOS_API_KEY) cabecalhos['X-API-Key'] = process.env.FOGOS_API_KEY;
+  const r = await fetch('https://api.fogos.pt/v2/incidents/active', { headers: cabecalhos });
   if (!r.ok) return res.status(502).json({ success: false, error: 'fogos.pt indisponível' });
   const data = await r.json();
   res.json(data);

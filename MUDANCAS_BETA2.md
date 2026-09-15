@@ -4046,6 +4046,89 @@ saber se uma conta foi usada por outra pessoa. Ver também que mudar a
 palavra-passe **não** termina as sessões abertas: os tokens duram 12 h e não há
 revogação, pelo que a alavanca de emergência é rodar o `JWT_SECRET`.
 
+## 54 — Chaves de API do fogos.pt e do Carto
+
+**Data:** 15/09/2026 · **Estado:** por validar
+
+Ambas as integrações corriam **sem chave nenhuma**. Passam a usá-las, por vias
+diferentes — e a diferença importa.
+
+### fogos.pt — fica no servidor
+
+O pedido já passava pelo `server.js` (a Cloudflare bloqueia o browser em
+directo), pelo que a chave **nunca chega ao cliente**. Vai em `X-API-Key`, como
+o fogos.pt pede, e só se a variável existir:
+
+```js
+const cabecalhos = { 'User-Agent': 'GestaoMeiosGFR/1.0' };
+if (process.env.FOGOS_API_KEY) cabecalhos['X-API-Key'] = process.env.FOGOS_API_KEY;
+```
+
+Confirmado por pedido real: **200 com chave e 200 sem chave**. O endpoint ainda
+não a exige — isto é preparação, não uma avaria a corrigir.
+
+### Carto — tem mesmo de chegar ao browser
+
+É o browser que pede os mosaicos, pelo que a chave tem de estar na página. Não
+há como a esconder; o que há a evitar é que fique no repositório. Fica em
+variável de ambiente e é injectada ao servir o HTML:
+
+```js
+const CARTO_KEY = process.env.CARTO_BASEMAP_KEY || '';
+_htmlApp = fs.readFileSync(...).split('__CARTO_KEY__').join(CARTO_KEY);
+```
+
+No HTML fica o marcador, e o URL monta-se no browser:
+
+```js
+const cartoKey = '__CARTO_KEY__';
+const cartoQs  = (cartoKey && !cartoKey.startsWith('__')) ? `?key=${cartoKey}` : '';
+```
+
+O teste do prefixo serve para abrir o ficheiro do disco sem servidor: aí o
+marcador fica por substituir e vai-se sem chave, em vez de se pedir mosaicos com
+`?key=__CARTO_KEY__`.
+
+| | |
+|---|---|
+| Rotação da chave | por variável de ambiente, **sem commit** |
+| Em produção | o HTML é lido uma vez e guardado em memória |
+| Fora de produção | relê-se a cada pedido, para não obrigar a reiniciar |
+| Sem a variável | o mapa funciona na mesma — volta a marca de água |
+
+### Que a chave funciona no caminho que a app usa
+
+A app serve `dark_all`/`light_all`; o exemplo do Carto mostrava
+`rastertiles/voyager`. Confirmei o mosaico `7/60/48` nos dois:
+
+| Pedido | Resposta |
+|---|---|
+| `dark_all` sem chave | 200 · **5537** bytes |
+| `dark_all` com chave | 200 · **3981** bytes |
+
+A quebra de tamanho é a marca de água a sair. Não foi preciso mudar de estilo.
+
+### O que fica por fazer
+
+O Carto avisa que **o raster vai ser descontinuado** e recomenda passar a
+vector. A chave já cobre os dois, e o vector ainda não a exige. É trabalho para
+depois, mas com prazo de validade.
+
+### Como validar
+
+1. Abrir o mapa de ocorrências — sem marca de água no canto.
+2. Confirmar que a atribuição OSM/CARTO continua visível (é a contrapartida do
+   plano gratuito).
+3. Forçar recarregamento se a marca persistir: tanto o browser como o CDN do
+   Carto guardam mosaicos em cache.
+
+### Alterações
+
+- `server.js` — cabeçalho no fogos.pt; injecção da chave ao servir `/`.
+- `Gestao_Meios_v17.html` — marcador e montagem do URL.
+- **Variáveis:** `FOGOS_API_KEY` e `CARTO_BASEMAP_KEY`, nos dois ambientes.
+- **Base de dados:** nenhuma alteração.
+
 ## B1-05 — Fita do Tempo da ocorrência 20261170282 carregada de ficheiro
 
 **Data:** 27/08/2026

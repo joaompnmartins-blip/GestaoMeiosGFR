@@ -7493,9 +7493,14 @@ function initFogosLeafletMap() {
   if(fogosMap) return;
   const isDark = !document.documentElement.classList.contains('theme-light');
   fogosMap = L.map('fogos-leaflet-map', { zoomControl: true }).setView([39.5, -8.0], 6);
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+  // A chave é injectada pelo servidor ao servir esta página (ver server.js).
+  // Abrindo o ficheiro directamente do disco, sem servidor, o marcador fica por
+  // substituir — daí o teste do prefixo: nesse caso vai-se sem chave e o mapa
+  // continua a funcionar, apenas com a marca de água do Carto.
+  const cartoKey = '__CARTO_KEY__';
+  const cartoQs  = (cartoKey && !cartoKey.startsWith('__')) ? `?key=${cartoKey}` : '';
+  const estilo   = isDark ? 'dark_all' : 'light_all';
+  const tileUrl  = `https://{s}.basemaps.cartocdn.com/${estilo}/{z}/{x}/{y}{r}.png${cartoQs}`;
   L.tileLayer(tileUrl, {
     attribution: '&copy; <a href="https://www.openstreetmap.org/">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
     subdomains: 'abcd', maxZoom: 19
