@@ -10,3 +10,5 @@ fichas_de_incendios/
 passwords.odt
 test-results/
 playwright-report/
+*.dump
+*.sql.gz

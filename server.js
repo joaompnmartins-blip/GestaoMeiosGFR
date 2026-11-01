@@ -4162,6 +4162,11 @@ async function runMigrations() {
   await pool.query(schemaSql);
   console.log('Schema e migrações aplicados.');
 
+  // beta3: demonstração de empreitadas FSBF — esquemas ext e demo, à parte
+  // do public. Os dados são sintéticos e só se geram com as tabelas vazias.
+  await pool.query(fs.readFileSync(path.join(__dirname, 'demo', 'esquema_demo.sql'), 'utf8'));
+  await require('./demo/dados_demo').garantirDadosDemo(pool);
+
   // Upsert operacionais_fsbf roster (runs on every deploy — safe, idempotent)
   // columns: [n_trab, nome, cargo, contacto]
   const SBF = 'Sapador Bombeiro Florestal';
