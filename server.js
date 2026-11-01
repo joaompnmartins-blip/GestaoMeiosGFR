@@ -40,6 +40,7 @@ const FICHEIROS_PUBLICOS = {
   '/gogfr_logo_v1.png':                 ['gogfr_logo_v1.png'],
   '/manual_utilizador.html':            ['manual_utilizador.html'],
   '/fsbf/carta_meios_fsbf_print.html':  ['fsbf', 'carta_meios_fsbf_print.html'],
+  '/demo/empreitadas.js':               ['demo', 'empreitadas.js'],
 };
 for (const [rota, partes] of Object.entries(FICHEIROS_PUBLICOS))
   app.get(rota, (req, res) => res.sendFile(path.join(__dirname, ...partes)));
@@ -3845,6 +3846,10 @@ app.get('/api/fogos/active', requireAuth('visualizador'), wrap(async (req, res) 
   const data = await r.json();
   res.json(data);
 }));
+
+// beta3: demonstração de empreitadas FSBF. As rotas vivem à parte, em
+// demo/, para não se misturarem com as da aplicação.
+require('./demo/rotas_empreitadas')(app, { pool, requireAuth, FSBF_GESTORES, wrap });
 
 // ─── Startup migrations ──────────────────────────────────────────
 async function runMigrations() {

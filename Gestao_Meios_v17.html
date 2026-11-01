@@ -677,6 +677,10 @@
       <div class="nav-item auth-gestor-fsbf" data-page="gestao-fsbf" onclick="navTo('gestao-fsbf',this)" style="display:none;">
         <span class="nav-icon">◉</span><span>Gestão FSBF</span>
       </div>
+      <!-- beta3: demonstração de empreitadas (demo/empreitadas.js) -->
+      <div class="nav-item auth-gestor-fsbf" data-page="empreitadas" onclick="navTo('empreitadas',this)" style="display:none;">
+        <span class="nav-icon">▱</span><span>Empreitadas</span>
+      </div>
       <div class="nav-sep"></div>
       <div class="nav-item auth-admin" data-page="utilizadores" onclick="navTo('utilizadores',this)" style="display:none;">
         <span class="nav-icon">⊕</span><span>Utilizadores</span>
@@ -1212,6 +1216,10 @@
         </div>
 
       </div>
+
+      <!-- ══════════ PAGE: EMPREITADAS (beta3, demonstração) ══════════
+           O conteúdo é todo desenhado por demo/empreitadas.js. -->
+      <div class="page" id="page-empreitadas"></div>
 
       <!-- ══════════ PAGE: GESTÃO ICNF ══════════ -->
       <div class="page" id="page-gestao-icnf">
@@ -2834,6 +2842,7 @@ function navTo(page,el){
   // A Gestão ICNF admite também o oficial de ligação, em consulta: quem entra
   // sem ser gestor não vê acções nenhumas (ver podeGerirICNF).
   const MODULE_PAGES = {'gestao-sf':'gestor_sf','gestao-fsbf':['gestor_fsbf','chefe_grupo_fsbf'],
+                        'empreitadas':['gestor_fsbf','chefe_grupo_fsbf'],
                         'gestao-icnf':['gestor_icnf','ofligacao','ofligacao_ccon']};
   if(page==='utilizadores'&&currentRole!=='admin'){ toast('Acesso restrito a administradores.','err'); return; }
   // Pedidos: os oficiais de ligação consultam, só o admin aprova ou rejeita.
@@ -2858,6 +2867,7 @@ function navTo(page,el){
     'gestao-sf':{'title':'Gestão SF','sub':'Recursos Sapadores Florestais — prontidão e viaturas','btn':null},
     'gestao-fsbf':{'title':'Gestão FSBF','sub':'Recursos FSBF — prontidão, viaturas e composições','btn':null},
     'gestao-icnf':{'title':'Gestão ICNF','sub':'Recursos ICNF — prontidão e escala OLN','btn':null},
+    empreitadas:{'title':'Empreitadas FSBF','sub':'Demonstração — propostas do plano de actividades, selecção e meios','btn':null},
   };
   const c=cfg[page];
   if(c){
@@ -2879,6 +2889,7 @@ function navTo(page,el){
   if(page==='gestao-sf')   { if(_sfTab==='brigadas') renderSFBrigadas(); else renderGestaoSF(); }
   if(page==='gestao-fsbf') renderFsbfPage();
   if(page==='gestao-icnf') renderGestaoICNF();
+  if(page==='empreitadas') renderEmpreitadasPage();
 }
 
 function setView(v){
@@ -11752,6 +11763,11 @@ async function mergeSaveConfirm(){
     </div>
   </div>
 </div>
+
+<!-- beta3: demonstração de empreitadas. A chave do Carto é substituída pelo
+     servidor ao servir esta página, como a do mapa dos fogos. -->
+<script>window.EMP_CARTO_KEY='__CARTO_KEY__';</script>
+<script src="/demo/empreitadas.js"></script>
 
 </body>
 </html>
