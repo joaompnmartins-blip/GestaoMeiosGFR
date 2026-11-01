@@ -16,6 +16,7 @@
 // O gerador é determinístico: a mesma semente e a mesma data de referência
 // dão os mesmos dados. A data de referência é hoje, e os registos ficam nos
 // 90 dias anteriores — é aí que a demonstração vai buscar as horas reais.
+// No fim, cenarios.js junta empreitadas já com história (ver lá).
 //
 //   node demo/dados_demo.js            repõe tudo (pede DATABASE_URL)
 
@@ -548,9 +549,11 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
     await inserir(c, 'ext.fsbf_frota_utilizacao', regFrota);
     const regMaq = gerarMaquinas(r, maquinas, referencia);
     await inserir(c, 'ext.fsbf_maquinas_utilizacao', regMaq);
+    // Aqui e não no topo: cenarios.js precisa deste módulo já carregado.
+    const cenarios = await require('./cenarios').criarCenarios(c, r, referencia);
     await c.query('COMMIT');
     return { propostas: propostas.length, frota: frota.length, registos_frota: regFrota.length,
-             maquinas: maquinas.length, registos_maquinas: regMaq.length };
+             maquinas: maquinas.length, registos_maquinas: regMaq.length, cenarios };
   } catch (e) {
     await c.query('ROLLBACK');
     throw e;
@@ -565,7 +568,7 @@ async function garantirDadosDemo(pool) {
   if (rows[0].n === 0) {
     const r = await reporDadosDemo(pool);
     console.log(`Demonstração: ${r.propostas} propostas, ${r.registos_frota} registos de ${r.frota} viaturas, ` +
-                `${r.registos_maquinas} de ${r.maquinas} máquinas.`);
+                `${r.registos_maquinas} de ${r.maquinas} máquinas; cenários ${r.cenarios.join(', ')}.`);
   } else {
     const c = await pool.connect();
     try { await escreverCatalogos(c); } finally { c.release(); }

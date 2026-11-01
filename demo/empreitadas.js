@@ -131,7 +131,68 @@
     .emp-af-lista label{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
     .emp-af-lista label.off{opacity:.45;cursor:not-allowed}
     .emp-af-lista .m{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
-    @media (max-width:900px){ .emp-rec-grelha{grid-template-columns:1fr} }
+    #page-empreitadas .emp-ex-linhas{display:grid;gap:7px;margin-top:8px}
+    #page-empreitadas .emp-ex-l{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;font-size:11px}
+    #page-empreitadas .emp-ex-l .n{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.04em}
+    #page-empreitadas .emp-ex-l .v{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+    .emp-barra-p{position:relative;height:8px;background:var(--surface2);border:1px solid var(--border)}
+    .emp-barra-p i{position:absolute;left:0;top:0;bottom:0;background:var(--accent3)}
+    .emp-barra-p i.acima{background:var(--warn)}
+    .emp-barra-p b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text)}
+    .emp-desvio{font-family:'IBM Plex Mono',monospace;font-size:10px;font-variant-numeric:tabular-nums;padding:1px 5px;border-radius:2px;white-space:nowrap}
+    .emp-desvio.ok{color:var(--muted)}
+    .emp-desvio.acima{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+    .emp-desvio.abaixo{color:var(--accent3);background:color-mix(in srgb,var(--accent3) 12%,transparent)}
+    .emp-alerta{font-size:11px;color:var(--warn)}
+    #emp-modal-ex .modal{width:1080px}
+    .emp-ex-topo{font-size:12px;color:var(--muted);margin-bottom:14px}
+    .emp-ex-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+    .emp-ex-tile{border:1px solid var(--border);background:var(--surface2);padding:10px 12px;display:grid;gap:6px;min-width:0}
+    .emp-ex-tile .t{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .emp-ex-tile .g{font-family:'IBM Plex Mono',monospace;font-size:20px;font-variant-numeric:tabular-nums}
+    .emp-ex-tile .s{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+    .emp-ex-anom{margin-top:14px;border:1px solid color-mix(in srgb,var(--warn) 45%,var(--border));padding:10px 12px;font-size:12px}
+    .emp-ex-anom div{display:grid;grid-template-columns:150px 130px 1fr;gap:10px;padding:3px 0}
+    .emp-ex-anom .m,.emp-ex-tab table.r td:nth-child(-n+3){white-space:nowrap}
+    .emp-ex-anom .m{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+    .emp-ex-tab-wrap{overflow-x:auto;margin-top:14px;max-height:52vh;overflow-y:auto;border:1px solid var(--border)}
+    .emp-ex-tab{width:100%;border-collapse:collapse;font-size:12px;min-width:820px}
+    .emp-ex-tab th{position:sticky;top:0;background:var(--surface);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--muted);text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);font-weight:500}
+    .emp-ex-tab th:first-child,.emp-ex-tab th:nth-child(2){text-align:left}
+    .emp-ex-tab td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;
+      font-variant-numeric:tabular-nums;white-space:nowrap;vertical-align:top}
+    .emp-ex-tab td:first-child{text-align:left;font-family:inherit;font-size:12px;white-space:normal}
+    .emp-ex-tab td:nth-child(2){text-align:left}
+    .emp-ex-tab tr.meio{cursor:pointer}
+    .emp-ex-tab tr.meio:hover td{background:var(--surface2)}
+    .emp-ex-tab tr.grupo td{background:var(--surface2);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+    .emp-ex-tab .sub{color:var(--muted);font-size:10px}
+    .emp-ex-tab tr.regs td{background:var(--surface2);padding:4px 8px 10px 30px;text-align:left}
+    .emp-ex-tab table.r{border-collapse:collapse;width:100%}
+    .emp-ex-tab table.r td{border:none;padding:2px 10px 2px 0;background:none;font-size:10px;text-align:left;font-family:'IBM Plex Mono',monospace}
+    .emp-ex-tab table.r tr.mau td{color:var(--warn)}
+    #emp-modal-fh .modal{width:960px}
+    .emp-fh-dias{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+    .emp-fh-dia{flex:0 0 auto;border:1px solid var(--border);background:var(--surface2);padding:5px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;
+      cursor:pointer;display:grid;gap:2px;text-align:center;color:var(--text)}
+    .emp-fh-dia small{font-size:9px;color:var(--muted)}
+    .emp-fh-dia.completo{border-color:var(--success)}
+    .emp-fh-dia.completo small{color:var(--success)}
+    .emp-fh-dia.parcial{border-color:var(--warn)}
+    .emp-fh-dia.parcial small{color:var(--warn)}
+    .emp-fh-dia.sel{outline:2px solid var(--accent);outline-offset:1px}
+    .emp-fh-dia:focus-visible{outline:2px solid var(--accent)}
+    .emp-fh-tab{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px;min-width:760px}
+    .emp-fh-tab th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;
+      padding:6px;border-bottom:1px solid var(--border);font-weight:500}
+    .emp-fh-tab td{padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle}
+    .emp-fh-tab .form-input,.emp-fh-tab .form-select{font-size:12px;padding:4px 6px}
+    .emp-fh-tab input[type=time]{width:92px}
+    .emp-fh-tab input.pausa{width:58px}
+    .emp-fh-tab .h{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+    .emp-fh-tab tr.ausente td:not(:first-child){opacity:.4}
+    @media (max-width:900px){ .emp-rec-grelha{grid-template-columns:1fr} .emp-ex-tiles{grid-template-columns:1fr 1fr} }
     @media (max-width:980px){
       #page-empreitadas .emp-grelha{grid-template-columns:1fr}
       #emp-mapa{height:56vh;min-height:320px}
@@ -157,6 +218,7 @@
           <select class="form-select" id="emp-f-modo"><option value="">Todos os modos</option></select>
           <select class="form-select" id="emp-f-estado" style="display:none"><option value="">Todos os estados</option></select>
           <button class="btn btn-primary btn-sm" id="emp-btn-nova">+ Nova empreitada</button>
+          <button class="btn btn-ghost btn-sm" id="emp-btn-repor" style="display:none" title="Só o administrador">Repor demonstração</button>
         </div>
       </div>
       <div class="emp-grelha">
@@ -178,6 +240,23 @@
     pag.querySelector('#emp-f-modo').onchange  = e => { f.modo = e.target.value; desenharTudo(); };
     pag.querySelector('#emp-f-estado').onchange = e => { f.estado = e.target.value; desenharTudo(); };
     pag.querySelector('#emp-btn-nova').onclick = () => iniciarDesenho();
+    // currentRole é da aplicação principal (let global, visível entre scripts).
+    const repor = pag.querySelector('#emp-btn-repor');
+    if (typeof currentRole !== 'undefined' && currentRole === 'admin') repor.style.display = '';
+    repor.onclick = async () => {
+      if (!confirm('Repor a demonstração?\n\nApaga todas as empreitadas e horas registadas, volta a gerar as propostas e os ' +
+                   'registos da frota e das máquinas com a data de hoje, e recria os cenários (concluída, em execução, planeada).')) return;
+      repor.disabled = true;
+      repor.textContent = 'A repor…';
+      const r = await apiFetch('/api/demo/repor', { method: 'POST' });
+      repor.disabled = false;
+      repor.textContent = 'Repor demonstração';
+      if (r.error) return toast(r.error.message, 'err');
+      toast(`Demonstração reposta: ${r.data.propostas} propostas, ${r.data.cenarios.length} cenários.`);
+      st.sel = null;
+      await carregar();
+      desenharTudo();
+    };
 
     document.getElementById('emp-legenda').innerHTML =
       Object.values(MODOS).map(m => `<div><i style="background:${m.cor}"></i>${m.nome}</div>`).join('') +
@@ -455,10 +534,12 @@
           <button class="btn btn-primary btn-sm" id="emp-e-rec">Recomendar meios</button>
           <button class="btn btn-ghost btn-sm" id="emp-e-af">+ Afectar meio</button>
         </div>
-      </div>`;
+      </div>
+      <div class="emp-sec" id="emp-ex-sec" style="display:none"></div>`;
     el.querySelector('#emp-e-rec').onclick = () => abrirRecomendacao(e);
     el.querySelector('#emp-e-af').onclick = () => abrirAfectar(e);
     carregarMeios(e);
+    carregarExecucao(e);
     const tabela = el.querySelector('#emp-e-ops');
     el.querySelector('#emp-e-op-add').onclick = ligarOperacoes(tabela, () => ops.nova(qDefeito));
     el.querySelector('#emp-e-fechar').onclick = () => { st.sel = null; desenharTudo(); };
@@ -674,6 +755,224 @@
     };
   }
 
+  // ── Execução: previsto contra real ─────────────────────────────
+  const dm = d => d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : '—';
+  const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const horas = x => `${fmt(x)} h`;
+
+  // Desvio do real em relação ao que devia estar feito. Até 5 % não se assinala.
+  function desvio(real, ref) {
+    if (!ref) return real ? '<span class="emp-desvio acima">não previsto</span>' : '';
+    const p = (real - ref) / ref * 100;
+    const cls = Math.abs(p) <= 5 ? 'ok' : p > 0 ? 'acima' : 'abaixo';
+    return `<span class="emp-desvio ${cls}">${p > 0 ? '+' : ''}${fmt(p, 0)} %</span>`;
+  }
+  // A barra vai até ao total previsto; o traço marca onde devia estar hoje.
+  function barra(real, ate, total) {
+    const max = Math.max(total, real) || 1;
+    return `<div class="emp-barra-p"><i class="${real > ate * 1.05 ? 'acima' : ''}" style="width:${Math.min(100, real / max * 100)}%"></i>${
+      total ? `<b style="left:calc(${Math.min(100, ate / max * 100)}% - 1px)"></b>` : ''}</div>`;
+  }
+
+  async function carregarExecucao(e) {
+    const sec = document.getElementById('emp-ex-sec');
+    if (!sec || !['planeada', 'em_execucao', 'concluida'].includes(e.estado) || !e.n_meios) return;
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/execucao`);
+    if (st.sel?.id !== e.id) return;
+    sec.style.display = '';
+    if (error) { sec.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    const t = data.totais;
+    const comecou = data.dias_decorridos > 0;
+    const linha = (nome, x, f) => `<div class="emp-ex-l"><span class="n">${nome}</span>${barra(x.real, x.previsto_ate, x.previsto)}
+      <span class="v">${f(x.real)} ${desvio(x.real, x.previsto_ate)}</span></div>`;
+    sec.innerHTML = `
+      <div class="emp-sec-hdr"><span class="form-label">Execução</span>
+        <b>${data.estado === 'concluida' ? `${data.dias_uteis} dias úteis` : comecou ? `dia ${data.dias_decorridos} de ${data.dias_uteis}` : `começa a ${dm(data.inicio)}`}</b></div>
+      ${comecou ? `<div class="emp-ex-linhas">
+          ${linha('CUSTO', { real: t.real, previsto_ate: t.previsto_ate, previsto: t.previsto }, eur)}
+          ${linha('H. MÁQUINA', t.horas_maquina, horas)}
+          ${linha('H. PESSOAS', t.horas_pessoas, horas)}
+        </div>
+        <div class="emp-nota" style="margin-top:8px">Real até ${dm(data.corte)} contra o previsto até esse dia (o traço).</div>
+        ${t.anomalias ? `<div class="emp-alerta">⚠ ${t.anomalias} registo${t.anomalias > 1 ? 's' : ''} com anomalia, fora das contas.</div>` : ''}
+        ${t.dias_sem_registo ? `<div class="emp-alerta" style="color:var(--muted)">${t.dias_sem_registo} dia${t.dias_sem_registo > 1 ? 's' : ''}-meio afectos sem registo.</div>` : ''}`
+      : `<div class="emp-vazio" style="padding:10px">Ainda não começou. Os registos da frota e das máquinas entram aqui a partir do primeiro dia.</div>`}
+      <div class="emp-acoes">
+        <button class="btn btn-primary btn-sm" id="emp-ex-ver" ${comecou ? '' : 'disabled'}>Ver execução</button>
+        <button class="btn btn-ghost btn-sm" id="emp-ex-fh" ${data.inicio && data.inicio <= data.hoje ? '' : 'disabled'}>Folha de horas</button>
+      </div>`;
+    sec.querySelector('#emp-ex-ver').onclick = () => abrirExecucao(e);
+    sec.querySelector('#emp-ex-fh').onclick = () => abrirFolha(e);
+  }
+
+  const GRUPOS_EX = [
+    ['maquina',     'Máquinas', 'horas do conta-horas, registo das máquinas', 'h'],
+    ['transporte',  'Porta-máquinas', 'km, registo da frota', 'km'],
+    ['viatura',     'Viaturas ligeiras', 'km, registo da frota', 'km'],
+    ['operacional', 'Operacionais', 'horas da folha diária, registadas aqui', 'h'],
+  ];
+
+  async function abrirExecucao(e) {
+    const corpo = document.getElementById('emp-ex-corpo');
+    corpo.innerHTML = '<div class="emp-vazio">A carregar…</div>';
+    openModal('emp-modal-ex');
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/execucao`);
+    if (error) { corpo.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    const t = data.totais, ate = dm(data.corte);
+    const tile = (titulo, grande, x, f) => `<div class="emp-ex-tile"><span class="t">${titulo}</span>
+      <span class="g">${grande}</span>${barra(x.real, x.previsto_ate, x.previsto)}
+      <span class="s"><span>previsto até ${ate}: ${f(x.previsto_ate)}</span>${desvio(x.real, x.previsto_ate)}</span>
+      <span class="s"><span>total previsto: ${f(x.previsto)}</span></span></div>`;
+    const anomalias = data.meios.flatMap(m => m.registos.filter(r => r.anomalia).map(r => ({ m, r })));
+    const unid = m => (m.papel === 'transporte' || m.papel === 'viatura') ? 'km' : 'h';
+    const val = (m, k) => unid(m) === 'km' ? `${fmt(m[k].km ?? 0, 0)} km` : horas(m[k].horas);
+
+    corpo.innerHTML = `
+      <div class="emp-ex-topo">${esc(data.codigo)} · ${esc(e.nome)} · ${dm(data.inicio)} a ${dm(data.fim)}, ${data.dias_uteis} dias úteis ·
+        ${data.estado === 'concluida' ? 'concluída: compara-se com tudo o previsto' : `comparado até ${ate} (ontem), dia ${data.dias_decorridos} de ${data.dias_uteis}`}</div>
+      <div class="emp-ex-tiles">
+        ${tile('Custo', eur(t.real), { real: t.real, previsto_ate: t.previsto_ate, previsto: t.previsto }, eur)}
+        ${tile('Horas de máquina', horas(t.horas_maquina.real), t.horas_maquina, horas)}
+        ${tile('Horas de operacionais', horas(t.horas_pessoas.real), t.horas_pessoas, horas)}
+        <div class="emp-ex-tile"><span class="t">Por resolver</span>
+          <span class="g" style="${t.anomalias ? 'color:var(--warn)' : ''}">${t.anomalias}</span>
+          <span class="s">registo${t.anomalias === 1 ? '' : 's'} com anomalia, fora das contas</span>
+          <span class="s">${t.dias_sem_registo} dia${t.dias_sem_registo === 1 ? '' : 's'}-meio afectos sem registo · ${fmt(t.km, 0)} km na frota</span></div>
+      </div>
+      ${anomalias.length ? `<div class="emp-ex-anom"><div style="display:block;font-weight:600;margin-bottom:4px">Anomalias nos registos externos</div>${
+        anomalias.map(({ m, r }) => `<div><span>${esc(m.rotulo)}</span><span class="m">n.º ${r.id} · ${dm(r.ini.slice(0, 10))}</span><span>${esc(r.anomalia)}</span></div>`).join('')}</div>` : ''}
+      <div class="emp-ex-tab-wrap"><table class="emp-ex-tab">
+        <thead><tr><th>Meio</th><th>Operação</th><th>Previsto</th><th>Até ${ate}</th><th>Real</th><th>Desvio</th>
+          <th>Custo prev.</th><th>Custo real</th><th>Registos</th></tr></thead>
+        <tbody>${GRUPOS_EX.map(([papel, nome, fonte]) => {
+          const ms = data.meios.filter(m => m.papel === papel);
+          if (!ms.length) return '';
+          return `<tr class="grupo"><td colspan="9">${nome} · ${fonte}</td></tr>` + ms.map(m => `
+            <tr class="meio" data-chave="${m.chave}" tabindex="0">
+              <td>${esc(m.rotulo)}<div class="sub">${esc(m.detalhe || '')} · ${esc(m.base || '—')}</div></td>
+              <td>${esc(m.operacoes.join(', '))}</td>
+              <td>${val(m, 'previsto')}</td><td>${val(m, 'previsto_ate')}</td><td>${val(m, 'real')}</td>
+              <td>${unid(m) === 'km' ? desvio(m.real.km, m.previsto_ate.km) : desvio(m.real.horas, m.previsto_ate.horas)}</td>
+              <td>${eur(m.previsto.custo)}</td><td>${eur(m.real.custo)}</td>
+              <td>${m.real.registos}${m.anomalias ? ` <span style="color:var(--warn)">+${m.anomalias} ⚠</span>` : ''}${
+                m.dias_sem_registo.length ? `<div class="sub" title="${m.dias_sem_registo.map(dm).join(', ')}">${m.dias_sem_registo.length} dia${m.dias_sem_registo.length > 1 ? 's' : ''} sem registo</div>` : ''}</td>
+            </tr>
+            <tr class="regs" data-de="${m.chave}" hidden><td colspan="9">${tabelaRegistos(m)}</td></tr>`).join('');
+        }).join('')}</tbody></table></div>
+      <p class="emp-nota">Os registos externos não dizem a que empreitada servem: conta para esta o que cai nos dias em que o meio
+        lhe está afecto. Um registo com anomalia mostra-se mas fica fora das contas, até ser corrigido na origem. Custo real das máquinas:
+        horas do conta-horas × €/h, mais a parte fixa prevista (mobilização, deslocação). Viaturas: km × €/km. Operacionais: horas da folha × €/h.
+        Custos e rendimentos <b>simulados</b>. Clique num meio para ver os registos.</p>`;
+    corpo.querySelectorAll('tr.meio').forEach(tr => {
+      const abrir = () => { const s = corpo.querySelector(`tr.regs[data-de="${tr.dataset.chave}"]`); s.hidden = !s.hidden; };
+      tr.onclick = abrir;
+      tr.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abrir(); } };
+    });
+  }
+
+  function tabelaRegistos(m) {
+    if (!m.registos.length) return '<span class="sub">Sem registos nos dias afectos.</span>';
+    const linhas = m.registos.map(r => {
+      const nota = r.anomalia || r.aviso || r.obs || '';
+      const cls = r.anomalia ? 'mau' : '';
+      if (r.fonte === 'folha')
+        return `<tr><td>${dm(r.ini.slice(0, 10))}</td><td>${r.ini.slice(11)}–${r.fim.slice(11)}</td><td>${horas(r.horas)}</td>
+          <td>${esc(r.operacao || '')}</td><td>${esc(nota)}</td></tr>`;
+      const fim = r.fim ? (r.fim.slice(0, 10) === r.ini.slice(0, 10) ? r.fim.slice(11) : `${dm(r.fim.slice(0, 10))} ${r.fim.slice(11)}`) : '—';
+      const medida = r.fonte === 'maquinas' ? (r.horas == null ? '—' : horas(r.horas)) : (r.km == null ? '—' : `${r.km} km`);
+      return `<tr class="${cls}"><td>n.º ${r.id}</td><td>${dm(r.ini.slice(0, 10))} ${r.ini.slice(11)}–${fim}</td><td>${medida}</td>
+        <td>${esc(r.origem || '')} → ${esc(r.destino || '')}</td><td>${esc(r.pessoa || '')}</td><td>${r.anomalia ? '⚠ ' : ''}${esc(nota)}</td></tr>`;
+    }).join('');
+    return `<table class="r"><tbody>${linhas}</tbody></table>`;
+  }
+
+  // ── Folha de horas dos operacionais ────────────────────────────
+  const minutosDe = h => { const [a, b] = (h || '0:0').split(':').map(Number); return a * 60 + b; };
+
+  async function abrirFolha(e, data) {
+    const corpo = document.getElementById('emp-fh-corpo');
+    if (!document.getElementById('emp-modal-fh').classList.contains('open')) {
+      corpo.innerHTML = '<div class="emp-vazio">A carregar…</div>';
+      openModal('emp-modal-fh');
+    }
+    const { data: f, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/horas${data ? `?data=${data}` : ''}`);
+    if (error) { corpo.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    // Dia por registar (menos de metade com horas): quem ainda não tem horas
+    // vem marcado como presente, e desmarcam-se as faltas.
+    const comHoras = f.linhas.filter(l => l.registos.length).length;
+    const diaVazio = comHoras * 2 < f.linhas.length;
+    const opcoes = sel => ['', ...f.operacoes].map(o => `<option value="${o}"${o === (sel || '') ? ' selected' : ''}>${o || '—'}</option>`).join('');
+    const linhas = f.linhas.flatMap(l => (l.registos.length ? l.registos : [null]).map(r => {
+      const pres = !!r || diaVazio;
+      return `<tr data-op="${l.operacional_id}" class="${pres ? '' : 'ausente'}">
+        <td><input type="checkbox" class="pres" ${pres ? 'checked' : ''} aria-label="Presente: ${esc(l.nome)}"/></td>
+        <td><div>${esc(l.nome)}${l.fora_do_periodo ? '<span class="emp-tag">FORA DO PERÍODO</span>' : ''}</div>
+          <div style="font-size:10px;color:var(--muted)">${esc(l.cargo || '')} · ${esc(l.base || '')}</div></td>
+        <td><select class="form-select op">${opcoes(r?.operacao || l.operacao)}</select></td>
+        <td><input type="time" class="form-input ini" value="${r?.hora_inicio || '08:00'}" step="900"/></td>
+        <td><input type="time" class="form-input fim" value="${r?.hora_fim || '16:00'}" step="900"/></td>
+        <td><input type="number" class="form-input pausa" min="0" max="180" step="15" value="${r?.pausa_min ?? 60}"/></td>
+        <td class="h"></td>
+        <td><input class="form-input obs" value="${esc(r?.observacoes || '')}" placeholder="—"/></td></tr>`;
+    })).join('');
+    const sem = d => SEMANA[new Date(`${d}T12:00:00Z`).getUTCDay()];
+    corpo.innerHTML = `
+      <div class="emp-fh-dias" role="tablist" aria-label="Dias da empreitada">${f.dias.map(d => {
+        const cls = d.registados >= d.afectos ? 'completo' : d.registados ? 'parcial' : '';
+        return `<button type="button" class="emp-fh-dia ${cls}${d.data === f.data ? ' sel' : ''}" data-dia="${d.data}" role="tab"
+          aria-selected="${d.data === f.data}">${sem(d.data)} ${dm(d.data)}<small>${d.registados}/${d.afectos}</small></button>`;
+      }).join('')}</div>
+      <div style="display:flex;gap:10px;align-items:baseline;margin-top:12px;flex-wrap:wrap">
+        <b style="font-family:'Barlow Condensed',sans-serif;font-size:18px;letter-spacing:.03em">${sem(f.data)}, ${f.data.split('-').reverse().join('/')}</b>
+        <span style="font-size:12px;color:var(--muted)">${f.linhas.length} operaciona${f.linhas.length === 1 ? 'l afecto' : 'is afectos'} neste dia${
+          diaVazio ? ' · dia por registar: quem não tem horas vem marcado como presente, desmarque as faltas' : ''}</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px" id="emp-fh-total"></span>
+      </div>
+      <div style="overflow-x:auto"><table class="emp-fh-tab">
+        <thead><tr><th></th><th>Operacional</th><th>Operação</th><th>Início</th><th>Fim</th><th>Pausa min</th><th style="text-align:right">Horas</th><th>Observações</th></tr></thead>
+        <tbody>${linhas || '<tr><td colspan="8"><div class="emp-vazio">Ninguém afecto neste dia.</div></td></tr>'}</tbody></table></div>
+      <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+        <button class="btn btn-ghost" id="emp-fh-todos" style="margin-right:auto">Todos 08:00–16:00</button>
+        <button class="btn btn-ghost" onclick="closeModal('emp-modal-fh')">Fechar</button>
+        <button class="btn btn-primary" id="emp-fh-gravar">Guardar ${dm(f.data)}</button></div>`;
+
+    const recontar = () => {
+      let total = 0, n = 0;
+      corpo.querySelectorAll('tbody tr[data-op]').forEach(tr => {
+        const pres = tr.querySelector('.pres').checked;
+        tr.classList.toggle('ausente', !pres);
+        const h = (minutosDe(tr.querySelector('.fim').value) - minutosDe(tr.querySelector('.ini').value) - (+tr.querySelector('.pausa').value || 0)) / 60;
+        tr.querySelector('.h').textContent = h > 0 ? horas(h) : '—';
+        if (pres && h > 0) { total += h; n++; }
+      });
+      corpo.querySelector('#emp-fh-total').textContent = `${n} presente${n === 1 ? '' : 's'} · ${horas(total)}`;
+    };
+    corpo.querySelectorAll('tbody input, tbody select').forEach(x => x.addEventListener('input', recontar));
+    recontar();
+    corpo.querySelectorAll('[data-dia]').forEach(b => b.onclick = () => abrirFolha(e, b.dataset.dia));
+    corpo.querySelector('.emp-fh-dia.sel')?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    corpo.querySelector('#emp-fh-todos').onclick = () => {
+      corpo.querySelectorAll('tbody tr[data-op]').forEach(tr => {
+        tr.querySelector('.pres').checked = true;
+        tr.querySelector('.ini').value = '08:00'; tr.querySelector('.fim').value = '16:00'; tr.querySelector('.pausa').value = 60;
+      });
+      recontar();
+    };
+    corpo.querySelector('#emp-fh-gravar').onclick = async () => {
+      const registos = [...corpo.querySelectorAll('tbody tr[data-op]')].filter(tr => tr.querySelector('.pres').checked).map(tr => ({
+        operacional_id: tr.dataset.op, operacao: tr.querySelector('.op').value || null,
+        hora_inicio: tr.querySelector('.ini').value, hora_fim: tr.querySelector('.fim').value,
+        pausa_min: +tr.querySelector('.pausa').value, observacoes: tr.querySelector('.obs').value || null,
+      }));
+      const r = await apiFetch(`/api/demo/empreitadas/${e.id}/horas`, { method: 'PUT', body: JSON.stringify({ data: f.data, registos }) });
+      if (r.error) return toast(r.error.message, 'err');
+      toast(`${dm(f.data)}: ${r.data.registos} registo${r.data.registos === 1 ? '' : 's'} de horas guardado${r.data.registos === 1 ? '' : 's'}.`);
+      await abrirFolha(e, f.data);
+      await carregar();
+      desenharTudo();
+    };
+  }
+
   // ── Nova empreitada: desenhar no mapa ──────────────────────────
   function iniciarDesenho(tipo = 'poligono') {
     cancelarDesenho();
@@ -794,6 +1093,20 @@
           <button class="modal-close" onclick="closeModal('emp-modal-af')">✕</button>
           <div class="modal-title">Afectar meio</div>
           <div id="emp-af-corpo"></div>
+        </div>
+      </div>
+      <div class="modal-overlay" id="emp-modal-ex">
+        <div class="modal">
+          <button class="modal-close" onclick="closeModal('emp-modal-ex')">✕</button>
+          <div class="modal-title">Execução — previsto e real</div>
+          <div id="emp-ex-corpo"></div>
+        </div>
+      </div>
+      <div class="modal-overlay" id="emp-modal-fh">
+        <div class="modal">
+          <button class="modal-close" onclick="closeModal('emp-modal-fh')">✕</button>
+          <div class="modal-title">Folha de horas dos operacionais</div>
+          <div id="emp-fh-corpo"></div>
         </div>
       </div>`);
   }

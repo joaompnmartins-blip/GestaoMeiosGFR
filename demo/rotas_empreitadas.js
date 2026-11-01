@@ -5,12 +5,12 @@
 // Lê das fontes externas simuladas (esquema ext) e escreve no esquema demo.
 // O acesso é o do módulo FSBF: gestores e chefes de grupo, mais o admin.
 
-const { areaHa, comprimentoKm, distanciaKm } = require('./dados_demo');
-const { recomendar, diasUteis, proximoDiaUtil, CLASSES_LIGEIRAS, HORAS_DIA } = require('./recomendacao');
+const { areaHa, comprimentoKm, distanciaKm, reporDadosDemo } = require('./dados_demo');
+const { CLASSES_LIGEIRAS, HORAS_DIA } = require('./recomendacao');
+const { erro, proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./planeamento');
+const execucao = require('./execucao');
 
 const ESTADOS = ['seleccionada', 'planeada', 'em_execucao', 'concluida', 'cancelada'];
-
-function erro(status, msg) { return Object.assign(new Error(msg), { status }); }
 
 // Portugal continental com folga. Uma geometria fora disto é engano de
 // coordenadas (lat/lon trocadas, PT-TM06 em vez de WGS84) e não se aceita.
@@ -56,16 +56,6 @@ async function baseMaisProxima(c, centro) {
     if (!melhor || d < melhor.d) melhor = { nome: b.nome, d };
   }
   return melhor?.nome || null;
-}
-
-// EMP-2027-007: o ano é o do início previsto; sem ele, o do plano de
-// actividades da proposta; sem nenhum, o corrente.
-async function proximoCodigo(c, data, anoPlano) {
-  const ano = data ? +String(data).slice(0, 4) : (anoPlano || new Date().getFullYear());
-  const { rows } = await c.query(
-    `SELECT COALESCE(max(substring(codigo from '\\d+$')::int), 0) + 1 n
-       FROM demo.empreitadas WHERE codigo LIKE $1`, [`EMP-${ano}-%`]);
-  return `EMP-${ano}-${String(rows[0].n).padStart(3, '0')}`;
 }
 
 // Valida as operações contra o catálogo e a geometria: numa linha só cabem
@@ -269,44 +259,6 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
     res.json(rows);
   }));
 
-  // Tudo o que a FSBF pode pôr numa empreitada, com a distância à obra e a
-  // empreitada em que já está ocupado no período, se for o caso.
-  async function contexto(c, id) {
-    const { rows: [e] } = await c.query(
-      `SELECT e.id, e.geom, e.tipo_pov, e.estado, to_char(e.inicio_previsto, 'YYYY-MM-DD') ini,
-              to_char(e.fim_previsto, 'YYYY-MM-DD') fim,
-              COALESCE((SELECT json_agg(json_build_object('operacao', operacao, 'quantidade', quantidade))
-                          FROM demo.empreitada_operacoes WHERE empreitada_id = e.id), '[]') AS operacoes
-         FROM demo.empreitadas e WHERE e.id = $1`, [id]);
-    if (!e) throw erro(404, 'Empreitada não encontrada.');
-    const inicio = e.ini || proximoDiaUtil();
-    const fim = e.fim && e.fim >= inicio ? e.fim : diasUteis(inicio, 30).pop();
-    const [ops, tipos, rend, meios, pessoas, ocup] = await Promise.all([
-      c.query('SELECT * FROM demo.operacoes'),
-      c.query('SELECT * FROM demo.tipos_meio'),
-      c.query('SELECT operacao, tipo_meio, tipo_pov, por_hora FROM demo.rendimentos'),
-      c.query(`SELECT v.id, v.viatura_cod, v.classe, v.tipologia, v.prontidao, vb.base, b.lat, b.lon
-                 FROM viaturas v
-                 JOIN demo.viatura_base vb ON vb.viatura_id = v.id
-                 JOIN demo.bases b ON b.nome = vb.base
-                WHERE v.megfr = 'FSBF' AND COALESCE(v.ativo, true)`),
-      c.query(`SELECT o.id, o.nome, o.cargo, o.base, b.lat, b.lon
-                 FROM operacionais_fsbf o JOIN demo.bases b ON b.nome = o.base
-                WHERE o.ativo AND COALESCE(o.cargo, '') NOT ILIKE '%comandante%'`),
-      c.query(`SELECT m.viatura_id, m.operacional_id, e.codigo
-                 FROM demo.empreitada_meios m JOIN demo.empreitadas e ON e.id = m.empreitada_id
-                WHERE m.empreitada_id <> $1 AND e.estado NOT IN ('cancelada', 'concluida')
-                  AND m.inicio < ($3::date + 1)::timestamp AT TIME ZONE 'Europe/Lisbon'
-                  AND m.fim    >  $2::date::timestamp AT TIME ZONE 'Europe/Lisbon'`, [id, inicio, fim]),
-    ]);
-    const ocupado = new Map();
-    for (const o of ocup.rows) ocupado.set(o.viatura_id || o.operacional_id, o.codigo);
-    return { e, inicio, fim, ocupado,
-             operacoes: ops.rows, tipos_meio: tipos.rows,
-             rendimentos: rend.rows.map(r => ({ ...r, por_hora: Number(r.por_hora) })),
-             meios: meios.rows, operacionais: pessoas.rows };
-  }
-
   app.get('/api/demo/empreitadas/:id/meios-disponiveis', ...leitura, wrap(async (req, res) => {
     const ctx = await contexto(pool, req.params.id);
     const alvo = centroide(ctx.e.geom.type === 'Polygon' ? ctx.e.geom.coordinates[0].slice(0, -1) : ctx.e.geom.coordinates);
@@ -321,15 +273,6 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
     });
   }));
 
-  // A recomendação só conta com o que está livre e operacional.
-  function calcular(ctx, peso) {
-    return recomendar({
-      empreitada: { geom: ctx.e.geom, tipo_pov: ctx.e.tipo_pov, operacoes: ctx.e.operacoes },
-      operacoes: ctx.operacoes, tipos_meio: ctx.tipos_meio, rendimentos: ctx.rendimentos,
-      meios: ctx.meios.filter(m => !ctx.ocupado.has(m.id) && m.prontidao !== 'inoperacional'),
-      operacionais: ctx.operacionais.filter(o => !ctx.ocupado.has(o.id)),
-    }, peso);
-  }
   const lerPeso = v => Math.min(1, Math.max(0, v === undefined || v === '' ? 0.5 : Number(v) || 0));
 
   app.get('/api/demo/empreitadas/:id/recomendacao', ...leitura, wrap(async (req, res) => {
@@ -339,8 +282,6 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
 
   // Aceitar volta a calcular no servidor — não se confia no que o browser
   // mandaria — e substitui os meios afectos pelos da alternativa escolhida.
-  // Cada operação começa no início previsto e ocupa os seus dias úteis; o
-  // porta-máquinas só conta no primeiro dia (levar) e no último (trazer).
   app.post('/api/demo/empreitadas/:id/recomendacao/aceitar', ...leitura, wrap(async (req, res) => {
     const b = req.body || {};
     const c = await pool.connect();
@@ -351,27 +292,7 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
       const alt = calcular(ctx, lerPeso(b.peso)).alternativas.find(a => a.chave === b.chave);
       if (!alt) throw erro(400, 'Alternativa desconhecida.');
       if (!alt.partes.length) throw erro(409, 'Esta alternativa não tem meios para afectar.');
-      await c.query('DELETE FROM demo.empreitada_meios WHERE empreitada_id = $1', [req.params.id]);
-      let ultimo = ctx.inicio;
-      const ins = (m, operacao, ini, fim, horas, custo) => c.query(
-        `INSERT INTO demo.empreitada_meios (empreitada_id, viatura_id, operacional_id, operacao, inicio, fim,
-                                            horas_previstas, custo_previsto, origem)
-         VALUES ($1, $2, $3, $4, $5::timestamp AT TIME ZONE 'Europe/Lisbon', $6::timestamp AT TIME ZONE 'Europe/Lisbon',
-                 $7, $8, 'recomendacao')`,
-        [req.params.id, m.viatura_id || null, m.operacional_id || null, operacao, ini, fim, horas, custo]);
-      for (const p of alt.partes) {
-        const dias = diasUteis(ctx.inicio, p.dias);
-        const d0 = dias[0], d1 = dias[dias.length - 1];
-        if (d1 > ultimo) ultimo = d1;
-        for (const m of p.meios) {
-          if (m.papel === 'transporte') {
-            await ins(m, p.operacao, `${d0} 07:00`, `${d0} 12:00`, m.horas / 2, m.custo / 2);
-            await ins(m, p.operacao, `${d1} 13:00`, `${d1} 18:00`, m.horas / 2, m.custo / 2);
-          } else {
-            await ins(m, p.operacao, `${d0} 08:00`, `${d1} 17:00`, m.horas, m.custo);
-          }
-        }
-      }
+      const ultimo = await aplicarAlternativa(c, req.params.id, ctx.inicio, alt);
       await c.query(
         `UPDATE demo.empreitadas SET inicio_previsto = $2, fim_previsto = $3, updated_at = now(),
                 estado = CASE WHEN estado = 'seleccionada' THEN 'planeada' ELSE estado END
@@ -432,5 +353,38 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
                                           [req.params.meio, req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Afectação não encontrada.' });
     res.json({ ok: true });
+  }));
+
+  // ── Execução ───────────────────────────────────────────────────
+
+  app.get('/api/demo/empreitadas/:id/execucao', ...leitura, wrap(async (req, res) => {
+    res.json(await execucao.resumoExecucao(pool, req.params.id));
+  }));
+
+  app.get('/api/demo/empreitadas/:id/horas', ...leitura, wrap(async (req, res) => {
+    const data = /^\d{4}-\d{2}-\d{2}$/.test(req.query.data || '') ? req.query.data : null;
+    res.json(await execucao.lerFolha(pool, req.params.id, data));
+  }));
+
+  app.put('/api/demo/empreitadas/:id/horas', ...leitura, wrap(async (req, res) => {
+    const b = req.body || {};
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      const r = await execucao.gravarFolha(c, req.params.id, b.data, b.registos, req.user.id);
+      await c.query('COMMIT');
+      res.json(r);
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      c.release();
+    }
+  }));
+
+  // Repor a demonstração: apaga tudo o que se fez e volta a gerar as fontes
+  // externas e os cenários com a data de hoje. Só o administrador.
+  app.post('/api/demo/repor', requireAuth('admin'), wrap(async (req, res) => {
+    res.json(await reporDadosDemo(pool));
   }));
 };

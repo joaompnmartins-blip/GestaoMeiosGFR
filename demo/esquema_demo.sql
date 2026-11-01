@@ -242,3 +242,6 @@ CREATE TABLE IF NOT EXISTS demo.horas_operacionais (
     CHECK (hora_fim > hora_inicio),
     UNIQUE (operacional_id, data, hora_inicio)
 );
+-- Pausa de almoço, descontada às horas do dia.
+ALTER TABLE demo.horas_operacionais ADD COLUMN IF NOT EXISTS pausa_min SMALLINT NOT NULL DEFAULT 60;
+CREATE INDEX IF NOT EXISTS idx_horas_op_empreitada ON demo.horas_operacionais(empreitada_id, data);
