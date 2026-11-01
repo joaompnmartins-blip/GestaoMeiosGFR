@@ -6,6 +6,7 @@
 // O acesso é o do módulo FSBF: gestores e chefes de grupo, mais o admin.
 
 const { areaHa, comprimentoKm, distanciaKm } = require('./dados_demo');
+const { recomendar, diasUteis, proximoDiaUtil, CLASSES_LIGEIRAS, HORAS_DIA } = require('./recomendacao');
 
 const ESTADOS = ['seleccionada', 'planeada', 'em_execucao', 'concluida', 'cancelada'];
 
@@ -103,7 +104,8 @@ const SQL_EMPREITADAS = `
                                    ORDER BY eo.operacao)
                      FROM demo.empreitada_operacoes eo JOIN demo.operacoes o ON o.codigo = eo.operacao
                     WHERE eo.empreitada_id = e.id), '[]') AS operacoes,
-         (SELECT count(*)::int FROM demo.empreitada_meios m WHERE m.empreitada_id = e.id) AS n_meios
+         (SELECT count(*)::int FROM demo.empreitada_meios m WHERE m.empreitada_id = e.id) AS n_meios,
+         (SELECT sum(custo_previsto) FROM demo.empreitada_meios m WHERE m.empreitada_id = e.id) AS custo_previsto
     FROM demo.empreitadas e
     LEFT JOIN ext.propostas_empreitada p ON p.id = e.proposta_id`;
 
@@ -243,6 +245,192 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
   app.delete('/api/demo/empreitadas/:id', ...leitura, wrap(async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM demo.empreitadas WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Empreitada não encontrada.' });
+    res.json({ ok: true });
+  }));
+
+  // ── Meios ──────────────────────────────────────────────────────
+
+  // Os meios afectos, com o que é preciso para os mostrar. As horas saem na
+  // hora de Lisboa, que é a de quem planeia.
+  app.get('/api/demo/empreitadas/:id/meios', ...leitura, wrap(async (req, res) => {
+    const { rows } = await pool.query(`
+      SELECT m.id, m.operacao, m.horas_previstas, m.custo_previsto, m.origem,
+             to_char(m.inicio AT TIME ZONE 'Europe/Lisbon', 'YYYY-MM-DD HH24:MI') AS inicio,
+             to_char(m.fim    AT TIME ZONE 'Europe/Lisbon', 'YYYY-MM-DD HH24:MI') AS fim,
+             m.viatura_id, v.viatura_cod, v.classe, v.tipologia,
+             m.operacional_id, o.nome AS operacional_nome, o.cargo,
+             COALESCE(vb.base, o.base) AS base
+        FROM demo.empreitada_meios m
+        LEFT JOIN viaturas v ON v.id = m.viatura_id
+        LEFT JOIN demo.viatura_base vb ON vb.viatura_id = m.viatura_id
+        LEFT JOIN operacionais_fsbf o ON o.id = m.operacional_id
+       WHERE m.empreitada_id = $1
+       ORDER BY m.operacao NULLS LAST, (m.viatura_id IS NULL), v.classe, o.nome, m.inicio`, [req.params.id]);
+    res.json(rows);
+  }));
+
+  // Tudo o que a FSBF pode pôr numa empreitada, com a distância à obra e a
+  // empreitada em que já está ocupado no período, se for o caso.
+  async function contexto(c, id) {
+    const { rows: [e] } = await c.query(
+      `SELECT e.id, e.geom, e.tipo_pov, e.estado, to_char(e.inicio_previsto, 'YYYY-MM-DD') ini,
+              to_char(e.fim_previsto, 'YYYY-MM-DD') fim,
+              COALESCE((SELECT json_agg(json_build_object('operacao', operacao, 'quantidade', quantidade))
+                          FROM demo.empreitada_operacoes WHERE empreitada_id = e.id), '[]') AS operacoes
+         FROM demo.empreitadas e WHERE e.id = $1`, [id]);
+    if (!e) throw erro(404, 'Empreitada não encontrada.');
+    const inicio = e.ini || proximoDiaUtil();
+    const fim = e.fim && e.fim >= inicio ? e.fim : diasUteis(inicio, 30).pop();
+    const [ops, tipos, rend, meios, pessoas, ocup] = await Promise.all([
+      c.query('SELECT * FROM demo.operacoes'),
+      c.query('SELECT * FROM demo.tipos_meio'),
+      c.query('SELECT operacao, tipo_meio, tipo_pov, por_hora FROM demo.rendimentos'),
+      c.query(`SELECT v.id, v.viatura_cod, v.classe, v.tipologia, v.prontidao, vb.base, b.lat, b.lon
+                 FROM viaturas v
+                 JOIN demo.viatura_base vb ON vb.viatura_id = v.id
+                 JOIN demo.bases b ON b.nome = vb.base
+                WHERE v.megfr = 'FSBF' AND COALESCE(v.ativo, true)`),
+      c.query(`SELECT o.id, o.nome, o.cargo, o.base, b.lat, b.lon
+                 FROM operacionais_fsbf o JOIN demo.bases b ON b.nome = o.base
+                WHERE o.ativo AND COALESCE(o.cargo, '') NOT ILIKE '%comandante%'`),
+      c.query(`SELECT m.viatura_id, m.operacional_id, e.codigo
+                 FROM demo.empreitada_meios m JOIN demo.empreitadas e ON e.id = m.empreitada_id
+                WHERE m.empreitada_id <> $1 AND e.estado NOT IN ('cancelada', 'concluida')
+                  AND m.inicio < ($3::date + 1)::timestamp AT TIME ZONE 'Europe/Lisbon'
+                  AND m.fim    >  $2::date::timestamp AT TIME ZONE 'Europe/Lisbon'`, [id, inicio, fim]),
+    ]);
+    const ocupado = new Map();
+    for (const o of ocup.rows) ocupado.set(o.viatura_id || o.operacional_id, o.codigo);
+    return { e, inicio, fim, ocupado,
+             operacoes: ops.rows, tipos_meio: tipos.rows,
+             rendimentos: rend.rows.map(r => ({ ...r, por_hora: Number(r.por_hora) })),
+             meios: meios.rows, operacionais: pessoas.rows };
+  }
+
+  app.get('/api/demo/empreitadas/:id/meios-disponiveis', ...leitura, wrap(async (req, res) => {
+    const ctx = await contexto(pool, req.params.id);
+    const alvo = centroide(ctx.e.geom.type === 'Polygon' ? ctx.e.geom.coordinates[0].slice(0, -1) : ctx.e.geom.coordinates);
+    const dist = x => Math.round(distanciaKm(alvo, [x.lon, x.lat]) * 1.3);
+    res.json({
+      inicio: ctx.inicio, fim: ctx.fim,
+      viaturas: ctx.meios.map(v => ({ id: v.id, rotulo: v.viatura_cod, classe: v.classe, detalhe: v.tipologia,
+        base: v.base, dist_km: dist(v), inoperacional: v.prontidao === 'inoperacional',
+        ocupado_em: ctx.ocupado.get(v.id) || null })).sort((a, b) => a.dist_km - b.dist_km),
+      operacionais: ctx.operacionais.map(o => ({ id: o.id, rotulo: o.nome, detalhe: o.cargo, base: o.base,
+        dist_km: dist(o), ocupado_em: ctx.ocupado.get(o.id) || null })).sort((a, b) => a.dist_km - b.dist_km),
+    });
+  }));
+
+  // A recomendação só conta com o que está livre e operacional.
+  function calcular(ctx, peso) {
+    return recomendar({
+      empreitada: { geom: ctx.e.geom, tipo_pov: ctx.e.tipo_pov, operacoes: ctx.e.operacoes },
+      operacoes: ctx.operacoes, tipos_meio: ctx.tipos_meio, rendimentos: ctx.rendimentos,
+      meios: ctx.meios.filter(m => !ctx.ocupado.has(m.id) && m.prontidao !== 'inoperacional'),
+      operacionais: ctx.operacionais.filter(o => !ctx.ocupado.has(o.id)),
+    }, peso);
+  }
+  const lerPeso = v => Math.min(1, Math.max(0, v === undefined || v === '' ? 0.5 : Number(v) || 0));
+
+  app.get('/api/demo/empreitadas/:id/recomendacao', ...leitura, wrap(async (req, res) => {
+    const ctx = await contexto(pool, req.params.id);
+    res.json({ inicio: ctx.inicio, fim_janela: ctx.fim, ...calcular(ctx, lerPeso(req.query.peso)) });
+  }));
+
+  // Aceitar volta a calcular no servidor — não se confia no que o browser
+  // mandaria — e substitui os meios afectos pelos da alternativa escolhida.
+  // Cada operação começa no início previsto e ocupa os seus dias úteis; o
+  // porta-máquinas só conta no primeiro dia (levar) e no último (trazer).
+  app.post('/api/demo/empreitadas/:id/recomendacao/aceitar', ...leitura, wrap(async (req, res) => {
+    const b = req.body || {};
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT 1 FROM demo.empreitadas WHERE id = $1 FOR UPDATE', [req.params.id]);
+      const ctx = await contexto(c, req.params.id);
+      const alt = calcular(ctx, lerPeso(b.peso)).alternativas.find(a => a.chave === b.chave);
+      if (!alt) throw erro(400, 'Alternativa desconhecida.');
+      if (!alt.partes.length) throw erro(409, 'Esta alternativa não tem meios para afectar.');
+      await c.query('DELETE FROM demo.empreitada_meios WHERE empreitada_id = $1', [req.params.id]);
+      let ultimo = ctx.inicio;
+      const ins = (m, operacao, ini, fim, horas, custo) => c.query(
+        `INSERT INTO demo.empreitada_meios (empreitada_id, viatura_id, operacional_id, operacao, inicio, fim,
+                                            horas_previstas, custo_previsto, origem)
+         VALUES ($1, $2, $3, $4, $5::timestamp AT TIME ZONE 'Europe/Lisbon', $6::timestamp AT TIME ZONE 'Europe/Lisbon',
+                 $7, $8, 'recomendacao')`,
+        [req.params.id, m.viatura_id || null, m.operacional_id || null, operacao, ini, fim, horas, custo]);
+      for (const p of alt.partes) {
+        const dias = diasUteis(ctx.inicio, p.dias);
+        const d0 = dias[0], d1 = dias[dias.length - 1];
+        if (d1 > ultimo) ultimo = d1;
+        for (const m of p.meios) {
+          if (m.papel === 'transporte') {
+            await ins(m, p.operacao, `${d0} 07:00`, `${d0} 12:00`, m.horas / 2, m.custo / 2);
+            await ins(m, p.operacao, `${d1} 13:00`, `${d1} 18:00`, m.horas / 2, m.custo / 2);
+          } else {
+            await ins(m, p.operacao, `${d0} 08:00`, `${d1} 17:00`, m.horas, m.custo);
+          }
+        }
+      }
+      await c.query(
+        `UPDATE demo.empreitadas SET inicio_previsto = $2, fim_previsto = $3, updated_at = now(),
+                estado = CASE WHEN estado = 'seleccionada' THEN 'planeada' ELSE estado END
+          WHERE id = $1`, [req.params.id, ctx.inicio, ultimo]);
+      await c.query('COMMIT');
+      res.json({ ok: true, alternativa: alt.nome, meios: alt.partes.reduce((s, p) => s + p.meios.length, 0) });
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      c.release();
+    }
+  }));
+
+  // Afectar um meio à mão: uma viatura ou um operacional, entre duas datas.
+  // Recusa-se se já estiver noutra empreitada no mesmo período.
+  app.post('/api/demo/empreitadas/:id/meios', ...leitura, wrap(async (req, res) => {
+    const b = req.body || {};
+    if (!b.viatura_id === !b.operacional_id) throw erro(400, 'Escolha uma viatura ou um operacional.');
+    const dia = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dia.test(b.inicio || '') || !dia.test(b.fim || '')) throw erro(400, 'Indique as datas de início e de fim.');
+    if (b.fim < b.inicio) throw erro(400, 'O fim é anterior ao início.');
+    const id = b.viatura_id || b.operacional_id;
+    const { rows: conflito } = await pool.query(`
+      SELECT e.codigo FROM demo.empreitada_meios m JOIN demo.empreitadas e ON e.id = m.empreitada_id
+       WHERE (m.viatura_id = $1 OR m.operacional_id = $1) AND e.estado NOT IN ('cancelada', 'concluida')
+         AND m.inicio < ($3::date + 1)::timestamp AT TIME ZONE 'Europe/Lisbon'
+         AND m.fim    >  $2::date::timestamp AT TIME ZONE 'Europe/Lisbon'
+       LIMIT 1`, [id, b.inicio, b.fim]);
+    if (conflito[0]) throw erro(409, `Este meio já está afecto a ${conflito[0].codigo} nesse período.`);
+
+    // Custo previsto: dias úteis × horas de trabalho × custo/hora do tipo.
+    let n = 0;
+    for (const d = new Date(`${b.inicio}T12:00:00Z`); d.toISOString().slice(0, 10) <= b.fim; d.setUTCDate(d.getUTCDate() + 1))
+      if (d.getUTCDay() !== 0 && d.getUTCDay() !== 6) n++;
+    const horas = n * HORAS_DIA;
+    let custoHora = null;
+    if (b.operacional_id) {
+      custoHora = (await pool.query(`SELECT custo_hora_eur FROM demo.tipos_meio WHERE codigo = 'OP'`)).rows[0]?.custo_hora_eur;
+    } else {
+      const { rows } = await pool.query(
+        `SELECT v.classe, t.custo_hora_eur FROM viaturas v LEFT JOIN demo.tipos_meio t ON t.codigo = v.classe WHERE v.id = $1`, [b.viatura_id]);
+      if (!rows[0]) throw erro(404, 'Viatura não encontrada.');
+      custoHora = CLASSES_LIGEIRAS.includes(rows[0].classe) ? null : rows[0].custo_hora_eur;
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO demo.empreitada_meios (empreitada_id, viatura_id, operacional_id, operacao, inicio, fim,
+                                          horas_previstas, custo_previsto, origem)
+       VALUES ($1, $2, $3, $4, ($5 || ' 08:00')::timestamp AT TIME ZONE 'Europe/Lisbon',
+               ($6 || ' 17:00')::timestamp AT TIME ZONE 'Europe/Lisbon', $7, $8, 'manual') RETURNING id`,
+      [req.params.id, b.viatura_id || null, b.operacional_id || null, b.operacao || null, b.inicio, b.fim,
+       horas, custoHora == null ? null : Math.round(horas * custoHora * 100) / 100]);
+    res.status(201).json(rows[0]);
+  }));
+
+  app.delete('/api/demo/empreitadas/:id/meios/:meio', ...leitura, wrap(async (req, res) => {
+    const { rowCount } = await pool.query('DELETE FROM demo.empreitada_meios WHERE id = $1 AND empreitada_id = $2',
+                                          [req.params.meio, req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Afectação não encontrada.' });
     res.json({ ok: true });
   }));
 };

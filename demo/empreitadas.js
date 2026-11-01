@@ -92,6 +92,46 @@
     #page-empreitadas .emp-campos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
     #page-empreitadas .emp-campos .form-field.span2{grid-column:span 2}
     #page-empreitadas .emp-campos .form-input,#page-empreitadas .emp-campos .form-select,#page-empreitadas .emp-campos .form-textarea{font-size:12px;padding:6px 8px}
+    #page-empreitadas .emp-sec{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+    #page-empreitadas .emp-sec-hdr{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+    #page-empreitadas .emp-sec-hdr b{font-family:'IBM Plex Mono',monospace;font-size:12px;font-variant-numeric:tabular-nums}
+    #page-empreitadas .emp-grupo{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--muted);margin:10px 0 4px}
+    #page-empreitadas .emp-meio{display:grid;grid-template-columns:18px 1fr auto 22px;gap:8px;align-items:center;padding:5px 0;
+      border-bottom:1px dashed var(--border);font-size:12px}
+    #page-empreitadas .emp-meio .ic{color:var(--muted);text-align:center}
+    #page-empreitadas .emp-meio .r{min-width:0}
+    #page-empreitadas .emp-meio .r div:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #page-empreitadas .emp-meio .m{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+    #page-empreitadas .emp-meio .v{font-family:'IBM Plex Mono',monospace;font-size:11px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .emp-tag{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;padding:1px 5px;border:1px solid var(--border);color:var(--muted);border-radius:2px;margin-left:4px}
+    #emp-modal-rec .modal{width:1040px}
+    .emp-rec-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--muted)}
+    .emp-rec-topo input[type=range]{width:200px;accent-color:var(--accent)}
+    .emp-rec-grelha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .emp-alt{border:1px solid var(--border);background:var(--surface2);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+    .emp-alt.melhor{border-color:var(--accent)}
+    .emp-alt h4{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:.05em;text-transform:uppercase}
+    .emp-alt .num{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .emp-alt .num div{background:var(--surface);border:1px solid var(--border);padding:6px 8px}
+    .emp-alt .num b{display:block;font-family:'IBM Plex Mono',monospace;font-size:16px;font-variant-numeric:tabular-nums}
+    .emp-alt .num span{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .emp-alt .num b.ganha{color:var(--accent)}
+    .emp-alt details{border-top:1px solid var(--border);padding-top:8px;font-size:12px}
+    .emp-alt summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:8px}
+    .emp-alt summary::-webkit-details-marker{display:none}
+    .emp-alt summary .q{font-family:'IBM Plex Mono',monospace;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .emp-alt .conta{margin:6px 0 4px;padding-left:14px;color:var(--muted);font-size:11px;line-height:1.5}
+    .emp-alt .lmeios{font-size:11px;display:grid;gap:2px;margin-top:4px}
+    .emp-alt .lmeios div{display:flex;justify-content:space-between;gap:8px}
+    .emp-alt .falta{font-size:11px;color:var(--warn)}
+    .emp-alt .igual{font-size:11px;color:var(--muted);font-style:italic}
+    .emp-nota{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
+    #emp-modal-af .modal{width:720px}
+    .emp-af-lista{max-height:330px;overflow-y:auto;border:1px solid var(--border);margin-top:8px}
+    .emp-af-lista label{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer}
+    .emp-af-lista label.off{opacity:.45;cursor:not-allowed}
+    .emp-af-lista .m{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)}
+    @media (max-width:900px){ .emp-rec-grelha{grid-template-columns:1fr} }
     @media (max-width:980px){
       #page-empreitadas .emp-grelha{grid-template-columns:1fr}
       #emp-mapa{height:56vh;min-height:320px}
@@ -209,6 +249,7 @@
   }
 
   function desenharTudo() {
+    if (st.ligacoes) { st.mapa.removeLayer(st.ligacoes); st.ligacoes = null; }
     document.getElementById('emp-n-prop').textContent = `(${st.propostas.filter(p => !p.empreitada_id).length})`;
     document.getElementById('emp-n-emp').textContent = `(${st.empreitadas.length})`;
     document.getElementById('emp-f-estado').style.display = st.aba === 'empreitadas' ? '' : 'none';
@@ -275,6 +316,7 @@
   function seleccionar(tipo, id, centrar) {
     if (st.desenho) return;
     st.sel = { tipo, id };
+    st.meiosSel = null;
     desenharTudo();
     const c = st.porId.get(id);
     if (c && centrar) st.mapa.fitBounds(c.getBounds(), { maxZoom: 14, padding: [40, 40] });
@@ -401,12 +443,22 @@
       <button class="btn btn-ghost btn-xs" id="emp-e-op-add" style="margin-top:4px">+ Operação</button>
       <div class="form-field" style="margin-top:12px"><label class="form-label">Observações</label>
         <textarea class="form-textarea" id="emp-e-obs" rows="2" style="font-size:12px;padding:6px 8px;resize:vertical">${esc(e.observacoes || '')}</textarea></div>
-      <div class="emp-aviso">Meios afectos: ${e.n_meios}. A afectação e a recomendação de meios são o passo seguinte da demonstração.</div>
       <div class="emp-acoes">
         <button class="btn btn-primary btn-sm" id="emp-e-guardar">Guardar</button>
         <button class="btn btn-ghost btn-sm" id="emp-e-fechar">Fechar</button>
         <button class="btn btn-danger btn-sm" id="emp-e-apagar" style="margin-left:auto">Eliminar</button>
+      </div>
+      <div class="emp-sec">
+        <div class="emp-sec-hdr"><span class="form-label">Meios afectos</span><b id="emp-meios-total"></b></div>
+        <div id="emp-meios"><div class="emp-vazio" style="padding:12px">A carregar…</div></div>
+        <div class="emp-acoes">
+          <button class="btn btn-primary btn-sm" id="emp-e-rec">Recomendar meios</button>
+          <button class="btn btn-ghost btn-sm" id="emp-e-af">+ Afectar meio</button>
+        </div>
       </div>`;
+    el.querySelector('#emp-e-rec').onclick = () => abrirRecomendacao(e);
+    el.querySelector('#emp-e-af').onclick = () => abrirAfectar(e);
+    carregarMeios(e);
     const tabela = el.querySelector('#emp-e-ops');
     el.querySelector('#emp-e-op-add').onclick = ligarOperacoes(tabela, () => ops.nova(qDefeito));
     el.querySelector('#emp-e-fechar').onclick = () => { st.sel = null; desenharTudo(); };
@@ -432,6 +484,193 @@
       st.sel = null;
       await carregar();
       desenharTudo();
+    };
+  }
+
+  // ── Meios afectos ──────────────────────────────────────────────
+  const ICONE = { maquina: '▣', operacional: '●', transporte: '⇄', viatura: '▭' };
+  const eur = x => x == null ? '—' : `${Math.round(Number(x)).toLocaleString('pt-PT')} €`;
+  const diaCurto = t => t ? `${t.slice(8, 10)}/${t.slice(5, 7)}` : '';
+  const CLASSES_LIGEIRAS = ['VLCI', 'VTTP', 'VCOT', 'VFCI'];
+  const papelDe = m => m.operacional_id ? 'operacional' : m.classe === 'PM' ? 'transporte'
+                     : CLASSES_LIGEIRAS.includes(m.classe) ? 'viatura' : 'maquina';
+
+  async function carregarMeios(e) {
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/meios`);
+    const el = document.getElementById('emp-meios');
+    if (!el || st.sel?.id !== e.id) return;          // entretanto escolheu-se outra
+    if (error) { el.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    st.meiosSel = data;
+    desenharLigacoes(e, data);
+    const total = data.reduce((s, m) => s + Number(m.custo_previsto || 0), 0);
+    document.getElementById('emp-meios-total').textContent = data.length ? `${eur(total)} previstos` : '';
+    if (!data.length) {
+      el.innerHTML = `<div class="emp-vazio" style="padding:12px">Ainda sem meios. «Recomendar meios» propõe três alternativas a partir das operações; também pode afectar um a um.</div>`;
+      return;
+    }
+    const grupos = {};
+    for (const m of data) (grupos[m.operacao || '—'] ||= []).push(m);
+    el.innerHTML = Object.entries(grupos).map(([op, ms]) => {
+      const o = e.operacoes.find(x => x.operacao === op);
+      return `<div class="emp-grupo">${esc(op)}${o ? ` · ${fmt(o.quantidade, o.unidade === 'km' ? 2 : 1)} ${o.unidade}` : ''} · ${ms.length} meio${ms.length > 1 ? 's' : ''}</div>` +
+        ms.map(m => {
+          const papel = papelDe(m);
+          const nome = m.operacional_id ? m.operacional_nome : `${m.viatura_cod}`;
+          const det = m.operacional_id ? (m.cargo || 'Operacional') : (m.tipologia || m.classe);
+          return `<div class="emp-meio">
+            <span class="ic" title="${papel}">${ICONE[papel]}</span>
+            <div class="r"><div>${esc(nome)}${m.origem === 'manual' ? '<span class="emp-tag">MANUAL</span>' : ''}</div>
+              <div class="m">${esc(det)} · ${esc(m.base || '—')} · ${diaCurto(m.inicio)}→${diaCurto(m.fim)}</div></div>
+            <div class="v">${m.horas_previstas != null ? fmt(m.horas_previstas) + ' h' : ''}<br><span style="color:var(--muted)">${eur(m.custo_previsto)}</span></div>
+            <button class="btn btn-ghost btn-xs" data-rem="${m.id}" title="Retirar este meio">✕</button></div>`;
+        }).join('');
+    }).join('');
+    el.querySelectorAll('[data-rem]').forEach(b => b.onclick = async () => {
+      const { error } = await apiFetch(`/api/demo/empreitadas/${e.id}/meios/${b.dataset.rem}`, { method: 'DELETE' });
+      if (error) return toast(error.message, 'err');
+      await recarregarEmpreitada(e.id);
+    });
+  }
+
+  // Linhas das bases de onde saem os meios até à obra, com quantos são.
+  function desenharLigacoes(e, meios) {
+    if (st.ligacoes) st.mapa.removeLayer(st.ligacoes);
+    st.ligacoes = L.layerGroup().addTo(st.mapa);
+    const c = st.porId.get(e.id)?.getBounds().getCenter();
+    if (!c) return;
+    const porBase = {};
+    for (const m of meios) if (m.base) porBase[m.base] = (porBase[m.base] || 0) + 1;
+    for (const [base, n] of Object.entries(porBase)) {
+      const b = st.cat.bases.find(x => x.nome === base);
+      if (!b) continue;
+      L.polyline([[b.lat, b.lon], c], { color: tok('--accent3'), weight: 2, dashArray: '2 6', opacity: .9 })
+        .bindTooltip(`${n} meio${n > 1 ? 's' : ''} de ${esc(base)}`, { sticky: true }).addTo(st.ligacoes);
+    }
+  }
+
+  async function recarregarEmpreitada(id) {
+    await carregar();
+    desenharTudo();
+    const c = st.porId.get(id);
+    if (c && st.ligacoes) st.mapa.fitBounds(L.featureGroup([c, st.ligacoes]).getBounds(), { padding: [40, 40], maxZoom: 12 });
+  }
+
+  // ── Recomendação ───────────────────────────────────────────────
+  async function abrirRecomendacao(e) {
+    const corpo = document.getElementById('emp-rec-corpo');
+    corpo.innerHTML = `
+      <div class="emp-rec-topo">
+        <span>${esc(e.codigo)} · ${e.operacoes.map(o => `${o.operacao} ${fmt(o.quantidade, o.unidade === 'km' ? 2 : 1)} ${o.unidade}`).join(' + ')} · ${POV[e.tipo_pov]}</span>
+        <span style="margin-left:auto">Equilibrada a dar prioridade a</span>
+        <span>custo</span><input type="range" id="emp-rec-peso" min="0" max="100" step="10" value="50"/><span>prazo</span>
+      </div>
+      <div id="emp-rec-res"><div class="emp-vazio">A calcular…</div></div>
+      <p class="emp-nota">Só entram meios FSBF operacionais e livres no período. Rendimentos e custos são <b>simulados</b>
+        (catálogo da demonstração). Distâncias: linha recta × 1,3. Dia de trabalho: 7 h efectivas. As operações correm em
+        paralelo, cada uma com os seus meios.</p>`;
+    openModal('emp-modal-rec');
+    let t;
+    corpo.querySelector('#emp-rec-peso').oninput = ev => { clearTimeout(t); t = setTimeout(() => calcularRec(e, ev.target.value), 250); };
+    calcularRec(e, 50);
+  }
+
+  async function calcularRec(e, v) {
+    const peso = 1 - v / 100;                       // peso do custo
+    const res = document.getElementById('emp-rec-res');
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/recomendacao?peso=${peso}`);
+    if (error) { res.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    const alts = data.alternativas.filter(a => a.partes.length);
+    const minC = Math.min(...alts.map(a => a.total)), minD = Math.min(...alts.map(a => a.dias));
+    res.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Início ${data.inicio.split('-').reverse().join('/')}
+        — ${e.inicio_previsto ? 'o início previsto da empreitada' : 'o próximo dia útil (a empreitada não tem início previsto)'}.</div>
+      <div class="emp-rec-grelha">${data.alternativas.map(a => `
+      <div class="emp-alt${a.chave === 'equilibrada' ? ' melhor' : ''}">
+        <h4>${a.nome}</h4>
+        ${a.igual_a ? `<div class="igual">A mesma combinação que «${a.igual_a}».</div>` : ''}
+        <div class="num">
+          <div><b class="${a.total === minC ? 'ganha' : ''}">${eur(a.total)}</b><span>custo previsto</span></div>
+          <div><b class="${a.dias === minD ? 'ganha' : ''}">${a.dias} dia${a.dias === 1 ? '' : 's'}</b><span>úteis</span></div>
+          <div><b>${a.n_maquinas}</b><span>máquinas</span></div>
+          <div><b>${a.n_operacionais}</b><span>operacionais</span></div>
+        </div>
+        ${a.partes.map(p => `<details>
+          <summary><span><b>${p.operacao}</b> · ${p.tipo === 'OP' ? `equipa de ${p.k}` : `${p.k} × ${p.tipo}`}</span>
+            <span class="q">${fmt(p.horas)} h · ${p.dias} d · ${eur(p.total)}</span></summary>
+          <ul class="conta">${p.conta.map(c => `<li>${esc(c)}</li>`).join('')}</ul>
+          <div class="lmeios">${p.meios.map(m => `<div><span>${ICONE[m.papel === 'equipa' || m.papel === 'operador' ? 'operacional' : m.papel]} ${esc(m.rotulo)}</span>
+            <span class="m" style="color:var(--muted)">${esc(m.base)} · ${fmt(m.dist_km, 0)} km</span></div>`).join('')}</div>
+        </details>`).join('')}
+        ${a.faltas.map(f => `<div class="falta">⚠ ${esc(f)}</div>`).join('')}
+        <button class="btn ${a.chave === 'equilibrada' ? 'btn-primary' : 'btn-ghost'} btn-sm" data-aceitar="${a.chave}"
+          ${a.partes.length ? '' : 'disabled'} style="margin-top:auto">Aceitar «${a.nome.toLowerCase()}»</button>
+      </div>`).join('')}</div>`;
+    res.querySelectorAll('[data-aceitar]').forEach(b => b.onclick = async () => {
+      const n = st.meiosSel?.length || 0;
+      if (n && !confirm(`Substituir os ${n} meios afectos a ${e.codigo} pelos desta alternativa?`)) return;
+      const r = await apiFetch(`/api/demo/empreitadas/${e.id}/recomendacao/aceitar`,
+                               { method: 'POST', body: JSON.stringify({ chave: b.dataset.aceitar, peso }) });
+      if (r.error) return toast(r.error.message, 'err');
+      closeModal('emp-modal-rec');
+      toast(`${e.codigo}: ${r.data.meios} afectações da alternativa «${r.data.alternativa.toLowerCase()}».`);
+      await recarregarEmpreitada(e.id);
+    });
+  }
+
+  // ── Afectar um meio à mão ──────────────────────────────────────
+  async function abrirAfectar(e) {
+    const corpo = document.getElementById('emp-af-corpo');
+    corpo.innerHTML = '<div class="emp-vazio">A carregar…</div>';
+    openModal('emp-modal-af');
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/meios-disponiveis`);
+    if (error) { corpo.innerHTML = `<div class="emp-vazio">${esc(error.message)}</div>`; return; }
+    const grupos = {
+      maquinas:     data.viaturas.filter(v => !CLASSES_LIGEIRAS.includes(v.classe)),
+      viaturas:     data.viaturas.filter(v => CLASSES_LIGEIRAS.includes(v.classe)),
+      operacionais: data.operacionais,
+    };
+    corpo.innerHTML = `
+      <div class="form-grid">
+        <div class="form-field"><label class="form-label">Tipo de meio</label>
+          <select class="form-select" id="emp-af-tipo"><option value="maquinas">Máquinas e porta-máquinas</option>
+            <option value="viaturas">Viaturas ligeiras</option><option value="operacionais">Operacionais</option></select></div>
+        <div class="form-field"><label class="form-label">Procurar</label><input class="form-input" id="emp-af-q" placeholder="Código, nome, base…"/></div>
+        <div class="form-field"><label class="form-label">Operação</label><select class="form-select" id="emp-af-op">
+          <option value="">— nenhuma em particular —</option>${e.operacoes.map(o => `<option>${o.operacao}</option>`).join('')}</select></div>
+        <div class="form-field"></div>
+        <div class="form-field"><label class="form-label">De</label><input class="form-input" type="date" id="emp-af-ini" value="${e.inicio_previsto || data.inicio}"/></div>
+        <div class="form-field"><label class="form-label">Até</label><input class="form-input" type="date" id="emp-af-fim" value="${e.fim_previsto || data.inicio}"/></div>
+      </div>
+      <div class="emp-af-lista" id="emp-af-lista"></div>
+      <p class="emp-nota">Ordenados pela distância à obra. A disponibilidade é vista para a janela ${data.inicio.split('-').reverse().join('/')}–${data.fim.split('-').reverse().join('/')}.</p>
+      <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-ghost" onclick="closeModal('emp-modal-af')">Cancelar</button>
+        <button class="btn btn-primary" id="emp-af-ok">Afectar</button></div>`;
+    const lista = () => {
+      const q = corpo.querySelector('#emp-af-q').value.trim().toLowerCase();
+      const g = grupos[corpo.querySelector('#emp-af-tipo').value]
+        .filter(x => !q || `${x.rotulo} ${x.detalhe || ''} ${x.base} ${x.classe || ''}`.toLowerCase().includes(q)).slice(0, 80);
+      corpo.querySelector('#emp-af-lista').innerHTML = g.map(x => {
+        const off = x.ocupado_em || x.inoperacional;
+        return `<label class="${off ? 'off' : ''}"><input type="radio" name="emp-af" value="${x.id}" ${off ? 'disabled' : ''}/>
+          <div><div>${esc(x.rotulo)}${x.classe ? ` <span class="m">${esc(x.classe)}</span>` : ''}</div>
+            <div class="m">${esc(x.detalhe || '')}${x.ocupado_em ? ` · ocupado em ${esc(x.ocupado_em)}` : ''}${x.inoperacional ? ' · inoperacional' : ''}</div></div>
+          <span class="m">${esc(x.base)} · ${x.dist_km} km</span></label>`;
+      }).join('') || '<div class="emp-vazio">Nada encontrado.</div>';
+    };
+    corpo.querySelector('#emp-af-tipo').onchange = lista;
+    corpo.querySelector('#emp-af-q').oninput = lista;
+    lista();
+    corpo.querySelector('#emp-af-ok').onclick = async () => {
+      const id = corpo.querySelector('input[name=emp-af]:checked')?.value;
+      if (!id) return toast('Escolha um meio da lista.', 'err');
+      const ehPessoa = corpo.querySelector('#emp-af-tipo').value === 'operacionais';
+      const b = { [ehPessoa ? 'operacional_id' : 'viatura_id']: id, operacao: corpo.querySelector('#emp-af-op').value || null,
+                  inicio: corpo.querySelector('#emp-af-ini').value, fim: corpo.querySelector('#emp-af-fim').value };
+      const r = await apiFetch(`/api/demo/empreitadas/${e.id}/meios`, { method: 'POST', body: JSON.stringify(b) });
+      if (r.error) return toast(r.error.message, 'err');
+      closeModal('emp-modal-af');
+      toast('Meio afectado.');
+      await recarregarEmpreitada(e.id);
     };
   }
 
@@ -541,6 +780,20 @@
           <button class="modal-close" onclick="closeModal('emp-modal')">✕</button>
           <div class="modal-title">Nova empreitada</div>
           <div id="emp-m-corpo"></div>
+        </div>
+      </div>
+      <div class="modal-overlay" id="emp-modal-rec">
+        <div class="modal">
+          <button class="modal-close" onclick="closeModal('emp-modal-rec')">✕</button>
+          <div class="modal-title">Recomendar meios</div>
+          <div id="emp-rec-corpo"></div>
+        </div>
+      </div>
+      <div class="modal-overlay" id="emp-modal-af">
+        <div class="modal">
+          <button class="modal-close" onclick="closeModal('emp-modal-af')">✕</button>
+          <div class="modal-title">Afectar meio</div>
+          <div id="emp-af-corpo"></div>
         </div>
       </div>`);
   }

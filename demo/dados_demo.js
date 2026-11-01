@@ -82,16 +82,17 @@ const TIPO_ELEM = { CON: 'RVF', MAN: 'RVF', LLA: 'LA', OUI: 'OUI' };
 // Custos SIMULADOS. O código é a classe da viatura no catálogo da GOGFR,
 // excepto OP, que é um operacional. Máquinas de rastos não andam na estrada:
 // vão em porta-máquinas (PM), e isso entra no custo de as levar ao sítio.
-// [código, designação, €/h, €/km, operadores, precisa transporte]
+// A mobilização é o custo fixo de pôr uma máquina a trabalhar na obra.
+// [código, designação, €/h, €/km, operadores, precisa transporte, mobilização €]
 const TIPOS_MEIO = [
-  ['OP',   'Operacional (sapador bombeiro florestal)', 15.00, null, 1, false],
-  ['TB',   'Trator de rodas com destroçador',          38.00, null, 1, false],
-  ['TR',   'Trator de rastos',                         48.00, null, 1, true ],
-  ['DR',   'Destroçador frontal de rastos',            80.00, null, 1, true ],
-  ['MR',   'Máquina de rastos',                        95.00, null, 1, true ],
-  ['GR',   'Máquina giratória de rastos',              75.00, null, 1, true ],
-  ['PM',   'Porta-máquinas',                           null,  2.20, 1, false],
-  ['VLCI', 'Viatura ligeira (transporte de equipa)',   null,  0.45, 0, false],
+  ['OP',   'Operacional (sapador bombeiro florestal)', 15.00, null, 1, false,   0],
+  ['TB',   'Trator de rodas com destroçador',          38.00, null, 1, false, 150],
+  ['TR',   'Trator de rastos',                         48.00, null, 1, true,  220],
+  ['DR',   'Destroçador frontal de rastos',            80.00, null, 1, true,  300],
+  ['MR',   'Máquina de rastos',                        95.00, null, 1, true,  350],
+  ['GR',   'Máquina giratória de rastos',              75.00, null, 1, true,  300],
+  ['PM',   'Porta-máquinas',                           null,  2.20, 1, false,   0],
+  ['VLCI', 'Viatura ligeira (transporte de equipa)',   null,  0.45, 0, false,   0],
 ];
 
 // Rendimentos SIMULADOS, em unidades da operação por hora (ha/h ou km/h),
@@ -463,14 +464,16 @@ async function escreverCatalogos(c) {
                                    : TIPOS_INTERV[ti],
       geometria, unidade: geometria === 'linha' ? 'km' : 'ha', modo })))]);
 
-  await c.query(`INSERT INTO demo.tipos_meio (codigo, designacao, custo_hora_eur, custo_km_eur, operadores, precisa_transporte)
+  await c.query(`INSERT INTO demo.tipos_meio (codigo, designacao, custo_hora_eur, custo_km_eur, operadores,
+                                             precisa_transporte, mobilizacao_eur)
                  SELECT * FROM json_to_recordset($1) AS x(codigo text, designacao text, custo_hora_eur numeric,
-                        custo_km_eur numeric, operadores smallint, precisa_transporte boolean)
+                        custo_km_eur numeric, operadores smallint, precisa_transporte boolean, mobilizacao_eur numeric)
                  ON CONFLICT (codigo) DO UPDATE SET designacao = EXCLUDED.designacao,
                         custo_hora_eur = EXCLUDED.custo_hora_eur, custo_km_eur = EXCLUDED.custo_km_eur,
-                        operadores = EXCLUDED.operadores, precisa_transporte = EXCLUDED.precisa_transporte`,
-    [JSON.stringify(TIPOS_MEIO.map(([codigo, designacao, custo_hora_eur, custo_km_eur, operadores, precisa_transporte]) =>
-      ({ codigo, designacao, custo_hora_eur, custo_km_eur, operadores, precisa_transporte })))]);
+                        operadores = EXCLUDED.operadores, precisa_transporte = EXCLUDED.precisa_transporte,
+                        mobilizacao_eur = EXCLUDED.mobilizacao_eur`,
+    [JSON.stringify(TIPOS_MEIO.map(([codigo, designacao, custo_hora_eur, custo_km_eur, operadores, precisa_transporte, mobilizacao_eur]) =>
+      ({ codigo, designacao, custo_hora_eur, custo_km_eur, operadores, precisa_transporte, mobilizacao_eur })))]);
 
   // Os rendimentos substituem-se por inteiro: um par que saia da tabela
   // acima tem de sair também da base.

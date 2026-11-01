@@ -46,6 +46,10 @@ CREATE TABLE IF NOT EXISTS demo.tipos_meio (
     precisa_transporte BOOLEAN NOT NULL DEFAULT false,  -- vai em porta-máquinas
     simulado           BOOLEAN NOT NULL DEFAULT true
 );
+-- Preparar, levar e montar uma máquina na obra custa o mesmo quer ela
+-- trabalhe um dia quer vinte. É o que faz duas máquinas custarem mais do
+-- que uma, para o mesmo trabalho.
+ALTER TABLE demo.tipos_meio ADD COLUMN IF NOT EXISTS mobilizacao_eur NUMERIC(8,2) NOT NULL DEFAULT 0;
 
 -- Rendimento de um tipo de meio numa operação, por tipo de povoamento
 -- (TIPO_POV do guia: 1 resinosas, 2 folhosas, 3 mistos, 4 matos/incultos).
