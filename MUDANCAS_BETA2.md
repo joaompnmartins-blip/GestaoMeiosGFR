@@ -71,7 +71,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `3a80f13` | **por validar (só beta2)** |
 | 50 | 25/08/2026 | Botão Reabrir saía fora do cartão do Arquivo | `e0c6e47` | **por validar (só beta2)** |
 | 51 | 27/08/2026 | Texto em várias linhas na Fita deixa de ser achatado | `506101d` | **por validar (só beta2)** |
-| 55 | 11/11/2026 | Filtro por região (NUTS II) no painel de ocorrências activas | *(este commit)* | **por validar (só beta2)** |
+| 55 | 11/11/2026 | Filtro por região (NUTS II) no painel de ocorrências activas | `5caa2ee` | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
