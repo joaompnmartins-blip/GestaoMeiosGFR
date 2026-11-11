@@ -71,6 +71,7 @@ aprovadas passam ao beta1 por `git merge --ff-only beta2`.
 | 49 | 25/08/2026 | Relatório de meios disponível no Arquivo | `3a80f13` | **por validar (só beta2)** |
 | 50 | 25/08/2026 | Botão Reabrir saía fora do cartão do Arquivo | `e0c6e47` | **por validar (só beta2)** |
 | 51 | 27/08/2026 | Texto em várias linhas na Fita deixa de ser achatado | `506101d` | **por validar (só beta2)** |
+| 55 | 11/11/2026 | Filtro por região (NUTS II) no painel de ocorrências activas | *(este commit)* | **por validar (só beta2)** |
 
 As nove foram promovidas ao beta1 por `git merge --ff-only beta2`.
 O registo mantém-se: descreve o que mudou, como validar, e o que seria preciso
@@ -4128,6 +4129,77 @@ depois, mas com prazo de validade.
 - `Gestao_Meios_v17.html` — marcador e montagem do URL.
 - **Variáveis:** `FOGOS_API_KEY` e `CARTO_BASEMAP_KEY`, nos dois ambientes.
 - **Base de dados:** nenhuma alteração.
+
+## 55 — Filtro por região (NUTS II) no painel de ocorrências activas
+
+**Data:** 11/11/2026 · **Estado:** por validar
+
+O painel de ocorrências activas ganha uma lista **«Todas as regiões»** ao lado
+da de sub-regiões. As regiões são as **7 NUTS II de 2024 do Continente** —
+Norte, Centro, Oeste e Vale do Tejo, Grande Lisboa, Península de Setúbal,
+Alentejo, Algarve. Açores e Madeira ficam de fora: a aplicação não tem
+sub-regiões nas ilhas.
+
+### Não precisa de dados novos
+
+As 24 sub-regiões da aplicação são as NUTS III de 2024 do Continente, e cada uma
+pertence a uma única NUTS II. A região de uma ocorrência sai da sua sub-região,
+por uma tabela fixa no HTML (`NUTS2`, ao lado de `SUBREGIOES`). Confirmado que
+todos os valores de `ocorrencias.subregiao` no beta1 e no beta2 constam da
+tabela — nenhuma ocorrência fica sem região por diferença de grafia.
+
+### Como se comporta
+
+- **Quem vê:** os mesmos que já viam o filtro de sub-região — admin,
+  visualizador, gestores SF, FSBF e ICNF, chefe de grupo FSBF, e oficiais de
+  ligação sem sub-região fixa.
+- A lista de regiões só mostra as que têm ocorrências activas, como a de
+  sub-regiões.
+- Escolhida uma região, a lista de sub-regiões fica só com as dessa região e os
+  cartões continuam agrupados por sub-região.
+- Mudar para uma região a que a sub-região escolhida não pertence **larga a
+  sub-região**; uma região que a contém mantém-na.
+- As ocorrências sem sub-região só aparecem com «Todas as regiões».
+- **Os contadores do topo passam a seguir o filtro** (região e sub-região):
+  ocorrências activas, meios, operacionais, em operação, em descanso,
+  desmobilizados, e as linhas SF, FSBF e EGFR. Antes contavam sempre o país
+  inteiro, mesmo com uma sub-região escolhida.
+- Só no painel de ocorrências activas. Arquivo, Equipas e Gestão SF/ICNF
+  mantêm só o filtro de sub-região.
+
+### De passagem
+
+- **`ofligacao_ccon` sem sub-região fixa:** via a lista de sub-regiões mas ela
+  vinha vazia e não filtrava — o painel testava só `ofligacao`. Passa a haver
+  uma única regra (`filtraPorRegiao()`) para mostrar os filtros e para os
+  aplicar, e o CCON passa a ver as ocorrências agrupadas por sub-região, como
+  o oficial de ligação nacional.
+- A lista de sub-regiões ordena pelo português: «Área Metropolitana do Porto»
+  deixa de aparecer no fim.
+- «1 ativas» passa a «1 ativa».
+
+### Como validar
+
+1. Entrar como **visualizador**: a lista «Todas as regiões» aparece antes da de
+   sub-regiões.
+2. Escolher uma região: só ficam as ocorrências dela, a lista de sub-regiões
+   encolhe, e os contadores do topo mudam com o número de ocorrências.
+3. Escolher uma sub-região e depois outra região: a sub-região volta a «Todas».
+4. Entrar como **oficial de ligação com sub-região fixa**: nenhuma das duas
+   listas aparece.
+
+Testado no browser com o HTML deste commit e ocorrências de exemplo (os
+perfis acima, as transições de filtro e os contadores). Não foi possível
+levantar o servidor local contra a base do beta2: o proxy do Railway não
+resolve nesta rede.
+
+### Alterações
+
+- `Gestao_Meios_v17.html` — `NUTS2`/`NUTS2_DE`, lista `filter-regiao`,
+  `filtraPorRegiao()`, `ocorrenciasActivasFiltradas()`, `renderOcorrencias()`
+  e `updateStats()`.
+- **Base de dados:** nenhuma alteração. **Beta1:** chega com a promoção, sem
+  passos manuais.
 
 ## B1-05 — Fita do Tempo da ocorrência 20261170282 carregada de ficheiro
 

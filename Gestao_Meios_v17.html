@@ -758,6 +758,9 @@
         <div class="section-hdr">
           <div class="section-title">Ocorrências Ativas <span id="occ-count"></span></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select class="form-select" style="padding:6px 10px;font-size:12px;display:none;" onchange="filterRegiao(this.value)" id="filter-regiao" aria-label="Região (NUTS II)">
+              <option value="">Todas as regiões</option>
+            </select>
             <select class="form-select auth-admin" style="padding:6px 10px;font-size:12px;display:none;" onchange="filterSubregiao(this.value)" id="filter-subregiao">
               <option value="">Todas as sub-regiões</option>
             </select>
@@ -2394,6 +2397,21 @@ const SUBREGIOES = [
   'Região de Leiria','Tâmega e Sousa','Terras de Trás-os-Montes','Viseu Dão-Lafões'
 ];
 
+// As sub-regiões são as NUTS III de 2024; cada uma pertence a uma única NUTS II.
+// Só o Continente: a aplicação não tem sub-regiões nos Açores nem na Madeira.
+const NUTS2 = {
+  'Norte': ['Alto Minho','Cávado','Ave','Área Metropolitana do Porto','Alto Tâmega e Barroso',
+            'Tâmega e Sousa','Douro','Terras de Trás-os-Montes'],
+  'Centro': ['Região de Aveiro','Região de Coimbra','Região de Leiria','Viseu Dão-Lafões',
+             'Beira Baixa','Beiras e Serra da Estrela'],
+  'Oeste e Vale do Tejo': ['Oeste','Médio Tejo','Lezíria do Tejo'],
+  'Grande Lisboa': ['Grande Lisboa'],
+  'Península de Setúbal': ['Península de Setúbal'],
+  'Alentejo': ['Alentejo Litoral','Baixo Alentejo','Alto Alentejo','Alentejo Central'],
+  'Algarve': ['Algarve'],
+};
+const NUTS2_DE = Object.fromEntries(Object.entries(NUTS2).flatMap(([r,subs])=>subs.map(s=>[s,r])));
+
 // ── Cache local (preenchido via fetch do Supabase) ───────────────
 let db = { ocorrencias:[], teams:[], equipas:[], recursos:[], recursosAdicionais:[], operacionais:[], deleteRequests:[], olnServico:[], composicoes:[], postos:[] };
 
@@ -2487,10 +2505,12 @@ function applyRoleUI(){
     const navEl=document.querySelector(`.nav-item[data-page="${p}"]`);
     if(navEl) navEl.style.display = roles.includes(currentRole) ? 'none' : '';
   });
-  // Sub-região filter: visível para admin e para oficiais sem sub-região fixa
-  const showSrFilter = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || currentRole==='chefe_grupo_fsbf' || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
-  const srFilter = document.getElementById('filter-subregiao');
-  if(srFilter) srFilter.style.display = showSrFilter ? '' : 'none';
+  // Filtros de região e sub-região: para quem vê o país, não para quem tem sub-região fixa
+  const showSrFilter = filtraPorRegiao();
+  ['filter-regiao','filter-subregiao'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = showSrFilter ? '' : 'none';
+  });
   const sfStatsRow = document.getElementById('sf-stats-row');
   if(sfStatsRow) sfStatsRow.style.display = (currentRole==='gestor_sf'||currentRole==='gestor_icnf') ? '' : 'none';
   const fsbfStatsRow = document.getElementById('fsbf-stats-row');
@@ -2895,9 +2915,32 @@ function setView(v){
 // ══════════════════════════════════════════════════════════════════
 let occFilter='all';
 let occSubregiaoFilter='';
+let occRegiaoFilter='';
 
 function filterOcorrencias(val){ occFilter=val; renderOcorrencias(); }
 function filterSubregiao(val){ occSubregiaoFilter=val; renderOcorrencias(); }
+// Mudar de região larga a sub-região escolhida, se ela não for dessa região.
+function filterRegiao(val){
+  occRegiaoFilter=val;
+  if(val && occSubregiaoFilter && NUTS2_DE[occSubregiaoFilter]!==val) occSubregiaoFilter='';
+  renderOcorrencias();
+}
+
+// Quem vê o país inteiro e pode filtrar por região e sub-região. O oficial
+// de ligação com sub-região fixa só recebe as ocorrências dela.
+function filtraPorRegiao(){
+  return ['admin','visualizador','gestor_sf','gestor_fsbf','gestor_icnf','chefe_grupo_fsbf'].includes(currentRole)
+    || (['ofligacao','ofligacao_ccon'].includes(currentRole) && !currentSubregiao);
+}
+
+// As ocorrências activas que o painel mostra — e que os contadores do topo contam.
+function ocorrenciasActivasFiltradas(){
+  let list = db.ocorrencias.filter(o=>o.status==='active');
+  if(!filtraPorRegiao()) return list;
+  if(occRegiaoFilter) list = list.filter(o=>NUTS2_DE[o.subregiao]===occRegiaoFilter);
+  if(occSubregiaoFilter) list = list.filter(o=>o.subregiao===occSubregiaoFilter);
+  return list;
+}
 
 function postoCardHtml(p){
   const postoTeams = db.teams.filter(t=>t.postoComandoId===p.id && t.estado!=='desmobilizado');
@@ -3339,26 +3382,34 @@ function occCardHtml(o){
 function renderOcorrencias(){
   updateStats();
   // Main page always shows only ACTIVE ocorrências
-  let list = db.ocorrencias.filter(o=>o.status==='active');
+  const list = ocorrenciasActivasFiltradas();
 
   const grid=document.getElementById('occ-grid');
-  const isAdmin = currentRole==='admin';
   // OfLigacao "nacional" (sem sub-região fixa) vê e organiza tal como o admin
-  const groupBySubregiao = isAdmin || currentRole==='visualizador' || currentRole==='gestor_sf' || currentRole==='gestor_fsbf' || currentRole==='gestor_icnf' || currentRole==='chefe_grupo_fsbf' || (currentRole==='ofligacao' && !currentSubregiao);
+  const groupBySubregiao = filtraPorRegiao();
 
-  // Admin / OfLigacao nacional: populate sub-região filter and apply
+  // Listas de região e sub-região, só com o que tem ocorrências activas.
+  // A sub-região limita-se à região escolhida.
   if(groupBySubregiao){
+    const activas = db.ocorrencias.filter(o=>o.status==='active');
+    const regiaoSel = document.getElementById('filter-regiao');
+    if(regiaoSel){
+      const usadas = new Set(activas.map(o=>NUTS2_DE[o.subregiao]).filter(Boolean));
+      if(occRegiaoFilter) usadas.add(occRegiaoFilter);
+      regiaoSel.innerHTML = '<option value="">Todas as regiões</option>' +
+        Object.keys(NUTS2).filter(r=>usadas.has(r))
+          .map(r=>`<option value="${esc(r)}"${r===occRegiaoFilter?' selected':''}>${esc(r)}</option>`).join('');
+    }
     const subregiaoSel = document.getElementById('filter-subregiao');
     if(subregiaoSel){
-      const current = subregiaoSel.value;
-      const usedSubs = [...new Set(db.ocorrencias.filter(o=>o.status==='active').map(o=>o.subregiao).filter(Boolean))].sort();
+      const usedSubs = [...new Set(activas.map(o=>o.subregiao).filter(Boolean))]
+        .filter(s=>!occRegiaoFilter || NUTS2_DE[s]===occRegiaoFilter).sort((a,b)=>a.localeCompare(b,'pt'));
       subregiaoSel.innerHTML = '<option value="">Todas as sub-regiões</option>' +
-        usedSubs.map(s=>`<option value="${esc(s)}"${s===current?' selected':''}>${esc(s)}</option>`).join('');
+        usedSubs.map(s=>`<option value="${esc(s)}"${s===occSubregiaoFilter?' selected':''}>${esc(s)}</option>`).join('');
     }
-    if(occSubregiaoFilter) list=list.filter(o=>o.subregiao===occSubregiaoFilter);
   }
 
-  document.getElementById('occ-count').textContent=`${list.length} ativas`;
+  document.getElementById('occ-count').textContent=`${list.length} ativa${list.length===1?'':'s'}`;
 
   if(!list.length){
     grid.innerHTML='<div class="empty"><span class="empty-icon">🔥</span><div class="empty-text">Sem ocorrências ativas.</div></div>';
@@ -3403,7 +3454,8 @@ function renderOcorrencias(){
 }
 
 function updateStats(){
-  const activeOccIds=new Set(db.ocorrencias.filter(o=>o.status==='active').map(o=>o.id));
+  // Contam o que o painel mostra: seguem os filtros de região e sub-região.
+  const activeOccIds=new Set(ocorrenciasActivasFiltradas().map(o=>o.id));
   document.getElementById('s-active').textContent=activeOccIds.size;
   const activeTeams=db.teams.filter(t=>activeOccIds.has(t.ocorrencia_id)&&t.estado!=='desmobilizado');
   document.getElementById('s-teams').textContent=somaMeios(activeTeams);
