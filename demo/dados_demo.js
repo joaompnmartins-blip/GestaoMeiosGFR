@@ -515,7 +515,8 @@ async function escreverCatalogos(c) {
   await c.query(`DELETE FROM demo.operacoes o WHERE NOT (codigo = ANY($1))
                    AND NOT EXISTS (SELECT 1 FROM demo.empreitada_operacoes x WHERE x.operacao = o.codigo)
                    AND NOT EXISTS (SELECT 1 FROM demo.empreitada_meios x WHERE x.operacao = o.codigo)
-                   AND NOT EXISTS (SELECT 1 FROM demo.horas_operacionais x WHERE x.operacao = o.codigo)`, [CODIGOS]);
+                   AND NOT EXISTS (SELECT 1 FROM demo.horas_operacionais x WHERE x.operacao = o.codigo)
+                   AND NOT EXISTS (SELECT 1 FROM demo.execucao_registos x WHERE x.operacao = o.codigo)`, [CODIGOS]);
 
   await c.query(`INSERT INTO demo.bases (nome, companhia, lat, lon)
                  SELECT * FROM json_to_recordset($1) AS x(nome text, companhia text, lat float8, lon float8)
@@ -573,7 +574,8 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
-    await c.query(`TRUNCATE demo.horas_operacionais, demo.empreitada_meios, demo.empreitada_operacoes,
+    await c.query(`TRUNCATE demo.execucao_registos, demo.empreitada_parcelas,
+                            demo.horas_operacionais, demo.empreitada_meios, demo.empreitada_operacoes,
                             demo.empreitadas, ext.pedidos_fsbf, ext.fsbf_frota_utilizacao,
                             ext.fsbf_maquinas_utilizacao RESTART IDENTITY`);
     await escreverCatalogos(c);

@@ -98,6 +98,29 @@
     #page-empreitadas .emp-legenda i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
     #page-empreitadas .emp-desenho{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:600;background:var(--surface);
       border:1px solid var(--accent);padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap;max-width:94%}
+    #page-empreitadas .emp-ter-barra{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:600;background:var(--surface);
+      border:1px solid var(--accent3);padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:12px;flex-wrap:wrap;
+      max-width:96%;justify-content:center}
+    #page-empreitadas .emp-ter-barra .form-select,#page-empreitadas .emp-ter-barra .form-input{font-size:12px;padding:4px 6px}
+    #page-empreitadas .emp-ter-barra .info{color:var(--muted);font-variant-numeric:tabular-nums}
+    #page-empreitadas .emp-ter-barra .info b{color:var(--text)}
+    .emp-seg{display:inline-flex;border:1px solid var(--border)}
+    .emp-seg button{background:none;border:none;color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;
+      text-transform:uppercase;padding:5px 9px;cursor:pointer}
+    .emp-seg button+button{border-left:1px solid var(--border)}
+    .emp-seg button.on{background:color-mix(in srgb,var(--accent3) 18%,transparent);color:var(--text)}
+    .emp-seg button:focus-visible{outline:2px solid var(--accent3);outline-offset:-2px}
+    .emp-ter-op{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:11px;margin-top:8px}
+    .emp-ter-op .c{font-family:'IBM Plex Mono',monospace;font-weight:600}
+    .emp-ter-op .v{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+    .emp-ter-op .d{grid-column:1/-1;color:var(--muted);font-size:10px;margin-top:-2px}
+    .emp-ter-reg{display:grid;grid-template-columns:44px 1fr auto;gap:2px 10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+    .emp-ter-reg .dt{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+    .emp-ter-reg .q{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+    .emp-ter-reg .m{grid-column:2/-1;color:var(--muted);font-size:11px}
+    .emp-ter-reg.anulado{opacity:.5}
+    .emp-ter-reg.anulado .q{text-decoration:line-through}
+    .emp-ter-reg .decl{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,var(--border))}
     #page-empreitadas .emp-lado{display:flex;flex-direction:column;gap:12px;min-width:0}
     #page-empreitadas .emp-lista{border:1px solid var(--border);background:var(--surface);max-height:calc(100vh - 230px);overflow-y:auto}
     #page-empreitadas .emp-item{display:grid;grid-template-columns:12px 1fr auto;gap:10px;align-items:center;padding:9px 12px;
@@ -262,6 +285,7 @@
           <div id="emp-mapa"></div>
           <div class="emp-legenda" id="emp-legenda"></div>
           <div class="emp-desenho" id="emp-desenho" style="display:none"></div>
+          <div class="emp-ter-barra" id="emp-ter-barra" style="display:none"></div>
         </div>
         <div class="emp-lado">
           <div class="emp-det" id="emp-det"></div>
@@ -305,8 +329,11 @@
     aplicarMosaico();
     // O tema muda com o botão da barra de topo: acompanha-se a classe no <html>.
     new MutationObserver(aplicarMosaico).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    st.mapa.on('click', e => { if (st.desenho) juntarVertice(e.latlng); });
-    st.mapa.on('dblclick', e => { if (st.desenho) { L.DomEvent.stop(e); concluirDesenho(); } });
+    st.mapa.on('click', e => { if (st.desenho) juntarVertice(e.latlng); else if (st.ter) terrenoClique(e.latlng); });
+    st.mapa.on('dblclick', e => {
+      if (st.desenho) { L.DomEvent.stop(e); concluirDesenho(); }
+      else if (st.ter) { L.DomEvent.stop(e); terrenoDuploClique(); }
+    });
     for (const b of st.cat.bases)
       L.circleMarker([b.lat, b.lon], { radius: 5, color: tok('--text'), weight: 1.5, fillColor: '#fff', fillOpacity: .9 })
         .bindTooltip(`Base FSBF · ${esc(b.nome)}`).addTo(st.mapa);
@@ -426,7 +453,7 @@
       };
       const camada = L.geoJSON(geomMapa(x), { style: () => estilo })
         .bindTooltip(`<b>${esc(ehP ? nomePedido(x) : x.nome)}</b><br>${esc(ehP ? x.codpedido : x.codigo)} · ${medida(x)}`, { sticky: true })
-        .on('click', ev => { if (st.desenho) return; L.DomEvent.stop(ev); seleccionar(ehP ? 'pedido' : 'empreitada', x.id, false); });
+        .on('click', ev => { if (st.desenho || st.ter) return; L.DomEvent.stop(ev); seleccionar(ehP ? 'pedido' : 'empreitada', x.id, false); });
       camada.addTo(st.camadas);
       st.porId.set(x.id, camada);
     }
@@ -440,7 +467,7 @@
   }
 
   function seleccionar(tipo, id, centrar) {
-    if (st.desenho) return;
+    if (st.desenho || st.ter) return;
     st.sel = { tipo, id };
     st.meiosSel = null;
     desenharTudo();
@@ -466,6 +493,7 @@
   // ── Painel de detalhe ──────────────────────────────────────────
   function desenharDetalhe() {
     const el = document.getElementById('emp-det');
+    if (st.ter) { painelTerreno(el); return; }
     if (!st.sel) {
       el.innerHTML = st.aba === 'pedidos'
         ? `<div class="emp-eyebrow">Pedidos à FSBF · serviço ESRI (simulado)</div>
@@ -857,7 +885,10 @@
           ${linha('CUSTO', { real: t.real, previsto_ate: t.previsto_ate, previsto: t.previsto }, eur)}
           ${linha('H. MÁQUINA', t.horas_maquina, horas)}
           ${linha('H. PESSOAS', t.horas_pessoas, horas)}
+          ${linha(data.area.unidade === 'km' ? 'KM FEITOS' : 'ÁREA FEITA', data.area, x => `${fmt(x, data.area.unidade === 'km' ? 2 : 1)} ${data.area.unidade}`)}
         </div>
+        ${data.area.declarado ? `<div class="emp-nota" style="margin-top:6px">Na área feita, ${fmt(data.area.declarado, 2)} ${data.area.unidade}
+          vêm de registos declarados, sem geometria.</div>` : ''}
         <div class="emp-nota" style="margin-top:8px">Real até ${dm(data.corte)} contra o previsto até esse dia (o traço).</div>
         ${t.anomalias ? `<div class="emp-alerta">⚠ ${t.anomalias} registo${t.anomalias > 1 ? 's' : ''} com anomalia, fora das contas.</div>` : ''}
         ${t.dias_sem_registo ? `<div class="emp-alerta" style="color:var(--muted)">${t.dias_sem_registo} dia${t.dias_sem_registo > 1 ? 's' : ''}-meio afectos sem registo.</div>` : ''}`
@@ -865,7 +896,9 @@
       <div class="emp-acoes">
         <button class="btn btn-primary btn-sm" id="emp-ex-ver" ${comecou ? '' : 'disabled'}>Ver execução</button>
         <button class="btn btn-ghost btn-sm" id="emp-ex-fh" ${data.inicio && data.inicio <= data.hoje ? '' : 'disabled'}>Folha de horas</button>
+        <button class="btn btn-ghost btn-sm" id="emp-ex-ter" title="Registar no mapa o que ficou feito">Execução no terreno</button>
       </div>`;
+    sec.querySelector('#emp-ex-ter').onclick = () => abrirTerreno(e);
     sec.querySelector('#emp-ex-ver').onclick = () => abrirExecucao(e);
     sec.querySelector('#emp-ex-fh').onclick = () => abrirFolha(e);
   }
@@ -1036,6 +1069,274 @@
       await carregar();
       desenharTudo();
     };
+  }
+
+  // ── Execução no terreno: registar o que ficou feito ────────────
+  //
+  // Por cima do mapa, as parcelas da empreitada pintadas pelo que já está
+  // feito na operação escolhida. Regista-se tocando nas parcelas, desenhando
+  // (um polígono, ou o início e o fim de um troço do eixo) ou declarando
+  // uma quantidade sem geometria. As contas são do servidor.
+  const ORIGENS = { parcelas: 'Parcelas', desenho: 'Desenhado', declarado: 'Declarado' };
+  const hojeISO = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Lisbon' });
+
+  async function abrirTerreno(e) {
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/terreno`);
+    if (error) return toast(error.message, 'err');
+    cancelarDesenho();
+    const op = data.operacoes.find(o => o.pct < 100)?.operacao || data.operacoes[0]?.operacao;
+    st.ter = { e, d: data, op, modo: 'parcelas', sel: new Set(), pts: [], partes: [], cortes: [],
+               dia: hojeISO(), layer: L.layerGroup().addTo(st.mapa) };
+    st.mapa.doubleClickZoom.disable();
+    desenharTerreno();
+    desenharDetalhe();
+    const c = st.porId.get(e.id);
+    if (c) st.mapa.fitBounds(c.getBounds(), { padding: [50, 50], maxZoom: 17 });
+  }
+
+  async function recarregarTerreno() {
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${st.ter.e.id}/terreno`);
+    if (error) return toast(error.message, 'err');
+    st.ter.d = data;
+    st.ter.sel.clear(); st.ter.pts = [];
+    desenharTerreno();
+    desenharDetalhe();
+  }
+
+  async function fecharTerreno() {
+    if (!st.ter) return;
+    st.mapa.removeLayer(st.ter.layer);
+    st.mapa.doubleClickZoom.enable();
+    document.getElementById('emp-ter-barra').style.display = 'none';
+    document.getElementById('emp-mapa').style.cursor = '';
+    const id = st.ter.e.id;
+    st.ter = null;
+    await carregar();
+    desenharTudo();
+    seleccionar('empreitada', id, false);
+  }
+
+  const linear = () => st.ter.d.geometria !== 'poligono';
+  const unTer = () => st.ter.d.unidade;
+  const fmtQ = q => `${fmt(q, 2)} ${unTer()}`;
+  const corOp = () => MODOS[st.ter.d.operacoes.find(o => o.operacao === st.ter.op)?.modo]?.cor || tok('--accent3');
+  // Uma parcela ou registo do eixo: na faixa, desenha-se com a largura.
+  const geomTer = g => (st.ter.d.geometria === 'faixa' && g.type === 'LineString'
+    ? faixaPoligono(g.coordinates, st.ter.d.largura_m) : g);
+
+  function desenharTerreno() {
+    const t = st.ter, d = t.d, cor = corOp(), acc = tok('--accent3'), txt = tok('--text');
+    t.layer.clearLayers();
+    const divisao = t.modo === 'divisao';
+    const clicavel = t.modo === 'parcelas';
+    document.getElementById('emp-mapa').style.cursor = ['desenho', 'divisao'].includes(t.modo) ? 'crosshair' : '';
+    // As parcelas, pelo que já está feito na operação escolhida.
+    for (const p of divisao && t.previa ? [] : d.parcelas) {
+      const f = p.feito[t.op] || 0, sel = t.sel.has(p.id);
+      const estilo = {
+        color: sel ? acc : txt, weight: sel ? 3 : 1, opacity: sel ? 1 : .55,
+        fillColor: sel ? acc : cor, fillOpacity: sel ? .45 : f >= .95 ? .6 : f > .05 ? .3 : .04,
+      };
+      L.geoJSON(geomTer(p.geom), { style: () => estilo, interactive: clicavel })
+        .bindTooltip(`Parcela ${p.n} · ${fmtQ(p.quantidade)} · ${fmt(f * 100, 0)} % feito em ${t.op}`, { sticky: true })
+        .on('click', ev => { if (!clicavel) return; L.DomEvent.stop(ev); t.sel.has(p.id) ? t.sel.delete(p.id) : t.sel.add(p.id); desenharTerreno(); })
+        .addTo(t.layer);
+    }
+    // O executado da operação (união dos registos): mostra também o que foi desenhado só em parte.
+    const ex = d.operacoes.find(o => o.operacao === t.op)?.geom;
+    if (ex && !divisao) {
+      const g = ex.type === 'MultiLineString' && d.geometria === 'faixa'
+        ? ex.coordinates.map(c => faixaPoligono(c, d.largura_m)) : ex;
+      L.geoJSON(g, { interactive: false, style: () => ({ color: cor, weight: d.geometria === 'linha' ? 6 : 1.5,
+        fillColor: cor, fillOpacity: .35, opacity: .9 }) }).addTo(t.layer);
+    }
+    // Desenho em curso: vértices do polígono, ou pontos no eixo.
+    const lls = t.pts.map(([lon, lat]) => [lat, lon]);
+    if (lls.length) {
+      if (!linear() && lls.length >= 3) L.polygon(lls, { color: acc, weight: 2, fillOpacity: .25, interactive: false }).addTo(t.layer);
+      else if (!linear()) L.polyline(lls, { color: acc, weight: 2, interactive: false }).addTo(t.layer);
+      lls.forEach(ll => L.circleMarker(ll, { radius: 5, color: acc, fillColor: '#fff', fillOpacity: 1, weight: 2, interactive: false }).addTo(t.layer));
+    }
+    // Divisão à mão: as partes já fechadas, ou os cortes no eixo.
+    if (divisao) {
+      t.partes.forEach((g, i) => L.geoJSON(g, { interactive: false, style: () => ({ color: acc, weight: 2, fillOpacity: .15 }) })
+        .bindTooltip(`Parte ${i + 1}`, { permanent: false }).addTo(t.layer));
+      t.cortes.forEach(([lon, lat]) => L.circleMarker([lat, lon], { radius: 6, color: acc, fillColor: acc, fillOpacity: 1, interactive: false }).addTo(t.layer));
+      if (t.previa) L.geoJSON(t.previa, { interactive: false, style: () => ({ color: txt, weight: 1, fillOpacity: .05, dashArray: '3 4' }) }).addTo(t.layer);
+    }
+    barraTerreno();
+  }
+
+  function barraTerreno() {
+    const t = st.ter, d = t.d, el = document.getElementById('emp-ter-barra');
+    el.style.display = 'flex';
+    if (t.modo === 'divisao') { barraDivisao(el); return; }
+    const seg = Object.entries(ORIGENS).map(([k, n]) => `<button data-m="${k}" class="${t.modo === k ? 'on' : ''}">${n}</button>`).join('');
+    let info = '', extra = '';
+    if (t.modo === 'parcelas') {
+      const ps = d.parcelas.filter(p => t.sel.has(p.id));
+      info = ps.length ? `<b>${ps.length}</b> parcela${ps.length > 1 ? 's' : ''} · <b>${fmtQ(ps.reduce((s, p) => s + p.quantidade, 0))}</b>`
+                       : 'Toque nas parcelas feitas nesse dia.';
+    } else if (t.modo === 'desenho') {
+      info = linear() ? `Marque no eixo o início e o fim do troço feito (${t.pts.length}/2).`
+        : t.pts.length < 3 ? `Clique no mapa os vértices do que ficou feito (${t.pts.length}/3).`
+        : `<b>${t.pts.length}</b> vértices · duplo clique ou Guardar`;
+    } else {
+      extra = `<input class="form-input" id="emp-t-q" type="number" min="0.01" step="0.01" placeholder="${unTer()}" style="width:80px" value="${t.qDecl ?? ''}"/>
+        <input class="form-input" id="emp-t-obs" placeholder="Onde foi feito (obrigatório)" style="width:200px" value="${esc(t.obsDecl || '')}"/>`;
+      info = 'Sem geometria: fica assinalado.';
+    }
+    el.innerHTML = `
+      <select class="form-select" id="emp-t-op">${d.operacoes.map(o => `<option value="${o.operacao}"${o.operacao === t.op ? ' selected' : ''}>${o.operacao}</option>`).join('')}</select>
+      <input class="form-input" type="date" id="emp-t-dia" value="${t.dia}" max="${hojeISO()}" style="width:132px"/>
+      <span class="emp-seg">${seg}</span>
+      ${extra}
+      <span class="info">${info}</span>
+      ${t.modo === 'desenho' ? `<button class="btn btn-ghost btn-xs" id="emp-t-desf"${t.pts.length ? '' : ' disabled'}>Desfazer</button>` : ''}
+      <button class="btn btn-primary btn-xs" id="emp-t-ok">Guardar</button>
+      <button class="btn btn-ghost btn-xs" id="emp-t-div" title="Grelha automática ou divisão à mão">Divisão…</button>
+      <button class="btn btn-ghost btn-xs" id="emp-t-sair">Sair</button>`;
+    el.querySelector('#emp-t-op').onchange = ev => { t.op = ev.target.value; desenharTerreno(); desenharDetalhe(); };
+    el.querySelector('#emp-t-dia').onchange = ev => { t.dia = ev.target.value; };
+    el.querySelectorAll('.emp-seg button').forEach(b => b.onclick = () => { t.modo = b.dataset.m; t.sel.clear(); t.pts = []; desenharTerreno(); });
+    const q = el.querySelector('#emp-t-q'), o = el.querySelector('#emp-t-obs');
+    if (q) q.oninput = () => { t.qDecl = q.value; };
+    if (o) o.oninput = () => { t.obsDecl = o.value; };
+    el.querySelector('#emp-t-desf')?.addEventListener('click', () => { t.pts.pop(); desenharTerreno(); });
+    el.querySelector('#emp-t-ok').onclick = guardarRegisto;
+    el.querySelector('#emp-t-div').onclick = () => { t.modo = 'divisao'; t.sub = d.divisao.modo === 'manual' ? 'manual' : 'grelha';
+      t.pts = []; t.partes = []; t.cortes = []; t.previa = null; desenharTerreno(); };
+    el.querySelector('#emp-t-sair').onclick = fecharTerreno;
+  }
+
+  function terrenoClique(ll) {
+    const t = st.ter, p = [+ll.lng.toFixed(6), +ll.lat.toFixed(6)];
+    if (t.modo === 'desenho') {
+      if (linear() && t.pts.length >= 2) t.pts = [];
+      t.pts.push(p);
+    } else if (t.modo === 'divisao' && t.sub === 'manual') {
+      if (linear()) t.cortes.push(p); else t.pts.push(p);
+    } else return;
+    desenharTerreno();
+  }
+  function terrenoDuploClique() {
+    const t = st.ter;
+    if (t.modo === 'desenho' && !linear() && t.pts.length >= 3) guardarRegisto();
+    else if (t.modo === 'divisao' && t.sub === 'manual' && !linear()) fecharParte();
+  }
+
+  async function guardarRegisto() {
+    const t = st.ter;
+    const b = { operacao: t.op, data: t.dia, origem: t.modo };
+    if (t.modo === 'parcelas') {
+      if (!t.sel.size) return toast('Toque nas parcelas que ficaram feitas.', 'err');
+      b.parcelas = [...t.sel];
+    } else if (t.modo === 'desenho') {
+      if (linear()) { if (t.pts.length !== 2) return toast('Marque o início e o fim do troço.', 'err'); b.pontos = t.pts; }
+      else { if (t.pts.length < 3) return toast('O polígono precisa de três vértices.', 'err'); b.geom = { type: 'Polygon', coordinates: [[...t.pts, t.pts[0]]] }; }
+    } else {
+      b.quantidade = Number(t.qDecl); b.observacoes = t.obsDecl;
+    }
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${t.e.id}/registos`, { method: 'POST', body: JSON.stringify(b) });
+    if (error) return toast(error.message, 'err');
+    toast(`${t.op} em ${dm(t.dia)}: +${fmtQ(data.novo)} novos (total ${fmtQ(data.total)}, ${fmt(data.pct, 0)} %).` +
+          (data.estado === 'em_execucao' && t.e.estado === 'planeada' ? ' A empreitada passou a em execução.' : ''));
+    if (data.estado !== t.e.estado) t.e = { ...t.e, estado: data.estado };
+    t.qDecl = ''; t.obsDecl = '';
+    await recarregarTerreno();
+  }
+
+  // ── Divisão da empreitada em parcelas
+  function barraDivisao(el) {
+    const t = st.ter, d = t.d, lin = linear();
+    const unid = lin ? 'm' : 'ha';
+    const tam = d.divisao.modo === 'grelha' ? d.divisao.tamanho : d.padrao;
+    el.innerHTML = `
+      <span class="emp-seg"><button data-s="grelha" class="${t.sub === 'grelha' ? 'on' : ''}">Grelha</button><button data-s="manual" class="${t.sub === 'manual' ? 'on' : ''}">À mão</button></span>
+      ${t.sub === 'grelha'
+        ? `<span class="info">${lin ? 'Troços de' : 'Células de'}</span>
+           <input class="form-input" id="emp-t-tam" type="number" min="${d.limites[0]}" max="${d.limites[1]}" step="${lin ? 10 : 0.1}" value="${tam}" style="width:72px"/>
+           <span class="info">${unid}</span>
+           <button class="btn btn-primary btn-xs" id="emp-t-gerar">Gerar grelha</button>`
+        : lin
+          ? `<span class="info">Clique no eixo onde quer cortar: <b>${t.cortes.length}</b> corte${t.cortes.length === 1 ? '' : 's'}.</span>
+             <button class="btn btn-ghost btn-xs" id="emp-t-desf"${t.cortes.length ? '' : ' disabled'}>Desfazer</button>
+             <button class="btn btn-primary btn-xs" id="emp-t-gman"${t.cortes.length ? '' : ' disabled'}>Guardar divisão</button>`
+          : `<span class="info">Parte ${t.partes.length + 1}: ${t.pts.length} vértices · duplo clique fecha a parte.
+               ${t.partes.length ? `<b>${t.partes.length}</b> fechada${t.partes.length > 1 ? 's' : ''}; o resto fica numa parcela.` : ''}</span>
+             <button class="btn btn-ghost btn-xs" id="emp-t-desf"${t.pts.length || t.partes.length ? '' : ' disabled'}>Desfazer</button>
+             <button class="btn btn-ghost btn-xs" id="emp-t-fparte"${t.pts.length >= 3 ? '' : ' disabled'}>Fechar parte</button>
+             <button class="btn btn-primary btn-xs" id="emp-t-gman"${t.partes.length ? '' : ' disabled'}>Guardar divisão</button>`}
+      <button class="btn btn-ghost btn-xs" id="emp-t-volta">Voltar</button>`;
+    el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { t.sub = b.dataset.s; t.pts = []; t.partes = []; t.cortes = []; desenharTerreno(); });
+    el.querySelector('#emp-t-volta').onclick = () => { t.modo = 'parcelas'; t.pts = []; t.partes = []; t.cortes = []; desenharTerreno(); };
+    el.querySelector('#emp-t-gerar')?.addEventListener('click', () =>
+      guardarDivisao({ modo: 'grelha', tamanho: Number(el.querySelector('#emp-t-tam').value) }));
+    el.querySelector('#emp-t-desf')?.addEventListener('click', () => {
+      if (lin) t.cortes.pop(); else if (t.pts.length) t.pts.pop(); else t.partes.pop();
+      desenharTerreno();
+    });
+    el.querySelector('#emp-t-fparte')?.addEventListener('click', fecharParte);
+    el.querySelector('#emp-t-gman')?.addEventListener('click', () =>
+      guardarDivisao(lin ? { modo: 'manual', cortes: t.cortes } : { modo: 'manual', partes: t.partes }));
+  }
+  function fecharParte() {
+    const t = st.ter;
+    if (t.pts.length < 3) return;
+    t.partes.push({ type: 'Polygon', coordinates: [[...t.pts, t.pts[0]]] });
+    t.pts = [];
+    desenharTerreno();
+  }
+  async function guardarDivisao(b) {
+    const t = st.ter;
+    if (!confirm('Substituir a divisão actual?\n\nOs registos já feitos não mudam: guardam a própria geometria.')) return;
+    const { data, error } = await apiFetch(`/api/demo/empreitadas/${t.e.id}/divisao`, { method: 'PUT', body: JSON.stringify(b) });
+    if (error) return toast(error.message, 'err');
+    toast(`Divisão guardada: ${data.parcelas.length} parcelas.`);
+    t.d = data; t.modo = 'parcelas'; t.pts = []; t.partes = []; t.cortes = []; t.sel.clear();
+    desenharTerreno();
+    desenharDetalhe();
+  }
+
+  // ── Painel lateral: progresso por operação e registos
+  function painelTerreno(el) {
+    const t = st.ter, d = t.d;
+    const div = d.divisao.modo === 'grelha'
+      ? `grelha de ${d.geometria === 'poligono' ? `${fmt(d.divisao.tamanho)} ha` : `${fmt(d.divisao.tamanho, 0)} m`}`
+      : 'divisão à mão';
+    const ops = d.operacoes.map(o => `
+      <span class="c" style="color:${MODOS[o.modo]?.cor || 'inherit'}">${o.operacao}</span>
+      ${barra(o.total, o.planeado, o.planeado)}
+      <span class="v">${fmt(o.pct, 0)} %</span>
+      <span class="d">${fmtQ(o.total)} de ${fmtQ(o.planeado)}${o.declarado ? ` · dos quais ${fmtQ(o.declarado)} declarados` : ''}</span>`).join('');
+    const regs = d.registos.map(r => `
+      <div class="emp-ter-reg${r.anulado ? ' anulado' : ''}">
+        <span class="dt">${dm(r.data)}</span>
+        <span><b>${r.operacao}</b> <span class="emp-tag${r.origem === 'declarado' ? ' decl' : ''}">${r.origem === 'declarado' ? 'DECLARADO · SEM GEOMETRIA' : ORIGENS[r.origem].toUpperCase()}</span></span>
+        <span class="q">${fmtQ(r.quantidade)}</span>
+        <span class="m">${esc(r.autor || 'Cenário da demonstração')} · ${dm(r.criado.slice(0, 10))} ${r.criado.slice(11)}${r.observacoes ? ` · ${esc(r.observacoes)}` : ''}
+          ${r.anulado ? ` · anulado por ${esc(r.anulado_por || '—')}` : r.pode_anular ? ` · <a href="#" data-anular="${r.id}">anular</a>` : ''}</span>
+      </div>`).join('');
+    el.innerHTML = `
+      <div class="emp-eyebrow">${esc(d.codigo)} · execução no terreno · ${d.parcelas.length} parcelas, ${div}</div>
+      <h3>${esc(t.e.nome)}</h3>
+      <div class="emp-ter-op">${ops}</div>
+      <div class="emp-nota">O feito é a união dos registos, recortada pela área: o que se marca duas vezes conta uma.
+        ${d.geometria === 'faixa' ? `Na faixa, mede-se ao longo do eixo × ${fmt(d.largura_m, 0)} m.` : ''}</div>
+      <div class="emp-sec">
+        <div class="emp-sec-hdr"><span class="form-label">Registos</span><b>${d.registos.filter(r => !r.anulado).length}</b></div>
+        ${regs || '<div class="emp-vazio" style="padding:12px">Ainda nada registado.</div>'}
+      </div>
+      <div class="emp-acoes"><button class="btn btn-ghost btn-sm" id="emp-t-fechar">Sair da execução no terreno</button></div>`;
+    el.querySelector('#emp-t-fechar').onclick = fecharTerreno;
+    el.querySelectorAll('[data-anular]').forEach(a => a.onclick = async ev => {
+      ev.preventDefault();
+      if (!confirm('Anular este registo? Fica no histórico, riscado, e deixa de contar.')) return;
+      const { error } = await apiFetch(`/api/demo/empreitadas/${t.e.id}/registos/${a.dataset.anular}`, { method: 'DELETE' });
+      if (error) return toast(error.message, 'err');
+      toast('Registo anulado.');
+      await recarregarTerreno();
+    });
   }
 
   // ── Nova empreitada: desenhar no mapa ──────────────────────────

@@ -9,6 +9,7 @@ const { areaHa, comprimentoKm, distanciaKm, reporDadosDemo, DOMINIOS } = require
 const { CLASSES_LIGEIRAS, HORAS_DIA } = require('./recomendacao');
 const { erro, proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./planeamento');
 const execucao = require('./execucao');
+const terreno = require('./terreno');
 
 const ESTADOS = ['seleccionada', 'planeada', 'em_execucao', 'concluida', 'cancelada'];
 
@@ -418,7 +419,52 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
   // ── Execução ───────────────────────────────────────────────────
 
   app.get('/api/demo/empreitadas/:id/execucao', ...leitura, wrap(async (req, res) => {
-    res.json(await execucao.resumoExecucao(pool, req.params.id));
+    const ex = await execucao.resumoExecucao(pool, req.params.id);
+    res.json({ ...ex, area: await terreno.resumoArea(pool, req.params.id, ex) });
+  }));
+
+  // ── Execução no terreno ────────────────────────────────────────
+
+  // Numa transacção: a primeira leitura gera a grelha por omissão.
+  const emTransaccao = async fn => {
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      const r = await fn(c);
+      await c.query('COMMIT');
+      return r;
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      c.release();
+    }
+  };
+
+  app.get('/api/demo/empreitadas/:id/terreno', ...leitura, wrap(async (req, res) => {
+    res.json(await emTransaccao(c => terreno.lerTerreno(c, req.params.id, req.user)));
+  }));
+
+  // Muda a divisão: { modo: 'grelha', tamanho } ou { modo: 'manual', partes | cortes }.
+  // Os registos ficam como estão: guardam a própria geometria.
+  app.put('/api/demo/empreitadas/:id/divisao', ...leitura, wrap(async (req, res) => {
+    const b = req.body || {};
+    res.json(await emTransaccao(async c => {
+      const e = await terreno.lerEmpreitada(c, req.params.id);
+      if (b.modo === 'grelha') await terreno.gerarGrelha(c, e, b.tamanho);
+      else if (b.modo === 'manual') await terreno.divisaoManual(c, e, b);
+      else throw erro(400, 'Modo de divisão inválido.');
+      return terreno.lerTerreno(c, req.params.id, req.user);
+    }));
+  }));
+
+  app.post('/api/demo/empreitadas/:id/registos', ...leitura, wrap(async (req, res) => {
+    res.status(201).json(await emTransaccao(c => terreno.registar(c, req.params.id, req.body || {}, req.user)));
+  }));
+
+  app.delete('/api/demo/empreitadas/:id/registos/:rid', ...leitura, wrap(async (req, res) => {
+    await emTransaccao(c => terreno.anular(c, req.params.id, req.params.rid, req.user));
+    res.json({ ok: true });
   }));
 
   app.get('/api/demo/empreitadas/:id/horas', ...leitura, wrap(async (req, res) => {

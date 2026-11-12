@@ -24,6 +24,7 @@
 const { proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./planeamento');
 const { diasUteis, CLASSES_LIGEIRAS } = require('./recomendacao');
 const { diaLisboa, somarDias, diasUteisEntre } = require('./execucao');
+const { simularAvancos } = require('./terreno');
 
 const doisDig = n => String(n).padStart(2, '0');
 // Arredonda primeiro: 959,6 min são 16:00, não 15:60.
@@ -107,7 +108,12 @@ async function criarCenarios(c, r, referencia = new Date()) {
   const ids = { maquinas: 0, frota: 0 };
   for (const t of Object.keys(ids))
     ids[t] = (await c.query(`SELECT COALESCE(max(id), 0) n FROM ext.fsbf_${t}_utilizacao`)).rows[0].n;
-  for (const e of feitas.filter(x => x.cen.ritmo)) await historia(c, r, e, hoje, ids);
+  for (const e of feitas.filter(x => x.cen.ritmo)) {
+    await historia(c, r, e, hoje, ids);
+    const concluida = e.cen.estado === 'concluida';
+    await simularAvancos(c, e.id, { inicio: e.inicio, fim: e.fim, concluida, principal: e.cen.op,
+                                    ate: concluida ? e.fim : diaUtilAntes(hoje, 3) });
+  }
   return feitas.map(e => `${e.codigo} (${e.cen.estado})`);
 }
 

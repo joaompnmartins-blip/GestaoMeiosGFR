@@ -289,3 +289,46 @@ CREATE TABLE IF NOT EXISTS demo.horas_operacionais (
 -- Pausa de almoço, descontada às horas do dia.
 ALTER TABLE demo.horas_operacionais ADD COLUMN IF NOT EXISTS pausa_min SMALLINT NOT NULL DEFAULT 60;
 CREATE INDEX IF NOT EXISTS idx_horas_op_empreitada ON demo.horas_operacionais(empreitada_id, data);
+
+-- ── Execução no terreno: o que ficou feito, com geometria ─────────
+
+-- Como a empreitada está dividida para registar o executado: grelha
+-- automática ({"modo":"grelha","tamanho":0.5} — ha nos polígonos, m nas
+-- faixas e linhas) ou à mão ({"modo":"manual"}).
+ALTER TABLE demo.empreitadas ADD COLUMN IF NOT EXISTS divisao JSONB;
+
+-- As parcelas da divisão. Nos polígonos, um pedaço da área; nas faixas e
+-- nas linhas, um troço do eixo (ini_km–fim_km). Mudar a divisão apaga-as e
+-- refá-las; os registos não dependem delas (guardam a própria geometria).
+CREATE TABLE IF NOT EXISTS demo.empreitada_parcelas (
+    id             SERIAL PRIMARY KEY,
+    empreitada_id  UUID NOT NULL REFERENCES demo.empreitadas(id) ON DELETE CASCADE,
+    n              SMALLINT NOT NULL,
+    geom           JSONB NOT NULL,                  -- Polygon, ou LineString do troço
+    ini_km         NUMERIC(10,4),
+    fim_km         NUMERIC(10,4),
+    quantidade     NUMERIC(10,4) NOT NULL,          -- ha, ou km na rede viária
+    UNIQUE (empreitada_id, n)
+);
+
+-- Um registo do executado: uma operação, um dia, uma geometria. Feito por
+-- parcelas, desenhado, ou declarado sem geometria (fica assinalado). O
+-- executado de uma operação é a união dos registos, recortada pela área da
+-- empreitada: o que se marca duas vezes conta uma. Nada se apaga: anula-se.
+CREATE TABLE IF NOT EXISTS demo.execucao_registos (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    empreitada_id  UUID NOT NULL REFERENCES demo.empreitadas(id) ON DELETE CASCADE,
+    operacao       TEXT NOT NULL REFERENCES demo.operacoes(codigo),
+    data           DATE NOT NULL,
+    origem         TEXT NOT NULL CHECK (origem IN ('parcelas','desenho','declarado')),
+    geom           JSONB,                           -- Polygon/MultiPolygon, ou MultiLineString do eixo
+    intervalos     JSONB,                           -- faixas e linhas: [[ini_km, fim_km], …]
+    quantidade     NUMERIC(10,4) NOT NULL CHECK (quantidade > 0),
+    observacoes    TEXT,
+    created_by     UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    created_at     TIMESTAMPTZ DEFAULT now(),
+    anulado_em     TIMESTAMPTZ,
+    anulado_por    UUID REFERENCES utilizadores(id) ON DELETE SET NULL,
+    CHECK ((origem = 'declarado') = (geom IS NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_exec_registos ON demo.execucao_registos(empreitada_id, operacao);

@@ -1,6 +1,6 @@
 # Guião da demonstração — Empreitadas FSBF (beta3)
 
-Cerca de 10 minutos. Tudo o que aparece é **sintético** (pedidos, registos
+Cerca de 12 minutos. Tudo o que aparece é **sintético** (pedidos, registos
 da frota e das máquinas, rendimentos e custos); os meios e os operacionais
 são os do catálogo da GOGFR.
 
@@ -69,11 +69,26 @@ tem registos até à véspera do dia em que se repôs.
   todas a verde, os incompletos a laranja). Desmarcar uma falta, **Guardar**,
   e os números da execução mudam.
 
+- **Execução no terreno** (1,5 min): o mapa mostra a empreitada dividida
+  em parcelas de 0,5 ha, pintadas pelo que já está feito na operação. Na
+  lista, os registos do dia a dia: por parcelas, um **desenhado** (só parte
+  de uma parcela) e um **declarado** sem geometria, assinalado.
+  - Tocar em duas parcelas por fazer, **Guardar**: a barra «Área feita»
+    avança, e o traço mostra onde devia estar.
+  - Tocar numa parcela já feita e guardar: não soma nada. O feito é a
+    união dos registos, recortada pela área.
+  - **Divisão…**: mudar a grelha para 1 ha, ou dividir à mão. Os registos
+    ficam: guardam a própria geometria.
+  - Responsável: quem registou pode anular até ao fim do dia seguinte;
+    depois, só o gestor FSBF.
+
 ## 5. Execução concluída (1 min)
 
 - Abrir a empreitada **concluída**: as máquinas trabalharam cerca de 15 %
   acima das horas previstas e o custo ficou acima do previsto.
 - A viagem registada duas vezes é detectada e fica fora das contas.
+- Área feita a 100 %: a operação principal parcela a parcela, a secundária
+  nos últimos dias.
 
 ## 6. Fecho (30 s)
 
