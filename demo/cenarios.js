@@ -26,7 +26,8 @@ const { diasUteis, CLASSES_LIGEIRAS } = require('./recomendacao');
 const { diaLisboa, somarDias, diasUteisEntre } = require('./execucao');
 
 const doisDig = n => String(n).padStart(2, '0');
-const hhmm = m => `${doisDig(Math.floor(m / 60) % 24)}:${doisDig(Math.round(m % 60))}`;
+// Arredonda primeiro: 959,6 min são 16:00, não 15:60.
+const hhmm = m => { const t = Math.round(m); return `${doisDig(Math.floor(t / 60) % 24)}:${doisDig(t % 60)}`; };
 const arred = (x, c = 1) => Math.round(x * 10 ** c) / 10 ** c;
 
 function diaUtilAntes(dia, n) {
