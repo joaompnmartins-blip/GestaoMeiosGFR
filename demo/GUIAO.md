@@ -1,6 +1,6 @@
 # Guião da demonstração — Empreitadas FSBF (beta3)
 
-Cerca de 10 minutos. Tudo o que aparece é **sintético** (propostas, registos
+Cerca de 10 minutos. Tudo o que aparece é **sintético** (pedidos, registos
 da frota e das máquinas, rendimentos e custos); os meios e os operacionais
 são os do catálogo da GOGFR.
 
@@ -15,24 +15,32 @@ são os do catálogo da GOGFR.
    | EMP-…-001 | Concluída | execução completa, máquinas acima do previsto, um registo duplicado |
    | EMP-…-002 | Em execução | atraso, um registo por fechar, horas por registar |
    | EMP-…-003 | Planeada | meios afectos, ainda sem execução |
-   | EMP-…-001 do ano seguinte | Seleccionada | ponto de partida para a recomendação |
+   | EMP-…-004 | Seleccionada | uma faixa ao longo de uma estrada, ponto de partida para a recomendação |
 
 Repor de novo no próprio dia da apresentação: a empreitada em execução só
 tem registos até à véspera do dia em que se repôs.
 
-## 1. Propostas (1,5 min)
+## 1. Pedidos (1,5 min)
 
-- O mapa mostra as propostas recebidas, a tracejado, com cores por modo de
-  execução (mecânico, moto-manual, rede viária…). Filtrar por uma base.
-- Abrir uma proposta: os campos são os da camada PA do SISF (equipa,
-  trimestre, tipo de povoamento, intervenção, financiamento).
-- Mensagem: hoje é uma tabela simulada; no futuro vem do SISF.
+- O mapa mostra os pedidos em vigor, a tracejado, com cores por tipo de
+  rede: primária (RPFGC), secundária (RSFGC) e mosaico (MGC). Filtrar por
+  uma base ou por rede.
+- Abrir um polígono e uma linha. As linhas são **faixas**: têm largura, e
+  o que conta é a área (comprimento × largura).
+- Os campos são os da aplicação de pedidos (ESRI): código, DRCNF, NUTS III,
+  município, mata nacional ou perímetro, período pedido.
+- Mensagem: hoje é uma simulação do serviço de features do ArcGIS; no
+  futuro lê-se do serviço, com os mesmos campos.
 
 ## 2. Escolher ou criar (1 min)
 
-- **Seleccionar como empreitada** numa proposta: ganha código EMP e sai da lista.
-- **+ Nova empreitada**: desenhar um polígono no mapa (duplo clique para
-  fechar), dar nome, povoamento e operações. Para o que não veio nas propostas.
+- **Seleccionar como empreitada** num pedido. O pedido não diz que
+  intervenção fazer: a operação vem sugerida pelo tipo de rede (MAO nos
+  mosaicos e na rede primária, CAO nas faixas das estradas), e confirma-se
+  com o povoamento e o **responsável** (um operacional FSBF).
+- **+ Nova empreitada**: desenhar um polígono, uma faixa (linha com
+  largura) ou uma linha de rede viária (duplo clique para fechar). Para o
+  que não veio nos pedidos.
 
 ## 3. Recomendar meios (2,5 min)
 
@@ -71,7 +79,7 @@ tem registos até à véspera do dia em que se repôs.
 
 O que é simulado e o que falta para ser real:
 
-- propostas: ligação ao SISF (camada PA);
+- pedidos: ligação ao serviço de features da aplicação de pedidos (ESRI);
 - registos: exportações da aplicação da frota (já há exemplo) e das máquinas
   (estrutura por confirmar);
 - rendimentos por operação, máquina e povoamento, e custos horários: não

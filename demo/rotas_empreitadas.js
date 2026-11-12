@@ -5,20 +5,28 @@
 // Lê das fontes externas simuladas (esquema ext) e escreve no esquema demo.
 // O acesso é o do módulo FSBF: gestores e chefes de grupo, mais o admin.
 
-const { areaHa, comprimentoKm, distanciaKm, reporDadosDemo } = require('./dados_demo');
+const { areaHa, comprimentoKm, distanciaKm, reporDadosDemo, DOMINIOS } = require('./dados_demo');
 const { CLASSES_LIGEIRAS, HORAS_DIA } = require('./recomendacao');
 const { erro, proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./planeamento');
 const execucao = require('./execucao');
 
 const ESTADOS = ['seleccionada', 'planeada', 'em_execucao', 'concluida', 'cancelada'];
 
+// Operação sugerida ao seleccionar um pedido, pelo tipo de rede. Só uma
+// sugestão: quem selecciona confirma ou muda.
+const SUGESTAO_REDE = { MGC: 'MAO', RPFGC: 'MAO', RSFGC: 'CAO' };
+
+// Numa faixa (linha com largura) entram as operações medidas em ha, como
+// num polígono; numa linha simples (rede viária), as medidas em km.
+const geometriaDasOperacoes = g => (g === 'linha' ? 'linha' : 'poligono');
+
 // Portugal continental com folga. Uma geometria fora disto é engano de
 // coordenadas (lat/lon trocadas, PT-TM06 em vez de WGS84) e não se aceita.
 const DENTRO = ([lon, lat]) => lon > -9.8 && lon < -6.0 && lat > 36.8 && lat < 42.3;
 
 // Valida a geometria e mede-a. Aceita o que o mapa desenha: um polígono
-// simples (só o anel exterior) ou uma linha.
-function medirGeometria(geom) {
+// simples (só o anel exterior), uma linha, ou uma faixa (linha com largura).
+function medirGeometria(geom, largura) {
   if (!geom || typeof geom !== 'object') throw erro(400, 'Falta a geometria.');
   const ok = c => Array.isArray(c) && c.length === 2 && c.every(Number.isFinite) && DENTRO(c);
   if (geom.type === 'Polygon') {
@@ -36,9 +44,15 @@ function medirGeometria(geom) {
     const c = geom.coordinates;
     if (!Array.isArray(c) || c.length < 2 || !c.every(ok))
       throw erro(400, 'A linha precisa de pelo menos dois vértices, dentro de Portugal continental.');
+    const km = comprimentoKm({ coordinates: c });
+    if (largura != null) {
+      const l = Number(largura);
+      if (!(l >= 1 && l <= 500)) throw erro(400, 'A largura da faixa tem de estar entre 1 e 500 m.');
+      return { geometria: 'faixa', geom: { type: 'LineString', coordinates: c }, largura_m: l,
+               area_ha: +(km * l / 10).toFixed(2), comprimento_km: +km.toFixed(2), centro: centroide(c) };
+    }
     return { geometria: 'linha', geom: { type: 'LineString', coordinates: c },
-             area_ha: null, comprimento_km: +comprimentoKm({ coordinates: c }).toFixed(2),
-             centro: centroide(c) };
+             area_ha: null, comprimento_km: +km.toFixed(2), centro: centroide(c) };
   }
   throw erro(400, 'A geometria tem de ser um polígono ou uma linha.');
 }
@@ -59,8 +73,9 @@ async function baseMaisProxima(c, centro) {
 }
 
 // Valida as operações contra o catálogo e a geometria: numa linha só cabem
-// operações em km, num polígono só em ha.
-async function validarOperacoes(c, operacoes, geometria) {
+// operações em km, num polígono ou numa faixa só em ha.
+async function validarOperacoes(c, operacoes, geometriaEmpreitada) {
+  const geometria = geometriaDasOperacoes(geometriaEmpreitada);
   if (!Array.isArray(operacoes) || !operacoes.length)
     throw erro(400, 'Indique pelo menos uma operação.');
   const { rows } = await c.query('SELECT codigo, geometria FROM demo.operacoes');
@@ -70,12 +85,20 @@ async function validarOperacoes(c, operacoes, geometria) {
     const q = Number(o.quantidade);
     if (!cat[o.operacao]) throw erro(400, `Operação desconhecida: ${o.operacao}.`);
     if (cat[o.operacao] !== geometria)
-      throw erro(400, `A operação ${o.operacao} aplica-se a ${cat[o.operacao] === 'linha' ? 'linhas' : 'polígonos'}.`);
+      throw erro(400, `A operação ${o.operacao} mede-se em ${cat[o.operacao] === 'linha' ? 'km (rede viária)' : 'ha'}.`);
     if (!(q > 0)) throw erro(400, `A quantidade de ${o.operacao} tem de ser positiva.`);
     if (vistos.has(o.operacao)) throw erro(400, `A operação ${o.operacao} está repetida.`);
     vistos.add(o.operacao);
     return { operacao: o.operacao, quantidade: +q.toFixed(2) };
   });
+}
+
+// O responsável é um operacional FSBF activo (ou nenhum).
+async function validarResponsavel(c, id) {
+  if (!id) return;
+  const ok = /^[0-9a-f-]{36}$/i.test(String(id)) &&
+    (await c.query('SELECT 1 FROM operacionais_fsbf WHERE id = $1 AND ativo', [id])).rowCount;
+  if (!ok) throw erro(400, 'O responsável tem de ser um operacional FSBF activo.');
 }
 
 function validarDatas(ini, fim) {
@@ -88,7 +111,7 @@ const SQL_EMPREITADAS = `
          -- a JSON sai em UTC, e em Lisboa isso pode recuar um dia.
          to_char(e.inicio_previsto, 'YYYY-MM-DD') AS inicio_previsto,
          to_char(e.fim_previsto,    'YYYY-MM-DD') AS fim_previsto,
-         p.interv AS proposta_interv, p.cod_equipa AS proposta_equipa,
+         p.codpedido AS pedido_codigo, p.tiporede AS pedido_tiporede, r.nome AS responsavel_nome,
          COALESCE((SELECT json_agg(json_build_object('operacao', eo.operacao, 'quantidade', eo.quantidade,
                                     'designacao', o.designacao, 'unidade', o.unidade, 'modo', o.modo)
                                    ORDER BY eo.operacao)
@@ -97,28 +120,34 @@ const SQL_EMPREITADAS = `
          (SELECT count(*)::int FROM demo.empreitada_meios m WHERE m.empreitada_id = e.id) AS n_meios,
          (SELECT sum(custo_previsto) FROM demo.empreitada_meios m WHERE m.empreitada_id = e.id) AS custo_previsto
     FROM demo.empreitadas e
-    LEFT JOIN ext.propostas_empreitada p ON p.id = e.proposta_id`;
+    LEFT JOIN ext.pedidos_fsbf p ON p.id = e.pedido_id
+    LEFT JOIN operacionais_fsbf r ON r.id = e.responsavel_id`;
 
 module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_GESTORES, wrap }) {
   const leitura = [requireAuth('visualizador'), FSBF_GESTORES];
 
   // Catálogos de uma vez: o ecrã precisa de todos para desenhar e filtrar.
   app.get('/api/demo/catalogos', ...leitura, wrap(async (req, res) => {
-    const [ops, tipos, bases] = await Promise.all([
+    const [ops, tipos, bases, pessoas] = await Promise.all([
       pool.query('SELECT * FROM demo.operacoes ORDER BY ordem, codigo'),
       pool.query('SELECT * FROM demo.tipos_meio ORDER BY codigo'),
       pool.query('SELECT * FROM demo.bases ORDER BY companhia, nome'),
+      // Para escolher o responsável: todos os operacionais FSBF activos.
+      pool.query(`SELECT id, nome, cargo, base FROM operacionais_fsbf WHERE ativo ORDER BY nome`),
     ]);
-    res.json({ operacoes: ops.rows, tipos_meio: tipos.rows, bases: bases.rows });
+    res.json({ operacoes: ops.rows, tipos_meio: tipos.rows, bases: bases.rows, operacionais: pessoas.rows,
+               dominios: DOMINIOS, sugestao_rede: SUGESTAO_REDE });
   }));
 
-  // Propostas recebidas, com a empreitada em que se tornaram (se for o caso).
-  app.get('/api/demo/propostas', ...leitura, wrap(async (req, res) => {
+  // Pedidos em vigor, com a empreitada em que se tornaram (se for o caso).
+  app.get('/api/demo/pedidos', ...leitura, wrap(async (req, res) => {
     const { rows } = await pool.query(`
-      SELECT p.*, e.id AS empreitada_id, e.codigo AS empreitada_codigo, e.estado AS empreitada_estado
-        FROM ext.propostas_empreitada p
-        LEFT JOIN demo.empreitadas e ON e.proposta_id = p.id
-       ORDER BY p.base_proxima, p.id`);
+      SELECT p.*, to_char(p.datainicio, 'YYYY-MM-DD') AS datainicio, to_char(p.datafim, 'YYYY-MM-DD') AS datafim,
+             to_char(p.datasub, 'YYYY-MM-DD HH24:MI') AS datasub,
+             e.id AS empreitada_id, e.codigo AS empreitada_codigo, e.estado AS empreitada_estado
+        FROM ext.pedidos_fsbf p
+        LEFT JOIN demo.empreitadas e ON e.pedido_id = p.id
+       ORDER BY p.drcnf, p.codpedido`);
     res.json(rows);
   }));
 
@@ -133,44 +162,50 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
     res.json(rows[0]);
   }));
 
-  // Cria uma empreitada: a partir de uma proposta (só `proposta_id`) ou de
-  // raiz (geometria desenhada no mapa e operações escolhidas à mão).
+  // Cria uma empreitada: a partir de um pedido (`pedido_id`; a geometria vem
+  // dele) ou de raiz (geometria desenhada no mapa). Nos dois casos as
+  // operações, o povoamento e o responsável escolhem-se à mão: o pedido não
+  // diz que intervenção fazer.
   app.post('/api/demo/empreitadas', ...leitura, wrap(async (req, res) => {
     const b = req.body || {};
     const c = await pool.connect();
     try {
       await c.query('BEGIN');
-      let emp, operacoes;
-      if (b.proposta_id) {
-        const { rows } = await c.query('SELECT * FROM ext.propostas_empreitada WHERE id = $1', [b.proposta_id]);
+      if (!String(b.nome || '').trim()) throw erro(400, 'Dê um nome à empreitada.');
+      const pov = Number(b.tipo_pov);
+      if (![1, 2, 3, 4].includes(pov)) throw erro(400, 'Indique o tipo de povoamento.');
+      const comum = { nome: String(b.nome).trim().slice(0, 120), tipo_pov: pov,
+                      responsavel_id: b.responsavel_id || null,
+                      observacoes: b.observacoes ? String(b.observacoes).slice(0, 500) : null };
+      let emp;
+      if (b.pedido_id) {
+        const { rows } = await c.query('SELECT * FROM ext.pedidos_fsbf WHERE id = $1', [b.pedido_id]);
         const p = rows[0];
-        if (!p) throw erro(404, 'Proposta não encontrada.');
-        emp = { origem: 'proposta', proposta_id: p.id, nome: p.nome || `Proposta ${p.id}`,
-                geometria: p.geometria, geom: p.geom, area_ha: p.area_ha, comprimento_km: p.comprimento_km,
-                tipo_pov: p.tipo_pov, base: p.base_proxima, ano: p.ano,
-                observacoes: p.observ };
-        operacoes = [{ operacao: p.interv, quantidade: p.area_ha ?? p.comprimento_km }];
+        if (!p) throw erro(404, 'Pedido não encontrado.');
+        const faixa = p.camada === 'linhas';
+        emp = { ...comum, origem: 'pedido', pedido_id: p.id, geometria: faixa ? 'faixa' : 'poligono', geom: p.geom,
+                largura_m: faixa ? Number(p.largura_m) : null,
+                area_ha: faixa ? +(Number(p.areacalc) / 10000).toFixed(2) : Number(p.area_ha),
+                comprimento_km: faixa ? +(Number(p.comprim_m) / 1000).toFixed(2) : null,
+                base: p.base_proxima, ano: p.datainicio ? new Date(p.datainicio).getFullYear() : null };
       } else {
-        const g = medirGeometria(b.geom);
-        if (!String(b.nome || '').trim()) throw erro(400, 'Dê um nome à empreitada.');
-        const pov = Number(b.tipo_pov);
-        if (![1, 2, 3, 4].includes(pov)) throw erro(400, 'Indique o tipo de povoamento.');
-        emp = { origem: 'manual', proposta_id: null, nome: String(b.nome).trim().slice(0, 120),
-                geometria: g.geometria, geom: g.geom, area_ha: g.area_ha, comprimento_km: g.comprimento_km,
-                tipo_pov: pov, base: await baseMaisProxima(c, g.centro),
-                observacoes: b.observacoes ? String(b.observacoes).slice(0, 500) : null };
-        operacoes = await validarOperacoes(c, b.operacoes, g.geometria);
+        const g = medirGeometria(b.geom, b.largura_m ?? null);
+        emp = { ...comum, origem: 'manual', pedido_id: null, geometria: g.geometria, geom: g.geom,
+                largura_m: g.largura_m ?? null, area_ha: g.area_ha, comprimento_km: g.comprimento_km,
+                base: await baseMaisProxima(c, g.centro) };
       }
+      const operacoes = await validarOperacoes(c, b.operacoes, emp.geometria);
       validarDatas(b.inicio_previsto, b.fim_previsto);
+      await validarResponsavel(c, comum.responsavel_id);
       const codigo = await proximoCodigo(c, b.inicio_previsto, emp.ano);
       const { rows: [nova] } = await c.query(
-        `INSERT INTO demo.empreitadas (codigo, origem, proposta_id, nome, geometria, geom, area_ha,
-                                       comprimento_km, tipo_pov, base, inicio_previsto, fim_previsto,
-                                       observacoes, created_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
-        [codigo, emp.origem, emp.proposta_id, emp.nome, emp.geometria, JSON.stringify(emp.geom),
-         emp.area_ha, emp.comprimento_km, emp.tipo_pov, emp.base,
-         b.inicio_previsto || null, b.fim_previsto || null, emp.observacoes, req.user.id]);
+        `INSERT INTO demo.empreitadas (codigo, origem, pedido_id, nome, geometria, geom, area_ha,
+                                       comprimento_km, largura_m, tipo_pov, base, inicio_previsto, fim_previsto,
+                                       observacoes, responsavel_id, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+        [codigo, emp.origem, emp.pedido_id, emp.nome, emp.geometria, JSON.stringify(emp.geom),
+         emp.area_ha, emp.comprimento_km, emp.largura_m, emp.tipo_pov, emp.base,
+         b.inicio_previsto || null, b.fim_previsto || null, emp.observacoes, emp.responsavel_id, req.user.id]);
       for (const o of operacoes)
         await c.query('INSERT INTO demo.empreitada_operacoes (empreitada_id, operacao, quantidade) VALUES ($1,$2,$3)',
                       [nova.id, o.operacao, o.quantidade]);
@@ -179,7 +214,7 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
       res.status(201).json(rows[0]);
     } catch (e) {
       await c.query('ROLLBACK');
-      if (e.code === '23505' && b.proposta_id) throw erro(409, 'Esta proposta já foi seleccionada.');
+      if (e.code === '23505' && b.pedido_id) throw erro(409, 'Este pedido já foi seleccionado.');
       throw e;
     } finally {
       c.release();
@@ -187,7 +222,7 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
   }));
 
   // Altera o que se decide depois de criar: estado, datas, nome, povoamento,
-  // observações, operações. A geometria não muda — para isso, nova empreitada.
+  // responsável, observações, operações. A geometria não muda — para isso, nova empreitada.
   app.put('/api/demo/empreitadas/:id', ...leitura, wrap(async (req, res) => {
     const b = req.body || {};
     const c = await pool.connect();
@@ -204,15 +239,18 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
       const ini = b.inicio_previsto !== undefined ? (b.inicio_previsto || null) : e.ini;
       const fim = b.fim_previsto    !== undefined ? (b.fim_previsto    || null) : e.fim;
       validarDatas(ini, fim);
+      if (b.responsavel_id !== undefined) await validarResponsavel(c, b.responsavel_id);
       await c.query(
         `UPDATE demo.empreitadas SET
             nome = COALESCE($2, nome), estado = COALESCE($3, estado), tipo_pov = COALESCE($4, tipo_pov),
             inicio_previsto = $5, fim_previsto = $6,
-            observacoes = CASE WHEN $7::boolean THEN $8 ELSE observacoes END, updated_at = now()
+            observacoes = CASE WHEN $7::boolean THEN $8 ELSE observacoes END,
+            responsavel_id = CASE WHEN $9::boolean THEN $10::uuid ELSE responsavel_id END, updated_at = now()
           WHERE id = $1`,
         [e.id, b.nome !== undefined ? String(b.nome).trim().slice(0, 120) : null, b.estado ?? null,
          b.tipo_pov !== undefined ? Number(b.tipo_pov) : null, ini, fim,
-         b.observacoes !== undefined, b.observacoes ? String(b.observacoes).slice(0, 500) : null]);
+         b.observacoes !== undefined, b.observacoes ? String(b.observacoes).slice(0, 500) : null,
+         b.responsavel_id !== undefined, b.responsavel_id || null]);
       if (b.operacoes !== undefined) {
         const ops = await validarOperacoes(c, b.operacoes, e.geometria);
         await c.query('DELETE FROM demo.empreitada_operacoes WHERE empreitada_id = $1', [e.id]);
@@ -231,7 +269,7 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
     res.json(rows[0]);
   }));
 
-  // Apagar devolve a proposta à lista. Os meios e as horas vão com ela.
+  // Apagar devolve o pedido à lista. Os meios e as horas vão com ela.
   app.delete('/api/demo/empreitadas/:id', ...leitura, wrap(async (req, res) => {
     const { rowCount } = await pool.query('DELETE FROM demo.empreitadas WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Empreitada não encontrada.' });

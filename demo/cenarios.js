@@ -12,7 +12,10 @@
 //                 últimos dias e as do último dia da equipa — é isso que se
 //                 mostra a preencher
 //   planeada      começa daqui a uma semana; meios afectos, nada feito
-//   seleccionada  escolhida das propostas, ainda sem meios
+//   seleccionada  uma faixa ao longo de uma estrada, ainda sem meios
+//
+// Todas partem de um pedido. As que têm meios ficam com responsável: o
+// primeiro operacional afecto.
 //
 // Os meios saem da própria recomendação, e os registos externos desses
 // meios nesses dias são reescritos para baterem com a afectação. Tudo
@@ -22,7 +25,6 @@ const { proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./pla
 const { diasUteis, CLASSES_LIGEIRAS } = require('./recomendacao');
 const { diaLisboa, somarDias, diasUteisEntre } = require('./execucao');
 
-const MECANICAS = ['MAO', 'MDO', 'MDR', 'RES', 'CIM', 'RAA', 'AAA'];
 const doisDig = n => String(n).padStart(2, '0');
 const hhmm = m => `${doisDig(Math.floor(m / 60) % 24)}:${doisDig(Math.round(m % 60))}`;
 const arred = (x, c = 1) => Math.round(x * 10 ** c) / 10 ** c;
@@ -38,27 +40,34 @@ function diaUtilAntes(dia, n) {
 }
 
 const CENARIOS = [
-  { estado: 'concluida',   recuo: 34,  alt: 'equilibrada', dias: [4, 14], extra: 'CAO', ritmo: 1.15 },
-  { estado: 'em_execucao', recuo: 6,   alt: 'barata',      dias: [9, 18], extra: 'CAO', ritmo: 0.90 },
-  { estado: 'planeada',    recuo: -6,  alt: 'equilibrada', dias: [2, 15], extra: 'CAO' },
-  { estado: 'seleccionada' },
+  { estado: 'concluida',   recuo: 34,  alt: 'equilibrada', dias: [4, 14], op: 'MAO', extra: 'CAO', ritmo: 1.15 },
+  { estado: 'em_execucao', recuo: 6,   alt: 'barata',      dias: [9, 18], op: 'MAO', extra: 'CAO', ritmo: 0.90 },
+  { estado: 'planeada',    recuo: -6,  alt: 'equilibrada', dias: [2, 15], op: 'MAO', extra: 'CAO' },
+  { estado: 'seleccionada', camada: 'linhas', op: 'CAO' },
 ];
 
-// Cria uma empreitada a partir de uma proposta, com a alternativa pedida.
-// Se a proposta não servir (faltam meios, duração fora do intervalo),
+// Serve para o cenário? Polígonos de 6 a 35 ha, ou faixas ao longo de estradas.
+const serve = (p, cen) => (cen.camada || 'poligonos') === p.camada &&
+  (p.camada === 'linhas' ? p.tiporede === 'RSFGC' : Number(p.area_ha) >= 6 && Number(p.area_ha) <= 35);
+
+// Cria uma empreitada a partir de um pedido, com a alternativa pedida.
+// Se o pedido não servir (faltam meios, duração fora do intervalo),
 // desfaz e devolve null.
 async function tentar(c, p, cen, hoje) {
   const inicio = cen.recuo === undefined ? null
                : cen.recuo > 0 ? diaUtilAntes(hoje, cen.recuo) : diasUteis(somarDias(hoje, 1), -cen.recuo).pop();
+  const faixa = p.camada === 'linhas';
+  const area = faixa ? arred(Number(p.areacalc) / 10000, 2) : Number(p.area_ha);
   await c.query('SAVEPOINT cenario');
   const { rows: [e] } = await c.query(
-    `INSERT INTO demo.empreitadas (codigo, origem, proposta_id, nome, geometria, geom, area_ha, comprimento_km,
-                                   tipo_pov, base, inicio_previsto, observacoes)
-     VALUES ($1, 'proposta', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, codigo, nome`,
-    [await proximoCodigo(c, inicio, p.ano), p.id, p.nome, p.geometria, JSON.stringify(p.geom), p.area_ha,
-     p.comprimento_km, p.tipo_pov, p.base_proxima, inicio, 'Cenário da demonstração.']);
-  const ops = [{ operacao: p.interv, quantidade: Number(p.area_ha) }];
-  if (cen.extra) ops.push({ operacao: cen.extra, quantidade: arred(Number(p.area_ha) * 0.2, 2) });
+    `INSERT INTO demo.empreitadas (codigo, origem, pedido_id, nome, geometria, geom, area_ha, comprimento_km,
+                                   largura_m, tipo_pov, base, inicio_previsto, observacoes)
+     VALUES ($1, 'pedido', $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, codigo, nome`,
+    [await proximoCodigo(c, inicio, null), p.id, `${p.localtrab} — ${p.codpedido}`, faixa ? 'faixa' : 'poligono',
+     JSON.stringify(p.geom), area, faixa ? arred(Number(p.comprim_m) / 1000, 2) : null,
+     faixa ? p.largura_m : null, p.tiporede === 'RPFGC' ? 1 : 4, p.base_proxima, inicio, 'Cenário da demonstração.']);
+  const ops = [{ operacao: cen.op, quantidade: area }];
+  if (cen.extra) ops.push({ operacao: cen.extra, quantidade: arred(area * 0.2, 2) });
   for (const o of ops)
     await c.query('INSERT INTO demo.empreitada_operacoes (empreitada_id, operacao, quantidade) VALUES ($1,$2,$3)',
                   [e.id, o.operacao, o.quantidade]);
@@ -72,20 +81,21 @@ async function tentar(c, p, cen, hoje) {
     return null;
   }
   const fim = await aplicarAlternativa(c, e.id, inicio, alt);
-  await c.query('UPDATE demo.empreitadas SET fim_previsto = $2, estado = $3 WHERE id = $1', [e.id, fim, cen.estado]);
+  await c.query(`UPDATE demo.empreitadas SET fim_previsto = $2, estado = $3,
+                        responsavel_id = (SELECT operacional_id FROM demo.empreitada_meios
+                                           WHERE empreitada_id = $1 AND operacional_id IS NOT NULL
+                                           ORDER BY inicio, operacional_id LIMIT 1)
+                  WHERE id = $1`, [e.id, fim, cen.estado]);
   return { ...e, inicio, fim };
 }
 
 async function criarCenarios(c, r, referencia = new Date()) {
   const hoje = diaLisboa(referencia);
-  const { rows: propostas } = await c.query(
-    `SELECT * FROM ext.propostas_empreitada
-      WHERE geometria = 'poligono' AND interv = ANY($1) AND area_ha BETWEEN 6 AND 35
-      ORDER BY id`, [MECANICAS]);
+  const { rows: pedidos } = await c.query('SELECT * FROM ext.pedidos_fsbf ORDER BY id');
   const usadas = new Set(), bases = new Set(), feitas = [];
   for (const cen of CENARIOS) {
-    for (const p of propostas) {
-      if (usadas.has(p.id) || bases.has(p.base_proxima)) continue;
+    for (const p of pedidos) {
+      if (usadas.has(p.id) || bases.has(p.base_proxima) || !serve(p, cen)) continue;
       const e = await tentar(c, p, cen, hoje);
       if (!e) continue;
       usadas.add(p.id); bases.add(p.base_proxima);

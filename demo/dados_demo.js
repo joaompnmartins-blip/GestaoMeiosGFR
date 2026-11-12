@@ -4,7 +4,7 @@
 //
 // Os catálogos — operações do guia SISF, tipos de meio, rendimentos, bases —
 // são reescritos a cada arranque, para uma correcção aqui chegar à base sem
-// mais nada. As fontes externas simuladas (propostas, registos da frota e das
+// mais nada. As fontes externas simuladas (pedidos, registos da frota e das
 // máquinas) só se geram quando estão vazias, ou quando se pede para repor.
 //
 // TUDO O QUE AQUI SE GERA É SINTÉTICO. O repositório é público: nenhum nome,
@@ -61,10 +61,6 @@ const OPERACOES = lerCsv('intervencoes.csv')
 const OP = Object.fromEntries(OPERACOES.map(o => [o.codigo, o]));
 const CODIGOS = OPERACOES.map(o => o.codigo);
 
-// Gestão de combustíveis: só estas propostas podem ser faixas (TIPO_FGC).
-const COMBUSTIVEIS = ['CDO', 'CDR', 'CAO', 'MDO', 'MDR', 'MAO', 'QQQ', 'PQQ', 'DDD', 'RRR', 'DRO',
-                      'AAA', 'GFI', 'GAG', 'GSI'];
-
 // Custos SIMULADOS. O código é a classe da viatura no catálogo da GOGFR,
 // excepto OP, que é um operacional. Máquinas de rastos não andam na estrada:
 // vão em porta-máquinas (PM), e isso entra no custo de as levar ao sítio.
@@ -101,7 +97,7 @@ const FACTOR_POV = Object.fromEntries(lerCsv('povoamentos.csv').map(l => [Number
 
 // As bases FSBF (as de operacionais_fsbf), no centro da localidade.
 // `rumos` é para onde há terra: a Marinha Grande tem o mar a poente, Olhão
-// a sul. As propostas só se desenham dentro desse leque.
+// a sul. Os pedidos só se desenham dentro desse leque.
 const BASES = [
   // nome, companhia, lat, lon, sigla, rumos [de, até] em graus desde norte
   ['Cabeceiras de Basto',  'Norte',  41.5143, -7.9893, 'CBT', [0, 360]],
@@ -131,6 +127,41 @@ const DESTINOS = {
   'Portalegre':           ['Marvão', 'Castelo de Vide', 'Nisa', 'Crato', 'Arronches', 'Alter do Chão'],
   'Santarém':             ['Rio Maior', 'Almeirim', 'Alpiarça', 'Chamusca', 'Torres Novas', 'Coruche'],
 };
+
+// Para os pedidos: a DRCNF, a NUTS III e o município de cada base, e as
+// matas nacionais e perímetros florestais por perto (nem todas têm).
+const LOCAL_BASE = {
+  'Cabeceiras de Basto':  { drcnf: 'NORTE',    nuts3: 'Ave',                            mnpf: ['Perímetro Florestal da Serra da Cabreira'] },
+  'Macedo de Cavaleiros': { drcnf: 'NORTE',    nuts3: 'Terras de Trás-os-Montes',       mnpf: ['Perímetro Florestal da Serra de Bornes'] },
+  'Vila Pouca de Aguiar': { drcnf: 'NORTE',    nuts3: 'Alto Tâmega e Barroso',          mnpf: ['Perímetro Florestal da Serra do Alvão', 'Perímetro Florestal da Serra da Padrela'] },
+  'Arganil':              { drcnf: 'CENTRO',   nuts3: 'Região de Coimbra',              mnpf: ['Perímetro Florestal da Serra do Açor'] },
+  'Guarda':               { drcnf: 'CENTRO',   nuts3: 'Beiras e Serra da Estrela',      mnpf: ['Perímetro Florestal da Guarda'] },
+  'Marinha Grande':       { drcnf: 'CENTRO',   nuts3: 'Região de Leiria',               mnpf: ['Mata Nacional de Leiria', 'Mata Nacional do Urso'] },
+  'Proença-a-Nova':       { drcnf: 'CENTRO',   nuts3: 'Beira Baixa',                    mnpf: [] },
+  'Viseu':                { drcnf: 'CENTRO',   nuts3: 'Viseu Dão-Lafões',               mnpf: ['Perímetro Florestal de São Salvador'] },
+  'Olhão':                { drcnf: 'ALGARVE',  nuts3: 'Algarve',                        mnpf: [] },
+  'Portalegre':           { drcnf: 'ALENTEJO', nuts3: 'Alto Alentejo',                  mnpf: ['Perímetro Florestal da Serra de São Mamede'] },
+  'Santarém':             { drcnf: 'LVT',      nuts3: 'Lezíria do Tejo',                mnpf: [] },
+};
+
+// Os domínios das camadas, como o serviço os declara. SIMULADOS: só os
+// valores vistos nos exemplos, com as designações por extenso.
+const DOMINIOS = {
+  tiporede: { RPFGC: 'Rede primária de faixas de gestão de combustível',
+              RSFGC: 'Rede secundária de faixas de gestão de combustível',
+              MGC:   'Mosaico de parcelas de gestão de combustível' },
+  tipoestrutura: { Estradas: 'Estradas', MGC: 'Mosaico de parcelas de gestão de combustível' },
+  tipoarea: { 'Sob Gestão Estado': 'Sob gestão do Estado' },
+  entidade: { GF: 'GF' },
+  drcnf: { NORTE: 'Norte', CENTRO: 'Centro', LVT: 'Lisboa e Vale do Tejo', ALENTEJO: 'Alentejo', ALGARVE: 'Algarve' },
+};
+
+// Topónimos inventados para o local de trabalho.
+const TOPO_A = ['Vale', 'Alto', 'Cabeço', 'Chã', 'Cerro', 'Portela', 'Lomba', 'Tapada', 'Ribeira', 'Corga'];
+const TOPO_B = ['do Moinho', 'da Fonte', 'do Lobo', 'das Pedras', 'do Carvalhal', 'da Cerdeira', 'do Pinhal',
+                'da Raposa', 'dos Fornos', 'da Eira', 'do Souto', 'da Malhada'];
+const OBSERVA = ['Acesso por caminho de terra batida', 'Junto a linha de água', 'Prioritário antes do Verão',
+                 'Declive acentuado na encosta norte'];
 
 // As máquinas mais pesadas só ficam em bases com porta-máquinas.
 const CLASSES_MAQUINA = ['TB', 'TR', 'DR', 'MR', 'GR'];
@@ -191,6 +222,9 @@ function comprimentoKm(geom) {
   }
   return s / 1000;
 }
+
+// Perímetro de um polígono GeoJSON, em metros.
+const perimetroM = geom => comprimentoKm({ coordinates: geom.coordinates[0] }) * 1000;
 
 // Distância entre dois pontos [lon, lat], em quilómetros (haversine).
 function distanciaKm([lon1, lat1], [lon2, lat2]) {
@@ -269,57 +303,71 @@ function gerarRendimentos() {
   return linhas;
 }
 
-const PESOS_POLIGONO = { MAO: 12, MDO: 10, CAO: 10, CDO: 6, RES: 6, QQQ: 4, MDR: 3, CDR: 3,
-                         RQU: 3, CIM: 3, AAA: 3, LLA: 3, PQQ: 2, DDD: 2, APF: 2, RAA: 2,
-                         BRD: 2, GFI: 1, CIQ: 1, MPC: 1, EEM: 1, GAG: 1, SEM: 1, ERR: 1,
-                         ARD: 1, CPA: 1, MPA: 1 };
-const PESOS_LINHA    = { MRV: 10, MBR: 3, MRR: 3, CRV: 2, CBR: 1, CRR: 1, CIR: 1, MIR: 1 };
-// Pontos de água: polígonos pequenos, de umas centenas a 3000 m².
-const PONTOS_AGUA    = ['CPA', 'MPA'];
+// Um identificador global como os do ArcGIS, mas tirado do gerador.
+function globalId(r) {
+  const h = () => Math.floor(r() * 0x10000).toString(16).padStart(4, '0').toUpperCase();
+  return `${h()}${h()}-${h()}-${h()}-${h()}-${h()}${h()}${h()}`;
+}
+const dataHora = d => d.toISOString().slice(0, 19).replace('T', ' ');
+const somarDiasData = (d, n) => new Date(d.getTime() + n * 86400000);
 
-function gerarPropostas(r, referencia) {
-  // O plano de actividades entrega-se até 31 de Outubro para o ano seguinte.
-  const ano = referencia.getMonth() >= 9 ? referencia.getFullYear() + 1 : referencia.getFullYear();
-  const propostas = [];
-  let n = 0;
+// Os pedidos em vigor, como o serviço os devolveria. Por base, três ou
+// quatro: polígonos (mosaicos e faixas da rede primária) e linhas (faixas
+// ao longo de estradas, da rede secundária, ou da rede primária, largas).
+function gerarPedidos(r, referencia) {
+  const pedidos = [];
+  const numero = {}, objectid = { poligonos: 0, linhas: 0 };
   for (const [base, , lat, lon, sigla, [rumoDe, rumoAte]] of BASES) {
-    const quantas = r.inteiro(3, 4);
-    for (let i = 0; i < quantas; i++) {
-      n++;
-      const centro = deslocar([lon, lat], r.entre(4000, 25000), r.entre(rumoDe, rumoAte) % 360);
-      const eLinha = r() < 0.25;
-      const interv = r.pesado(eLinha ? PESOS_LINHA : PESOS_POLIGONO);
-      const tipoPov = +r.pesado({ 4: 40, 1: 30, 3: 15, 2: 15 });
-      let geom, area = null, comp = null, tipoFgc = null, nome;
-      if (eLinha) {
-        geom = linha(r, centro, r.entre(0.8, 6));
-        comp = arred(comprimentoKm(geom), 2);
-        nome = `Caminho florestal ${doisDig(n)} — ${base}`;
-      } else {
-        const pontoAgua = PONTOS_AGUA.includes(interv);
-        tipoFgc = COMBUSTIVEIS.includes(interv) && r() < 0.5 ? r.um(['FIC', 'FRC']) : null;
-        const ha = pontoAgua ? r.entre(0.03, 0.3) : tipoFgc ? r.entre(3, 15)
-                 : interv === 'LLA' ? r.entre(1, 6) : r.entre(2, 40);
-        geom = poligono(r, centro, ha, !!tipoFgc || interv === 'LLA');
-        area = arred(areaHa(geom), 2);
-        nome = `${pontoAgua ? 'Ponto de água' : interv === 'LLA' ? 'Linha de água'
-                : tipoFgc ? `Faixa ${tipoFgc}` : 'Talhão'} ${doisDig(n)} — ${base}`;
+    const loc = LOCAL_BASE[base];
+    const quantos = r.inteiro(3, 4);
+    for (let i = 0; i < quantos; i++) {
+      const centro = deslocar([lon, lat], r.entre(4000, 18000), r.entre(rumoDe, rumoAte) % 360);
+      const camada = r() < 0.4 ? 'linhas' : 'poligonos';
+      const submetido = new Date(referencia.getTime() - r.entre(1, 45) * 86400000);
+      const editado = new Date(Math.min(referencia.getTime() - 3600000,
+                                        submetido.getTime() + r.inteiro(0, 3) * 86400000 + r.inteiro(0, 6) * 3600000));
+      const ano = submetido.getFullYear();
+      numero[`${loc.drcnf}_${ano}`] = (numero[`${loc.drcnf}_${ano}`] || 0) + 1;
+      const p = {
+        camada, objectid: ++objectid[camada], globalid: globalId(r),
+        codpedido: `${loc.drcnf}_${ano}_${String(numero[`${loc.drcnf}_${ano}`]).padStart(3, '0')}`,
+        utilizador: `u_${sigla.toLowerCase()}${r.inteiro(1, 3)}`, entidade: 'GF', drcnf: loc.drcnf,
+        tipoarea: 'Sob Gestão Estado',
+        mnpf: loc.mnpf.length && r() < 0.5 ? r.um(loc.mnpf) : null,
+        nuts3: loc.nuts3, municipio: base, nome: `Técnico ${doisDig(r.inteiro(1, 40))}`,
+        localtrab: `${r.um(TOPO_A)} ${r.um(TOPO_B)}`,
+        datainicio: null, datafim: null, observa: r() < 0.35 ? r.um(OBSERVA) : null,
+        tiporede: null, tipoestrutura: null,
+        area_ha: null, perimetro_: null, largura_m: null, comprim_m: null, areacalc: null,
+        datasub: dataHora(submetido), created_user: 'WEBSIRESP', created_date: dataHora(submetido),
+        last_edited_user: 'WEBSIRESP', last_edited_date: dataHora(editado),
+        geom: null, base_proxima: base,
+      };
+      if (r() < 0.4) {                                  // período pretendido
+        const ini = somarDiasData(referencia, r.inteiro(10, 90));
+        p.datainicio = ini.toISOString().slice(0, 10);
+        p.datafim = somarDiasData(ini, r.inteiro(15, 60)).toISOString().slice(0, 10);
       }
-      // Ritmo de referência para o N_DIAS da proposta: 1,5 ha ou 0,8 km por dia.
-      const nDias = Math.max(1, Math.min(60, Math.round(area ? area / 1.5 : comp / 0.8)));
-      propostas.push({
-        cod_equipa: `FSBF-${sigla}`, ano, fase: 'PA',
-        trim: r.pesado({ '1T': 30, '2T': 35, '3T': 10, '4T': 25 }),
-        n_dias: nDias, tipo_pov: tipoPov, nome, tipo_interv: null,
-        interv, tipo_fgc: tipoFgc, tipo_elem: eLinha ? 'RVF' : null,
-        fin: r() < 0.85 ? 'SP' : 'SN', observ: null,
-        geometria: eLinha ? 'linha' : 'poligono', geom,
-        area_ha: area, comprimento_km: comp, base_proxima: base,
-        recebida_em: new Date(referencia.getTime() - r.inteiro(1, 30) * 86400000).toISOString(),
-      });
+      if (camada === 'linhas') {
+        const primaria = r() < 0.25;
+        p.tiporede = primaria ? 'RPFGC' : 'RSFGC';
+        p.tipoestrutura = primaria ? null : 'Estradas';
+        p.largura_m = primaria ? 125 : r.um([10, 12, 15]);
+        p.geom = linha(r, centro, primaria ? r.entre(1, 2.5) : r.entre(0.5, 3));
+        p.comprim_m = arred(comprimentoKm(p.geom) * 1000, 2);
+        p.areacalc = arred(p.comprim_m * p.largura_m, 2);
+      } else {
+        const primaria = r() < 0.35;
+        p.tiporede = primaria ? 'RPFGC' : 'MGC';
+        p.tipoestrutura = primaria ? null : 'MGC';
+        p.geom = poligono(r, centro, primaria ? r.entre(8, 35) : r.entre(2, 30), primaria);
+        p.area_ha = arred(areaHa(p.geom), 2);
+        p.perimetro_ = arred(perimetroM(p.geom), 2);
+      }
+      pedidos.push(p);
     }
   }
-  return propostas;
+  return pedidos;
 }
 
 // Os registos de deslocação da frota: ida de manhã, volta à tarde, num dia
@@ -526,13 +574,13 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE demo.horas_operacionais, demo.empreitada_meios, demo.empreitada_operacoes,
-                            demo.empreitadas, ext.propostas_empreitada, ext.fsbf_frota_utilizacao,
+                            demo.empreitadas, ext.pedidos_fsbf, ext.fsbf_frota_utilizacao,
                             ext.fsbf_maquinas_utilizacao RESTART IDENTITY`);
     await escreverCatalogos(c);
     const { frota, maquinas } = await atribuirMeios(c, r);
-    const propostas = gerarPropostas(r, referencia);
-    await inserir(c, 'ext.propostas_empreitada', propostas.map((p, i) => ({ id: i + 1, ...p })));
-    await c.query(`SELECT setval(pg_get_serial_sequence('ext.propostas_empreitada','id'), $1)`, [propostas.length]);
+    const pedidos = gerarPedidos(r, referencia);
+    await inserir(c, 'ext.pedidos_fsbf', pedidos.map((p, i) => ({ id: i + 1, ...p })));
+    await c.query(`SELECT setval(pg_get_serial_sequence('ext.pedidos_fsbf','id'), $1)`, [pedidos.length]);
     const regFrota = gerarFrota(r, frota, referencia);
     await inserir(c, 'ext.fsbf_frota_utilizacao', regFrota);
     const regMaq = gerarMaquinas(r, maquinas, referencia);
@@ -540,7 +588,7 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
     // Aqui e não no topo: cenarios.js precisa deste módulo já carregado.
     const cenarios = await require('./cenarios').criarCenarios(c, r, referencia);
     await c.query('COMMIT');
-    return { propostas: propostas.length, frota: frota.length, registos_frota: regFrota.length,
+    return { pedidos: pedidos.length, frota: frota.length, registos_frota: regFrota.length,
              maquinas: maquinas.length, registos_maquinas: regMaq.length, cenarios };
   } catch (e) {
     await c.query('ROLLBACK');
@@ -551,16 +599,15 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
 }
 
 // A cada arranque: catálogos sempre; fontes externas só se estiverem vazias
-// ou se usarem intervenções que já não estão no catálogo (o catálogo mudou
-// e há códigos que saíram ou mudaram de sentido — repõe-se tudo).
+// ou se as empreitadas usarem intervenções que já não estão no catálogo (o
+// catálogo mudou e há códigos que saíram ou mudaram de sentido — repõe-se).
 async function garantirDadosDemo(pool) {
   const { rows } = await pool.query(
-    `SELECT (SELECT count(*) FROM ext.propostas_empreitada)::int AS n,
-            (SELECT count(*) FROM ext.propostas_empreitada WHERE NOT (interv = ANY($1)))
-          + (SELECT count(*) FROM demo.empreitada_operacoes WHERE NOT (operacao = ANY($1))) AS fora`, [CODIGOS]);
+    `SELECT (SELECT count(*) FROM ext.pedidos_fsbf)::int AS n,
+            (SELECT count(*) FROM demo.empreitada_operacoes WHERE NOT (operacao = ANY($1))) AS fora`, [CODIGOS]);
   if (rows[0].n === 0 || Number(rows[0].fora) > 0) {
     const r = await reporDadosDemo(pool);
-    console.log(`Demonstração: ${r.propostas} propostas, ${r.registos_frota} registos de ${r.frota} viaturas, ` +
+    console.log(`Demonstração: ${r.pedidos} pedidos, ${r.registos_frota} registos de ${r.frota} viaturas, ` +
                 `${r.registos_maquinas} de ${r.maquinas} máquinas; cenários ${r.cenarios.join(', ')}.`);
   } else {
     const c = await pool.connect();
@@ -569,7 +616,7 @@ async function garantirDadosDemo(pool) {
 }
 
 module.exports = {
-  garantirDadosDemo, reporDadosDemo,
+  garantirDadosDemo, reporDadosDemo, DOMINIOS,
   areaHa, comprimentoKm, distanciaKm, FACTOR_POV,
 };
 

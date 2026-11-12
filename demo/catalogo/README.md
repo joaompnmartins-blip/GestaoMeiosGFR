@@ -21,7 +21,7 @@ O grupo **Incêndios Rurais** fica de fora (não é obra); as linhas estão no
 ficheiro, mas sem estas três colunas.
 
 Se um código sair da lista ou mudar de sentido, a demonstração repõe-se
-sozinha no arranque seguinte (as propostas e empreitadas antigas usavam-no).
+sozinha no arranque seguinte (as empreitadas antigas usavam-no).
 
 ## rendimentos.csv
 

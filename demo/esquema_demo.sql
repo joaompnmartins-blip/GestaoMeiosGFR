@@ -5,7 +5,7 @@
 -- Dois esquemas, com papéis diferentes:
 --
 --   ext   faz de conta que é uma fonte externa. A aplicação só LÊ daqui,
---         como fará um dia das tabelas verdadeiras (propostas do SISF,
+--         como fará um dia das tabelas verdadeiras (pedidos à FSBF,
 --         registos da frota e das máquinas). Enche-se com o gerador de
 --         dados sintéticos — nada aqui é real.
 --
@@ -95,32 +95,51 @@ CREATE TABLE IF NOT EXISTS demo.correspondencia_veiculos (
 
 -- ── Fontes externas simuladas ─────────────────────────────────────
 
--- Propostas de empreitada: os atributos da camada PA (Plano de
--- Actividades) do guia SISF. Polígonos e linhas na mesma tabela; o guia
--- separa-os em duas camadas, mas os campos são quase os mesmos
--- (TIPO_FGC só existe nos polígonos, TIPO_ELEM só nas linhas).
--- A geometria é GeoJSON em WGS84; a quantidade sai dela.
-CREATE TABLE IF NOT EXISTS ext.propostas_empreitada (
-    id              SERIAL PRIMARY KEY,
-    cod_equipa      TEXT NOT NULL,
-    ano             SMALLINT NOT NULL,
-    fase            TEXT NOT NULL DEFAULT 'PA',
-    trim            TEXT NOT NULL CHECK (trim IN ('1T','2T','3T','4T')),
-    n_dias          SMALLINT,
-    tipo_pov        SMALLINT NOT NULL CHECK (tipo_pov BETWEEN 1 AND 4),
-    nome            TEXT,
-    tipo_interv     SMALLINT,
-    interv          TEXT NOT NULL,
-    tipo_fgc        TEXT CHECK (tipo_fgc IN ('FIC','FRC')),
-    tipo_elem       TEXT CHECK (tipo_elem IN ('RVF','LA','OUI')),
-    fin             TEXT NOT NULL CHECK (fin IN ('SP','SN')),
-    observ          TEXT,
-    geometria       TEXT NOT NULL CHECK (geometria IN ('poligono','linha')),
-    geom            JSONB NOT NULL,
-    area_ha         NUMERIC(10,2),
-    comprimento_km  NUMERIC(10,2),
-    base_proxima    TEXT,
-    recebida_em     TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Pedidos de intervenção à FSBF. Na realidade vêm de uma aplicação ESRI
+-- (Web AppBuilder) que grava num serviço de features do ArcGIS, com duas
+-- camadas: polígonos e linhas. Esta tabela imita o que esse serviço
+-- devolve numa consulta (…/FeatureServer/N/query?outSR=4326&f=geojson):
+-- só os pedidos em vigor, geometria em WGS84, os campos com os nomes do
+-- serviço (em minúsculas). As duas camadas ficam juntas, separadas por
+-- `camada`; os campos que só uma tem ficam vazios na outra.
+--
+-- Não há tipo de intervenção no pedido: diz onde e que rede (TipoRede).
+-- As operações decidem-se ao seleccionar o pedido como empreitada.
+-- Nas linhas, a faixa tem largura: a área é comprimento × largura.
+CREATE TABLE IF NOT EXISTS ext.pedidos_fsbf (
+    id                SERIAL PRIMARY KEY,                -- só da demonstração
+    camada            TEXT NOT NULL CHECK (camada IN ('poligonos','linhas')),
+    objectid          INTEGER NOT NULL,
+    globalid          TEXT NOT NULL,
+    codpedido         TEXT,
+    utilizador        TEXT,
+    entidade          TEXT,
+    drcnf             TEXT,
+    tipoarea          TEXT,
+    mnpf              TEXT,
+    nuts3             TEXT,
+    municipio         TEXT,
+    nome              TEXT,
+    localtrab         TEXT,
+    datainicio        DATE,
+    datafim           DATE,
+    observa           TEXT,
+    tiporede          TEXT,
+    tipoestrutura     TEXT,
+    area_ha           NUMERIC(12,2),                     -- polígonos
+    perimetro_        NUMERIC(12,2),                     -- polígonos (m)
+    largura_m         NUMERIC(8,2),                      -- linhas
+    comprim_m         NUMERIC(12,2),                     -- linhas
+    areacalc          NUMERIC(14,2),                     -- linhas (m²)
+    datasub           TIMESTAMP,
+    created_user      TEXT,
+    created_date      TIMESTAMP,
+    last_edited_user  TEXT,
+    last_edited_date  TIMESTAMP,
+    geom              JSONB NOT NULL,                    -- GeoJSON, WGS84
+    base_proxima      TEXT,                              -- calculada pela demonstração
+    UNIQUE (camada, objectid),
+    UNIQUE (globalid)
 );
 
 -- Registo de utilização da frota: as colunas exactamente como na
@@ -182,10 +201,10 @@ CREATE INDEX IF NOT EXISTS idx_ext_maq_maquina ON ext.fsbf_maquinas_utilizacao(m
 CREATE TABLE IF NOT EXISTS demo.empreitadas (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     codigo           TEXT NOT NULL UNIQUE,
-    origem           TEXT NOT NULL CHECK (origem IN ('proposta','manual')),
-    proposta_id      INTEGER REFERENCES ext.propostas_empreitada(id) ON DELETE SET NULL,
+    origem           TEXT NOT NULL CHECK (origem IN ('pedido','manual')),
+    pedido_id        INTEGER REFERENCES ext.pedidos_fsbf(id) ON DELETE SET NULL,
     nome             TEXT NOT NULL,
-    geometria        TEXT NOT NULL CHECK (geometria IN ('poligono','linha')),
+    geometria        TEXT NOT NULL CHECK (geometria IN ('poligono','linha','faixa')),
     geom             JSONB NOT NULL,
     area_ha          NUMERIC(10,2),
     comprimento_km   NUMERIC(10,2),
@@ -200,9 +219,29 @@ CREATE TABLE IF NOT EXISTS demo.empreitadas (
     created_at       TIMESTAMPTZ DEFAULT now(),
     updated_at       TIMESTAMPTZ DEFAULT now()
 );
--- Uma proposta só dá uma empreitada.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_empreitada_proposta
-    ON demo.empreitadas(proposta_id) WHERE proposta_id IS NOT NULL;
+-- Faixa: uma linha com largura (a das faixas de gestão de combustível ao
+-- longo de estradas). Mede-se em ha, comprimento × largura.
+ALTER TABLE demo.empreitadas ADD COLUMN IF NOT EXISTS largura_m NUMERIC(8,2);
+-- Quem responde pela empreitada no terreno: um operacional da FSBF.
+ALTER TABLE demo.empreitadas ADD COLUMN IF NOT EXISTS responsavel_id UUID
+    REFERENCES operacionais_fsbf(id) ON DELETE SET NULL;
+
+-- Antes de haver pedidos, as empreitadas vinham das propostas do plano de
+-- actividades (camada PA do SISF). Passagem para os pedidos:
+ALTER TABLE demo.empreitadas ADD COLUMN IF NOT EXISTS pedido_id INTEGER
+    REFERENCES ext.pedidos_fsbf(id) ON DELETE SET NULL;
+ALTER TABLE demo.empreitadas DROP COLUMN IF EXISTS proposta_id;
+DROP TABLE IF EXISTS ext.propostas_empreitada;
+ALTER TABLE demo.empreitadas DROP CONSTRAINT IF EXISTS empreitadas_origem_check;
+UPDATE demo.empreitadas SET origem = 'pedido' WHERE origem = 'proposta';
+ALTER TABLE demo.empreitadas ADD CONSTRAINT empreitadas_origem_check CHECK (origem IN ('pedido','manual'));
+ALTER TABLE demo.empreitadas DROP CONSTRAINT IF EXISTS empreitadas_geometria_check;
+ALTER TABLE demo.empreitadas ADD CONSTRAINT empreitadas_geometria_check
+    CHECK (geometria IN ('poligono','linha','faixa'));
+
+-- Um pedido só dá uma empreitada.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_empreitada_pedido
+    ON demo.empreitadas(pedido_id) WHERE pedido_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS demo.empreitada_operacoes (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),

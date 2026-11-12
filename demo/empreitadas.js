@@ -21,10 +21,14 @@
     'manual':      { cor: '#429abd', nome: 'Manual' },
   };
   const POV    = { 1: 'Resinosas', 2: 'Folhosas', 3: 'Mistos', 4: 'Matos / incultos' };
-  const FGC    = { FIC: 'Faixa de interrupção de combustível', FRC: 'Faixa de redução de combustível' };
-  const ELEM   = { RVF: 'Rede viária florestal', LA: 'Linha de água', OUI: 'Outra infraestrutura' };
-  const FIN    = { SP: 'Serviço Público', SN: 'Serviço Normal (autofinanciamento)' };
-  const TRIM   = { '1T': '1.º trimestre', '2T': '2.º trimestre', '3T': '3.º trimestre', '4T': '4.º trimestre' };
+  // Cor dos pedidos pelo tipo de rede: é o que o pedido diz (não diz a
+  // intervenção, essa escolhe-se ao seleccionar).
+  const REDES  = {
+    RPFGC: { cor: '#e0773a', nome: 'Rede primária' },
+    RSFGC: { cor: '#3f9fd6', nome: 'Rede secundária' },
+    MGC:   { cor: '#8bbf3f', nome: 'Mosaico' },
+  };
+  const GEOM   = { poligono: 'Polígono', faixa: 'Faixa', linha: 'Linha (rede viária)' };
   const ESTADOS = {
     seleccionada: { nome: 'Seleccionada', cor: 'var(--accent3)' },
     planeada:     { nome: 'Planeada',     cor: 'var(--accent)' },
@@ -34,9 +38,9 @@
   };
 
   const st = {
-    montado: false, aba: 'propostas', cat: null, propostas: [], empreitadas: [],
-    filtro: { base: '', modo: '', estado: '', q: '' },
-    sel: null,               // { tipo: 'proposta'|'empreitada', id }
+    montado: false, aba: 'pedidos', cat: null, pedidos: [], empreitadas: [],
+    filtro: { base: '', rede: '', modo: '', estado: '', q: '' },
+    sel: null,               // { tipo: 'pedido'|'empreitada', id }
     mapa: null, camadas: null, mosaico: null, porId: new Map(),
     desenho: null,           // { tipo, pts, camada }
   };
@@ -47,7 +51,38 @@
   const fmt = (n, c = 1) => Number(n).toLocaleString('pt-PT', { minimumFractionDigits: c, maximumFractionDigits: c });
   const opDe = cod => st.cat?.operacoes.find(o => o.codigo === cod);
   const corDe = cod => MODOS[opDe(cod)?.modo]?.cor || '#888';
-  const medida = x => x.area_ha != null ? `${fmt(x.area_ha)} ha` : `${fmt(x.comprimento_km, 2)} km`;
+  const corPedido = p => REDES[p.tiporede]?.cor || '#888';
+  const corItem = x => (st.aba === 'pedidos' ? corPedido(x) : corDe(x.operacoes[0]?.operacao));
+  const dmy = d => d ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '';
+  // Pedido de linha: faixa com largura, em ha (comprimento × largura).
+  const medida = x => {
+    if (x.camada === 'linhas')
+      return `${fmt(x.areacalc / 10000)} ha · ${fmt(x.comprim_m / 1000, 2)} km × ${fmt(x.largura_m, 0)} m`;
+    if (x.geometria === 'faixa')
+      return `${fmt(x.area_ha)} ha · ${fmt(x.comprimento_km, 2)} km × ${fmt(x.largura_m, 0)} m`;
+    return x.area_ha != null ? `${fmt(x.area_ha)} ha` : `${fmt(x.comprimento_km, 2)} km`;
+  };
+  const nomePedido = p => `${p.localtrab || 'Pedido'} · ${p.municipio || p.drcnf || ''}`;
+
+  // Polígono de uma faixa: a linha alargada para cada lado em metade da
+  // largura (só para desenhar; as contas fazem-se com comprimento × largura).
+  function faixaPoligono(coords, largura) {
+    const kx = 111320 * Math.cos(coords[0][1] * Math.PI / 180), ky = 110540, h = largura / 2;
+    const xy = coords.map(([lon, lat]) => [lon * kx, lat * ky]);
+    const esq = [], dir = [];
+    xy.forEach((p, i) => {
+      const a = xy[Math.max(0, i - 1)], b = xy[Math.min(xy.length - 1, i + 1)];
+      const n = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const nx = -(b[1] - a[1]) / n * h, ny = (b[0] - a[0]) / n * h;
+      esq.push([(p[0] + nx) / kx, (p[1] + ny) / ky]);
+      dir.push([(p[0] - nx) / kx, (p[1] - ny) / ky]);
+    });
+    const anel = [...esq, ...dir.reverse()];
+    return { type: 'Polygon', coordinates: [[...anel, anel[0]]] };
+  }
+  // O que se desenha no mapa: numa faixa, a área à volta e a linha ao meio.
+  const geomMapa = x => (x.largura_m && x.geom.type === 'LineString'
+    ? [faixaPoligono(x.geom.coordinates, Number(x.largura_m)), x.geom] : x.geom);
 
   // ── Estilos próprios do ecrã ────────────────────────────────────
   const CSS = `
@@ -209,13 +244,14 @@
     pag.innerHTML = `
       <div class="emp-barra">
         <div class="icnf-tabs">
-          <button class="icnf-tab-btn active" data-aba="propostas">Propostas <span id="emp-n-prop"></span></button>
+          <button class="icnf-tab-btn active" data-aba="pedidos">Pedidos <span id="emp-n-prop"></span></button>
           <button class="icnf-tab-btn" data-aba="empreitadas">Empreitadas <span id="emp-n-emp"></span></button>
         </div>
         <div class="emp-filtros">
           <input class="form-input" id="emp-f-q" placeholder="Procurar nome ou código…" style="width:170px"/>
           <select class="form-select" id="emp-f-base"><option value="">Todas as bases</option></select>
-          <select class="form-select" id="emp-f-modo"><option value="">Todos os modos</option></select>
+          <select class="form-select" id="emp-f-rede"><option value="">Todas as redes</option></select>
+          <select class="form-select" id="emp-f-modo" style="display:none"><option value="">Todos os modos</option></select>
           <select class="form-select" id="emp-f-estado" style="display:none"><option value="">Todos os estados</option></select>
           <button class="btn btn-primary btn-sm" id="emp-btn-nova">+ Nova empreitada</button>
           <button class="btn btn-ghost btn-sm" id="emp-btn-repor" style="display:none" title="Só o administrador">Repor demonstração</button>
@@ -237,6 +273,7 @@
     const f = st.filtro;
     pag.querySelector('#emp-f-q').oninput      = e => { f.q = e.target.value.trim().toLowerCase(); desenharTudo(); };
     pag.querySelector('#emp-f-base').onchange  = e => { f.base = e.target.value; desenharTudo(); };
+    pag.querySelector('#emp-f-rede').onchange  = e => { f.rede = e.target.value; desenharTudo(); };
     pag.querySelector('#emp-f-modo').onchange  = e => { f.modo = e.target.value; desenharTudo(); };
     pag.querySelector('#emp-f-estado').onchange = e => { f.estado = e.target.value; desenharTudo(); };
     pag.querySelector('#emp-btn-nova').onclick = () => iniciarDesenho();
@@ -244,7 +281,7 @@
     const repor = pag.querySelector('#emp-btn-repor');
     if (typeof currentRole !== 'undefined' && currentRole === 'admin') repor.style.display = '';
     repor.onclick = async () => {
-      if (!confirm('Repor a demonstração?\n\nApaga todas as empreitadas e horas registadas, volta a gerar as propostas e os ' +
+      if (!confirm('Repor a demonstração?\n\nApaga todas as empreitadas e horas registadas, volta a gerar os pedidos e os ' +
                    'registos da frota e das máquinas com a data de hoje, e recria os cenários (concluída, em execução, planeada).')) return;
       repor.disabled = true;
       repor.textContent = 'A repor…';
@@ -252,15 +289,11 @@
       repor.disabled = false;
       repor.textContent = 'Repor demonstração';
       if (r.error) return toast(r.error.message, 'err');
-      toast(`Demonstração reposta: ${r.data.propostas} propostas, ${r.data.cenarios.length} cenários.`);
+      toast(`Demonstração reposta: ${r.data.pedidos} pedidos, ${r.data.cenarios.length} cenários.`);
       st.sel = null;
       await carregar();
       desenharTudo();
     };
-
-    document.getElementById('emp-legenda').innerHTML =
-      Object.values(MODOS).map(m => `<div><i style="background:${m.cor}"></i>${m.nome}</div>`).join('') +
-      `<div style="margin-top:4px;color:var(--muted)">tracejado = proposta · cheio = empreitada</div>`;
 
     criarModal();
     st.montado = true;
@@ -294,17 +327,19 @@
 
   // ── Dados ──────────────────────────────────────────────────────
   async function carregar() {
-    const pedidos = [apiFetch('/api/demo/propostas'), apiFetch('/api/demo/empreitadas')];
-    if (!st.cat) pedidos.push(apiFetch('/api/demo/catalogos'));
-    const [p, e, c] = await Promise.all(pedidos);
+    const chamadas = [apiFetch('/api/demo/pedidos'), apiFetch('/api/demo/empreitadas')];
+    if (!st.cat) chamadas.push(apiFetch('/api/demo/catalogos'));
+    const [p, e, c] = await Promise.all(chamadas);
     const falha = [p, e, c].find(x => x && x.error);
     if (falha) { toast(falha.error.message, 'err'); return false; }
-    st.propostas = p.data;
+    st.pedidos = p.data;
     st.empreitadas = e.data;
     if (c) {
       st.cat = c.data;
       const sb = document.getElementById('emp-f-base');
       sb.innerHTML += st.cat.bases.map(b => `<option>${esc(b.nome)}</option>`).join('');
+      document.getElementById('emp-f-rede').innerHTML += Object.entries(REDES)
+        .map(([k, r]) => `<option value="${k}">${r.nome} (${k})</option>`).join('');
       document.getElementById('emp-f-modo').innerHTML += Object.entries(MODOS)
         .map(([k, m]) => `<option value="${k}">${m.nome}</option>`).join('');
       document.getElementById('emp-f-estado').innerHTML += Object.entries(ESTADOS)
@@ -315,23 +350,35 @@
 
   // ── Desenho ────────────────────────────────────────────────────
   function filtrados() {
-    const f = st.filtro;
-    const modoDe = x => st.aba === 'propostas' ? opDe(x.interv)?.modo : x.operacoes.map(o => o.modo);
-    const lista = st.aba === 'propostas' ? st.propostas : st.empreitadas;
-    return lista.filter(x => {
+    const f = st.filtro, ehP = st.aba === 'pedidos';
+    return (ehP ? st.pedidos : st.empreitadas).filter(x => {
       if (f.base && (x.base_proxima || x.base) !== f.base) return false;
-      if (f.modo && ![].concat(modoDe(x)).includes(f.modo)) return false;
-      if (st.aba === 'empreitadas' && f.estado && x.estado !== f.estado) return false;
-      if (f.q && !`${x.nome} ${x.codigo || ''} ${x.interv || ''}`.toLowerCase().includes(f.q)) return false;
+      if (ehP && f.rede && x.tiporede !== f.rede) return false;
+      if (!ehP && f.modo && !x.operacoes.some(o => o.modo === f.modo)) return false;
+      if (!ehP && f.estado && x.estado !== f.estado) return false;
+      const texto = ehP ? `${x.codpedido} ${x.localtrab} ${x.municipio} ${x.mnpf || ''}`
+                        : `${x.nome} ${x.codigo} ${x.pedido_codigo || ''}`;
+      if (f.q && !texto.toLowerCase().includes(f.q)) return false;
       return true;
     });
   }
 
+  function legenda() {
+    const ehP = st.aba === 'pedidos';
+    document.getElementById('emp-legenda').innerHTML =
+      Object.values(ehP ? REDES : MODOS).map(m => `<div><i style="background:${m.cor}"></i>${m.nome}</div>`).join('') +
+      `<div style="margin-top:4px;color:var(--muted)">${ehP ? 'cor = tipo de rede · tracejado = pedido' : 'cor = modo de execução'}</div>`;
+  }
+
   function desenharTudo() {
     if (st.ligacoes) { st.mapa.removeLayer(st.ligacoes); st.ligacoes = null; }
-    document.getElementById('emp-n-prop').textContent = `(${st.propostas.filter(p => !p.empreitada_id).length})`;
+    const ehP = st.aba === 'pedidos';
+    document.getElementById('emp-n-prop').textContent = `(${st.pedidos.filter(p => !p.empreitada_id).length})`;
     document.getElementById('emp-n-emp').textContent = `(${st.empreitadas.length})`;
-    document.getElementById('emp-f-estado').style.display = st.aba === 'empreitadas' ? '' : 'none';
+    document.getElementById('emp-f-rede').style.display = ehP ? '' : 'none';
+    document.getElementById('emp-f-modo').style.display = ehP ? 'none' : '';
+    document.getElementById('emp-f-estado').style.display = ehP ? 'none' : '';
+    legenda();
     const itens = filtrados();
     desenharLista(itens);
     desenharMapa(itens);
@@ -340,46 +387,46 @@
 
   function desenharLista(itens) {
     const el = document.getElementById('emp-lista');
+    const ehP = st.aba === 'pedidos';
     if (!itens.length) {
-      el.innerHTML = `<div class="emp-vazio">${st.aba === 'propostas'
-        ? 'Nenhuma proposta com estes filtros.'
-        : 'Ainda não há empreitadas. Escolha uma proposta e seleccione-a, ou desenhe uma nova no mapa.'}</div>`;
+      el.innerHTML = `<div class="emp-vazio">${ehP
+        ? 'Nenhum pedido com estes filtros.'
+        : 'Ainda não há empreitadas. Escolha um pedido e seleccione-o, ou desenhe uma nova no mapa.'}</div>`;
       return;
     }
     el.innerHTML = itens.map(x => {
-      const ehP = st.aba === 'propostas';
-      const sel = st.sel && st.sel.id === x.id && st.sel.tipo === (ehP ? 'proposta' : 'empreitada');
-      const cor = ehP ? corDe(x.interv) : corDe(x.operacoes[0]?.operacao);
+      const sel = st.sel && st.sel.id === x.id && st.sel.tipo === (ehP ? 'pedido' : 'empreitada');
+      const titulo = ehP ? nomePedido(x) : x.nome;
       const sub = ehP
-        ? `${x.interv} · ${POV[x.tipo_pov]} · ${x.cod_equipa}${x.empreitada_codigo ? ' · → ' + x.empreitada_codigo : ''}`
+        ? `${x.codpedido} · ${x.tiporede}${x.empreitada_codigo ? ' · → ' + x.empreitada_codigo : ''}`
         : `${x.codigo} · ${x.operacoes.map(o => o.operacao).join(', ')} · ${x.base || '—'}`;
-      const dir = ehP ? medida(x)
+      const dir = ehP ? medida(x).split(' · ')[0]
         : `<span class="emp-pill" style="color:${ESTADOS[x.estado].cor}">${ESTADOS[x.estado].nome}</span>`;
       return `<div class="emp-item${sel ? ' sel' : ''}${ehP && x.empreitada_id ? ' tomada' : ''}" data-id="${x.id}">
-        <span class="emp-ponto" style="background:${cor}"></span>
-        <div style="min-width:0"><div class="t">${esc(x.nome)}</div><div class="s">${esc(sub)}</div></div>
+        <span class="emp-ponto" style="background:${corItem(x)}"></span>
+        <div style="min-width:0"><div class="t">${esc(titulo)}</div><div class="s">${esc(sub)}</div></div>
         <div class="d">${dir}</div></div>`;
     }).join('');
     el.querySelectorAll('.emp-item').forEach(n => n.onclick = () =>
-      seleccionar(st.aba === 'propostas' ? 'proposta' : 'empreitada', isNaN(n.dataset.id) ? n.dataset.id : +n.dataset.id, true));
+      seleccionar(ehP ? 'pedido' : 'empreitada', isNaN(n.dataset.id) ? n.dataset.id : +n.dataset.id, true));
   }
 
   function desenharMapa(itens) {
     st.camadas.clearLayers();
     st.porId.clear();
-    const ehP = st.aba === 'propostas';
+    const ehP = st.aba === 'pedidos';
     for (const x of itens) {
-      const cor = ehP ? corDe(x.interv) : corDe(x.operacoes[0]?.operacao);
+      const cor = corItem(x);
       const sel = st.sel && st.sel.id === x.id;
       const tomada = ehP && x.empreitada_id;
       const estilo = {
-        color: cor, weight: sel ? 4 : (x.geometria === 'linha' ? 3 : 2),
+        color: cor, weight: sel ? 4 : (x.geom.type === 'LineString' ? 3 : 2),
         dashArray: ehP ? '6 5' : null, opacity: tomada ? .45 : .95,
         fillColor: cor, fillOpacity: ehP ? (tomada ? .06 : .18) : .32,
       };
-      const camada = L.geoJSON(x.geom, { style: () => estilo })
-        .bindTooltip(`<b>${esc(x.nome)}</b><br>${ehP ? esc(x.interv) : esc(x.codigo)} · ${medida(x)}`, { sticky: true })
-        .on('click', ev => { if (st.desenho) return; L.DomEvent.stop(ev); seleccionar(ehP ? 'proposta' : 'empreitada', x.id, false); });
+      const camada = L.geoJSON(geomMapa(x), { style: () => estilo })
+        .bindTooltip(`<b>${esc(ehP ? nomePedido(x) : x.nome)}</b><br>${esc(ehP ? x.codpedido : x.codigo)} · ${medida(x)}`, { sticky: true })
+        .on('click', ev => { if (st.desenho) return; L.DomEvent.stop(ev); seleccionar(ehP ? 'pedido' : 'empreitada', x.id, false); });
       camada.addTo(st.camadas);
       st.porId.set(x.id, camada);
     }
@@ -387,8 +434,8 @@
     // marcador no centro mantém-nas visíveis à escala do país.
     for (const x of itens) {
       const b = st.porId.get(x.id).getBounds().getCenter();
-      L.circleMarker(b, { radius: 3, stroke: false, fillColor: ehP ? corDe(x.interv) : corDe(x.operacoes[0]?.operacao), fillOpacity: .9 })
-        .on('click', () => seleccionar(ehP ? 'proposta' : 'empreitada', x.id, true)).addTo(st.camadas);
+      L.circleMarker(b, { radius: 3, stroke: false, fillColor: corItem(x), fillOpacity: .9 })
+        .on('click', () => seleccionar(ehP ? 'pedido' : 'empreitada', x.id, true)).addTo(st.camadas);
     }
   }
 
@@ -420,42 +467,49 @@
   function desenharDetalhe() {
     const el = document.getElementById('emp-det');
     if (!st.sel) {
-      el.innerHTML = st.aba === 'propostas'
-        ? `<div class="emp-eyebrow">Plano de actividades · fonte externa</div>
-           <h3>${st.propostas.length} propostas recebidas</h3>
+      el.innerHTML = st.aba === 'pedidos'
+        ? `<div class="emp-eyebrow">Pedidos à FSBF · serviço ESRI (simulado)</div>
+           <h3>${st.pedidos.length} pedidos em vigor</h3>
            <p style="font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.5">
-             Cada proposta é um elemento da camada PA do SISF: um polígono ou uma linha, com a intervenção
-             pretendida (<code style="font-family:'IBM Plex Mono',monospace">INTERV</code>). Escolha uma no mapa ou na lista
-             para a ver e seleccionar como empreitada. Se a que procura não está aqui, use «Nova empreitada» e desenhe-a.</p>`
+             Cada pedido é um polígono ou uma linha da aplicação de pedidos, com o tipo de rede de gestão de
+             combustível. As linhas são faixas: têm largura, e mede-se a área. O pedido não diz que intervenção
+             fazer: escolhe-se ao seleccioná-lo como empreitada. Se o que procura não está aqui, use
+             «Nova empreitada» e desenhe-a.</p>`
         : `<div class="emp-eyebrow">Empreitadas</div>
            <h3>${st.empreitadas.length} empreitada${st.empreitadas.length === 1 ? '' : 's'}</h3>
            <p style="font-size:12px;color:var(--muted);margin:6px 0 0">Escolha uma para ver e editar.</p>`;
       return;
     }
-    if (st.sel.tipo === 'proposta') detalheProposta(el, st.propostas.find(p => p.id === st.sel.id));
+    if (st.sel.tipo === 'pedido') detalhePedido(el, st.pedidos.find(p => p.id === st.sel.id));
     else detalheEmpreitada(el, st.empreitadas.find(e => e.id === st.sel.id));
   }
 
-  function detalheProposta(el, p) {
+  function detalhePedido(el, p) {
     if (!p) { el.innerHTML = ''; return; }
-    const op = opDe(p.interv);
+    const dom = st.cat.dominios;
     const linha = (k, v) => v == null || v === '' ? '' : `<dt>${k}</dt><dd>${v}</dd>`;
+    const cod = (v, d) => v ? `<code>${esc(v)}</code>${esc(d || '')}` : null;
+    const faixa = p.camada === 'linhas';
     el.innerHTML = `
-      <div class="emp-eyebrow">Proposta n.º ${p.id} · ${esc(p.fase)} ${p.ano} · ${esc(p.cod_equipa)}</div>
-      <h3>${esc(p.nome)}</h3>
-      <span class="emp-pill" style="color:${corDe(p.interv)}">${MODOS[op?.modo]?.nome || ''}</span>
+      <div class="emp-eyebrow">Pedido ${esc(p.codpedido)} · ${faixa ? 'linha' : 'polígono'} · submetido a ${dmy(p.datasub)}</div>
+      <h3>${esc(nomePedido(p))}</h3>
+      <span class="emp-pill" style="color:${corPedido(p)}">${esc(REDES[p.tiporede]?.nome || p.tiporede || '')}</span>
       <dl class="emp-attrs">
-        ${linha('INTERV', `<code>${esc(p.interv)}</code>${esc(op?.designacao || '')}`)}
-        ${linha('Grupo', op?.grupo ? esc(op.grupo) : null)}
-        ${linha('TIPO_ELEM', p.tipo_elem ? `<code>${p.tipo_elem}</code>${ELEM[p.tipo_elem]}` : null)}
-        ${linha('TIPO_FGC', p.tipo_fgc ? `<code>${p.tipo_fgc}</code>${FGC[p.tipo_fgc]}` : null)}
-        ${linha('TIPO_POV', `<code>${p.tipo_pov}</code>${POV[p.tipo_pov]}`)}
-        ${linha(p.geometria === 'linha' ? 'Comprimento' : 'Área', medida(p))}
-        ${linha('TRIM', `<code>${p.trim}</code>${TRIM[p.trim]}`)}
-        ${linha('N_DIAS', `${p.n_dias} dias previstos pela equipa`)}
-        ${linha('FIN', `<code>${p.fin}</code>${FIN[p.fin]}`)}
+        ${linha('TipoRede', cod(p.tiporede, dom.tiporede[p.tiporede]))}
+        ${linha('TipoEstrutura', p.tipoestrutura ? esc(p.tipoestrutura) : null)}
+        ${linha(faixa ? 'Faixa' : 'Área', medida(p))}
+        ${linha('Perímetro', p.perimetro_ ? `${fmt(p.perimetro_ / 1000, 2)} km` : null)}
+        ${linha('Período pedido', p.datainicio ? `${dmy(p.datainicio)} a ${dmy(p.datafim)}` : null)}
+        ${linha('DRCNF', cod(p.drcnf, dom.drcnf[p.drcnf]))}
+        ${linha('NUTS III', esc(p.nuts3))}
+        ${linha('Município', esc(p.municipio))}
+        ${linha('MN / PF', p.mnpf ? esc(p.mnpf) : null)}
+        ${linha('Local', esc(p.localtrab))}
+        ${linha('Tipo de área', esc(p.tipoarea))}
+        ${linha('Entidade', esc(p.entidade))}
+        ${linha('Utilizador', `${esc(p.utilizador)} · ${esc(p.nome)}`)}
+        ${linha('Observações', p.observa ? esc(p.observa) : null)}
         ${linha('Base próxima', esc(p.base_proxima))}
-        ${linha('OBSERV', p.observ ? esc(p.observ) : null)}
       </dl>
       <div class="emp-acoes">
         ${p.empreitada_id
@@ -465,22 +519,15 @@
       </div>`;
     el.querySelector('#emp-fechar').onclick = () => { st.sel = null; desenharTudo(); };
     if (p.empreitada_id) el.querySelector('#emp-abrir').onclick = () => { mudarAba('empreitadas'); seleccionar('empreitada', p.empreitada_id, true); };
-    else el.querySelector('#emp-escolher').onclick = () => criarDeProposta(p);
-  }
-
-  async function criarDeProposta(p) {
-    const { data, error } = await apiFetch('/api/demo/empreitadas', { method: 'POST', body: JSON.stringify({ proposta_id: p.id }) });
-    if (error) return toast(error.message, 'err');
-    toast(`Empreitada ${data.codigo} criada a partir da proposta n.º ${p.id}.`);
-    await carregar();
-    mudarAba('empreitadas');
-    seleccionar('empreitada', data.id, true);
+    else el.querySelector('#emp-escolher').onclick = () => abrirModalEmpreitada({ pedido: p });
   }
 
   // Linhas de operação editáveis. `geometria` restringe o catálogo: numa
-  // linha só entram operações medidas em km.
+  // linha (rede viária) só entram operações em km; num polígono ou numa
+  // faixa, as em ha.
   function linhasOperacoes(ops, geometria) {
-    const opcoes = st.cat.operacoes.filter(o => o.geometria === geometria);
+    const g = geometria === 'linha' ? 'linha' : 'poligono';
+    const opcoes = st.cat.operacoes.filter(o => o.geometria === g);
     // Agrupadas como na listagem (Silvicultura, Formação, …), pela ordem dela.
     const grupos = [...new Set(opcoes.map(c => c.grupo || ''))];
     const linha = o => `<tr>
@@ -489,9 +536,10 @@
           `<option value="${c.codigo}"${c.codigo === o.operacao ? ' selected' : ''}>${c.codigo} — ${esc(c.designacao)}</option>`).join('')
       }</optgroup>`).join('')}</select></td>
       <td style="width:92px"><input class="form-input emp-op-q" type="number" min="0.01" step="0.01" value="${o.quantidade ?? ''}"/></td>
-      <td style="width:26px;font-size:11px;color:var(--muted)">${geometria === 'linha' ? 'km' : 'ha'}</td>
+      <td style="width:26px;font-size:11px;color:var(--muted)">${g === 'linha' ? 'km' : 'ha'}</td>
       <td style="width:28px"><button class="btn btn-ghost btn-xs emp-op-rem" title="Retirar operação">✕</button></td></tr>`;
-    return { html: ops.map(linha).join(''), nova: q => linha({ operacao: opcoes[0].codigo, quantidade: q }) };
+    return { html: ops.map(linha).join(''),
+             nova: (q, cod) => linha({ operacao: cod && opcoes.some(o => o.codigo === cod) ? cod : opcoes[0].codigo, quantidade: q }) };
   }
   function ligarOperacoes(tabela, nova) {
     tabela.querySelectorAll('.emp-op-rem').forEach(b => b.onclick = () => b.closest('tr').remove());
@@ -503,21 +551,32 @@
     }));
   }
 
+  // O responsável é um operacional FSBF; agrupados pela base.
+  function opcoesResponsavel(sel) {
+    const porBase = {};
+    for (const o of st.cat.operacionais) (porBase[o.base || 'Sem base'] ||= []).push(o);
+    return `<option value="">— por definir —</option>` + Object.keys(porBase).sort((a, b) => a.localeCompare(b, 'pt'))
+      .map(b => `<optgroup label="${esc(b)}">${porBase[b].map(o =>
+        `<option value="${o.id}"${o.id === sel ? ' selected' : ''}>${esc(o.nome)}${o.cargo ? ' · ' + esc(o.cargo) : ''}</option>`).join('')}</optgroup>`)
+      .join('');
+  }
+
   function detalheEmpreitada(el, e) {
     if (!e) { el.innerHTML = ''; return; }
     const ops = linhasOperacoes(e.operacoes, e.geometria);
     const qDefeito = e.area_ha ?? e.comprimento_km;
     el.innerHTML = `
-      <div class="emp-eyebrow">${esc(e.codigo)} · ${e.origem === 'proposta' ? `da proposta n.º ${e.proposta_id}` : 'criada de raiz'} · base ${esc(e.base || '—')}</div>
+      <div class="emp-eyebrow">${esc(e.codigo)} · ${e.origem === 'pedido' ? `do pedido ${esc(e.pedido_codigo || '')}` : 'criada de raiz'} · base ${esc(e.base || '—')}</div>
       <h3>${esc(e.nome)}</h3>
       <span class="emp-pill" style="color:${ESTADOS[e.estado].cor}">${ESTADOS[e.estado].nome}</span>
-      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-left:8px">${medida(e)} · ${POV[e.tipo_pov]}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-left:8px">${GEOM[e.geometria]} · ${medida(e)} · ${POV[e.tipo_pov]}</span>
       <div class="emp-campos">
         <div class="form-field span2"><label class="form-label">Nome</label><input class="form-input" id="emp-e-nome" value="${esc(e.nome)}"/></div>
         <div class="form-field"><label class="form-label">Estado</label><select class="form-select" id="emp-e-estado">${
           Object.entries(ESTADOS).map(([k, s]) => `<option value="${k}"${k === e.estado ? ' selected' : ''}>${s.nome}</option>`).join('')}</select></div>
         <div class="form-field"><label class="form-label">Povoamento</label><select class="form-select" id="emp-e-pov">${
           Object.entries(POV).map(([k, n]) => `<option value="${k}"${+k === e.tipo_pov ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="form-field span2"><label class="form-label">Responsável</label><select class="form-select" id="emp-e-resp">${opcoesResponsavel(e.responsavel_id)}</select></div>
         <div class="form-field"><label class="form-label">Início previsto</label><input class="form-input" type="date" id="emp-e-ini" value="${e.inicio_previsto || ''}"/></div>
         <div class="form-field"><label class="form-label">Fim previsto</label><input class="form-input" type="date" id="emp-e-fim" value="${e.fim_previsto || ''}"/></div>
       </div>
@@ -550,7 +609,7 @@
     el.querySelector('#emp-e-guardar').onclick = async () => {
       const corpo = {
         nome: el.querySelector('#emp-e-nome').value, estado: el.querySelector('#emp-e-estado').value,
-        tipo_pov: +el.querySelector('#emp-e-pov').value,
+        tipo_pov: +el.querySelector('#emp-e-pov').value, responsavel_id: el.querySelector('#emp-e-resp').value || null,
         inicio_previsto: el.querySelector('#emp-e-ini').value || null, fim_previsto: el.querySelector('#emp-e-fim').value || null,
         observacoes: el.querySelector('#emp-e-obs').value, operacoes: lerOperacoes(tabela),
       };
@@ -561,7 +620,7 @@
       desenharTudo();
     };
     el.querySelector('#emp-e-apagar').onclick = async () => {
-      const volta = e.origem === 'proposta' ? ' A proposta volta à lista.' : '';
+      const volta = e.origem === 'pedido' ? ' O pedido volta à lista.' : '';
       if (!confirm(`Eliminar ${e.codigo}?${volta}`)) return;
       const { error } = await apiFetch(`/api/demo/empreitadas/${e.id}`, { method: 'DELETE' });
       if (error) return toast(error.message, 'err');
@@ -998,7 +1057,8 @@
     el.innerHTML = `
       <select class="form-select" id="emp-d-tipo" style="font-size:12px;padding:4px 6px">
         <option value="poligono"${d.tipo === 'poligono' ? ' selected' : ''}>Polígono</option>
-        <option value="linha"${d.tipo === 'linha' ? ' selected' : ''}>Linha</option></select>
+        <option value="faixa"${d.tipo === 'faixa' ? ' selected' : ''}>Faixa (linha com largura)</option>
+        <option value="linha"${d.tipo === 'linha' ? ' selected' : ''}>Linha (rede viária)</option></select>
       <span style="color:var(--muted)">${d.pts.length < minimo
         ? `Clique no mapa para marcar os vértices (${d.pts.length}/${minimo}).`
         : `${d.pts.length} vértices · <b style="color:var(--text)">${m}</b> · duplo clique para concluir`}</span>
@@ -1048,7 +1108,7 @@
         s += anel[i][0] * k * anel[i + 1][1] * mLat - anel[i + 1][0] * k * anel[i][1] * mLat;
       return Math.abs(s) / 2 / 10000;
     }
-    if (d.pts.length < 2) return null;
+    if (d.pts.length < 2) return null;     // linha ou faixa: o comprimento
     let s = 0;
     for (let i = 1; i < d.pts.length; i++)
       s += Math.hypot((d.pts[i][0] - d.pts[i - 1][0]) * mLon(d.pts[i][1]), (d.pts[i][1] - d.pts[i - 1][1]) * mLat);
@@ -1056,13 +1116,13 @@
   }
   function medirDesenho() {
     const v = valorDesenho();
-    return v == null ? '' : st.desenho.tipo === 'poligono' ? `${fmt(v)} ha` : `${fmt(v, 2)} km`;
+    return v == null ? '' : st.desenho.tipo === 'poligono' ? `${fmt(v)} ha` : `${fmt(v, 2)} km`;  // faixa: a largura vem a seguir
   }
 
   function concluirDesenho() {
     const d = st.desenho;
     if (!d || d.pts.length < (d.tipo === 'poligono' ? 3 : 2)) return;
-    abrirModalNova(geomDesenho(), d.tipo, +valorDesenho().toFixed(2));
+    abrirModalEmpreitada({ geom: geomDesenho(), tipo: d.tipo, medida: +valorDesenho().toFixed(3) });
   }
 
   function cancelarDesenho() {
@@ -1083,7 +1143,7 @@
       <div class="modal-overlay" id="emp-modal">
         <div class="modal" style="width:640px">
           <button class="modal-close" onclick="closeModal('emp-modal')">✕</button>
-          <div class="modal-title">Nova empreitada</div>
+          <div class="modal-title" id="emp-m-titulo">Nova empreitada</div>
           <div id="emp-m-corpo"></div>
         </div>
       </div>
@@ -1117,43 +1177,70 @@
       </div>`);
   }
 
-  function abrirModalNova(geom, tipo, quantidade) {
+  // Nova empreitada: a partir de um pedido ({ pedido }) ou de um desenho
+  // ({ geom, tipo, medida } — medida em ha no polígono, em km na linha e na
+  // faixa). O pedido não traz intervenção nem povoamento: escolhem-se aqui,
+  // com a operação sugerida pelo tipo de rede.
+  function abrirModalEmpreitada(o) {
+    const p = o.pedido;
+    const tipo = p ? (p.camada === 'linhas' ? 'faixa' : 'poligono') : o.tipo;
+    const kmFaixa = p ? p.comprim_m / 1000 : o.medida;
+    let largura = p ? Number(p.largura_m) : 10;
+    const area = () => tipo === 'faixa' ? +(kmFaixa * largura / 10).toFixed(2) : p ? Number(p.area_ha) : o.medida;
     const ops = linhasOperacoes([], tipo);
+    const sugerida = p ? st.cat.sugestao_rede[p.tiporede] : null;
     const corpo = document.getElementById('emp-m-corpo');
+    document.getElementById('emp-m-titulo').textContent = p ? `Seleccionar o pedido ${p.codpedido}` : 'Nova empreitada';
+    const intro = p
+      ? `${GEOM[tipo]} do pedido, com ${medida(p)}. ${REDES[p.tiporede]?.nome || ''} (${esc(p.tiporede)}).
+         O pedido não diz que intervenção fazer: confirme as operações${sugerida ? ` (sugerida: ${sugerida})` : ''} e o povoamento.`
+      : `${GEOM[tipo]} desenhad${tipo === 'faixa' ? 'a' : 'o'} com ${tipo === 'poligono' ? `${fmt(o.medida)} ha` : `${fmt(o.medida, 2)} km`}.
+         Não está em nenhum pedido: fica registada como criada de raiz.`;
     corpo.innerHTML = `
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">
-        ${tipo === 'poligono' ? 'Polígono' : 'Linha'} desenhado com ${fmt(quantidade, tipo === 'linha' ? 2 : 1)} ${tipo === 'linha' ? 'km' : 'ha'}.
-        Não está em nenhuma proposta recebida: fica registada como criada de raiz.</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.5">${intro}</p>
       <div class="form-grid">
-        <div class="form-field span2"><label class="form-label">Nome</label><input class="form-input" id="emp-m-nome" placeholder="Ex.: Faixa de gestão — Serra de …"/></div>
+        <div class="form-field span2"><label class="form-label">Nome</label><input class="form-input" id="emp-m-nome"
+          value="${p ? esc(`${p.localtrab} — ${p.codpedido}`) : ''}" placeholder="Ex.: Faixa de gestão — Serra de …"/></div>
         <div class="form-field"><label class="form-label">Povoamento</label><select class="form-select" id="emp-m-pov">${
           Object.entries(POV).map(([k, n]) => `<option value="${k}"${k === '4' ? ' selected' : ''}>${n}</option>`).join('')}</select></div>
-        <div class="form-field"></div>
-        <div class="form-field"><label class="form-label">Início previsto</label><input class="form-input" type="date" id="emp-m-ini"/></div>
-        <div class="form-field"><label class="form-label">Fim previsto</label><input class="form-input" type="date" id="emp-m-fim"/></div>
+        <div class="form-field">${tipo === 'faixa' && !p
+          ? `<label class="form-label">Largura da faixa (m)</label><input class="form-input" type="number" min="1" max="500" step="1" id="emp-m-larg" value="${largura}"/>`
+          : ''}</div>
+        <div class="form-field span2"><label class="form-label">Responsável</label><select class="form-select" id="emp-m-resp">${opcoesResponsavel(null)}</select></div>
+        <div class="form-field"><label class="form-label">Início previsto</label><input class="form-input" type="date" id="emp-m-ini" value="${p?.datainicio || ''}"/></div>
+        <div class="form-field"><label class="form-label">Fim previsto</label><input class="form-input" type="date" id="emp-m-fim" value="${p?.datafim || ''}"/></div>
       </div>
       <div class="form-label" style="margin-top:16px">Operações</div>
-      <table class="emp-ops" id="emp-m-ops"><tbody>${ops.nova(quantidade)}</tbody></table>
+      <table class="emp-ops" id="emp-m-ops"><tbody>${ops.nova(area(), sugerida)}</tbody></table>
       <button class="btn btn-ghost btn-xs" id="emp-m-op-add" style="margin-top:4px">+ Operação</button>
       <div class="form-field" style="margin-top:14px"><label class="form-label">Observações</label>
-        <textarea class="form-textarea" id="emp-m-obs" rows="2"></textarea></div>
+        <textarea class="form-textarea" id="emp-m-obs" rows="2">${p?.observa ? esc(p.observa) : ''}</textarea></div>
       <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
-        <button class="btn btn-ghost" onclick="closeModal('emp-modal')">Voltar ao desenho</button>
+        <button class="btn btn-ghost" onclick="closeModal('emp-modal')">${p ? 'Cancelar' : 'Voltar ao desenho'}</button>
         <button class="btn btn-primary" id="emp-m-criar">Criar empreitada</button>
       </div>`;
     const tabela = corpo.querySelector('#emp-m-ops');
-    corpo.querySelector('#emp-m-op-add').onclick = ligarOperacoes(tabela, () => ops.nova(quantidade));
+    corpo.querySelector('#emp-m-op-add').onclick = ligarOperacoes(tabela, () => ops.nova(area()));
+    const larg = corpo.querySelector('#emp-m-larg');
+    // Mudar a largura muda a área: acompanham as quantidades ainda iguais à área antiga.
+    if (larg) larg.oninput = () => {
+      const antes = area();
+      largura = Number(larg.value) || largura;
+      tabela.querySelectorAll('.emp-op-q').forEach(i => { if (Number(i.value) === antes) i.value = area(); });
+    };
     corpo.querySelector('#emp-m-criar').onclick = async () => {
       const b = {
         nome: corpo.querySelector('#emp-m-nome').value, tipo_pov: +corpo.querySelector('#emp-m-pov').value,
+        responsavel_id: corpo.querySelector('#emp-m-resp').value || null,
         inicio_previsto: corpo.querySelector('#emp-m-ini').value || null, fim_previsto: corpo.querySelector('#emp-m-fim').value || null,
-        observacoes: corpo.querySelector('#emp-m-obs').value || null, operacoes: lerOperacoes(tabela), geom,
+        observacoes: corpo.querySelector('#emp-m-obs').value || null, operacoes: lerOperacoes(tabela),
+        ...(p ? { pedido_id: p.id } : { geom: o.geom, ...(tipo === 'faixa' ? { largura_m: largura } : {}) }),
       };
       const { data, error } = await apiFetch('/api/demo/empreitadas', { method: 'POST', body: JSON.stringify(b) });
       if (error) return toast(error.message, 'err');
       closeModal('emp-modal');
-      cancelarDesenho();
-      toast(`Empreitada ${data.codigo} criada.`);
+      if (!p) cancelarDesenho();
+      toast(p ? `Empreitada ${data.codigo} criada a partir do pedido ${p.codpedido}.` : `Empreitada ${data.codigo} criada.`);
       await carregar();
       mudarAba('empreitadas');
       seleccionar('empreitada', data.id, true);
