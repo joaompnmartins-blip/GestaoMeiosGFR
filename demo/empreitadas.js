@@ -611,8 +611,9 @@
         }).join('');
     }).join('');
     el.querySelectorAll('[data-rem]').forEach(b => b.onclick = async () => {
-      const { error } = await apiFetch(`/api/demo/empreitadas/${e.id}/meios/${b.dataset.rem}`, { method: 'DELETE' });
+      const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/meios/${b.dataset.rem}`, { method: 'DELETE' });
       if (error) return toast(error.message, 'err');
+      if (data?.estado === 'seleccionada') toast('Sem meios afectos: a empreitada voltou a seleccionada.');
       await recarregarEmpreitada(e.id);
     });
   }
@@ -754,7 +755,8 @@
       const r = await apiFetch(`/api/demo/empreitadas/${e.id}/meios`, { method: 'POST', body: JSON.stringify(b) });
       if (r.error) return toast(r.error.message, 'err');
       closeModal('emp-modal-af');
-      toast('Meio afectado.');
+      toast(e.estado === 'seleccionada' && r.data?.estado === 'planeada'
+        ? 'Meio afectado. A empreitada passou a planeada.' : 'Meio afectado.');
       await recarregarEmpreitada(e.id);
     };
   }

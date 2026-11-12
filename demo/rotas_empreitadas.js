@@ -338,21 +338,43 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
       if (!rows[0]) throw erro(404, 'Viatura não encontrada.');
       custoHora = CLASSES_LIGEIRAS.includes(rows[0].classe) ? null : rows[0].custo_hora_eur;
     }
+    // Ter meios afectos é estar planeada, venham eles da recomendação ou
+    // daqui: a primeira afectação passa a empreitada de seleccionada a
+    // planeada, e as datas previstas alargam-se para cobrir o meio (as que
+    // já lá estavam não encolhem). Tudo numa só instrução, logo atómico.
     const { rows } = await pool.query(
-      `INSERT INTO demo.empreitada_meios (empreitada_id, viatura_id, operacional_id, operacao, inicio, fim,
-                                          horas_previstas, custo_previsto, origem)
-       VALUES ($1, $2, $3, $4, ($5 || ' 08:00')::timestamp AT TIME ZONE 'Europe/Lisbon',
-               ($6 || ' 17:00')::timestamp AT TIME ZONE 'Europe/Lisbon', $7, $8, 'manual') RETURNING id`,
+      `WITH ins AS (
+         INSERT INTO demo.empreitada_meios (empreitada_id, viatura_id, operacional_id, operacao, inicio, fim,
+                                            horas_previstas, custo_previsto, origem)
+         VALUES ($1, $2, $3, $4, ($5 || ' 08:00')::timestamp AT TIME ZONE 'Europe/Lisbon',
+                 ($6 || ' 17:00')::timestamp AT TIME ZONE 'Europe/Lisbon', $7, $8, 'manual') RETURNING id),
+       upd AS (
+         UPDATE demo.empreitadas SET
+                estado = CASE WHEN estado = 'seleccionada' THEN 'planeada' ELSE estado END,
+                inicio_previsto = LEAST(inicio_previsto, $5::date),
+                fim_previsto    = GREATEST(fim_previsto, $6::date), updated_at = now()
+          WHERE id = $1 RETURNING estado)
+       SELECT (SELECT id FROM ins) AS id, (SELECT estado FROM upd) AS estado`,
       [req.params.id, b.viatura_id || null, b.operacional_id || null, b.operacao || null, b.inicio, b.fim,
        horas, custoHora == null ? null : Math.round(horas * custoHora * 100) / 100]);
     res.status(201).json(rows[0]);
   }));
 
   app.delete('/api/demo/empreitadas/:id/meios/:meio', ...leitura, wrap(async (req, res) => {
-    const { rowCount } = await pool.query('DELETE FROM demo.empreitada_meios WHERE id = $1 AND empreitada_id = $2',
-                                          [req.params.meio, req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'Afectação não encontrada.' });
-    res.json({ ok: true });
+    // Sem meios, uma empreitada planeada volta a seleccionada; as datas
+    // ficam. (Na mesma instrução, o SELECT ainda vê o meio apagado: daí o
+    // id <> $1.)
+    const { rows: [r] } = await pool.query(
+      `WITH del AS (DELETE FROM demo.empreitada_meios WHERE id = $1 AND empreitada_id = $2 RETURNING id),
+       upd AS (
+         UPDATE demo.empreitadas SET estado = 'seleccionada', updated_at = now()
+          WHERE id = $2 AND estado = 'planeada' AND EXISTS (SELECT 1 FROM del)
+            AND NOT EXISTS (SELECT 1 FROM demo.empreitada_meios WHERE empreitada_id = $2 AND id <> $1)
+          RETURNING estado)
+       SELECT (SELECT count(*) FROM del)::int AS n, (SELECT estado FROM upd) AS estado`,
+      [req.params.meio, req.params.id]);
+    if (!r.n) return res.status(404).json({ error: 'Afectação não encontrada.' });
+    res.json({ ok: true, estado: r.estado });
   }));
 
   // ── Execução ───────────────────────────────────────────────────

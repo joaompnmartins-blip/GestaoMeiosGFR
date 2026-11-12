@@ -45,6 +45,8 @@ tem registos até à véspera do dia em que se repôs.
   das bases até à obra, e a empreitada passa a planeada.
 - Só entram meios livres e operacionais: um meio já afecto noutra
   empreitada no mesmo período aparece desactivado em **+ Afectar meio**.
+- Quem preferir escolher os meios à mão também pode: com o primeiro meio
+  afecto, a empreitada passa a planeada; sem nenhum, volta a seleccionada.
 
 ## 4. Execução em curso (2,5 min)
 
