@@ -118,6 +118,7 @@
     .emp-ter-reg .dt{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
     .emp-ter-reg .q{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
     .emp-ter-reg .m{grid-column:2/-1;color:var(--muted);font-size:11px}
+    .emp-ter-reg a{color:var(--accent3)}
     .emp-ter-reg.anulado{opacity:.5}
     .emp-ter-reg.anulado .q{text-decoration:line-through}
     .emp-ter-reg .decl{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,var(--border))}
@@ -1084,10 +1085,14 @@
     const { data, error } = await apiFetch(`/api/demo/empreitadas/${e.id}/terreno`);
     if (error) return toast(error.message, 'err');
     cancelarDesenho();
-    const op = data.operacoes.find(o => o.pct < 100)?.operacao || data.operacoes[0]?.operacao;
+    // Começa na maior operação que ainda não está feita.
+    const porFazer = data.operacoes.filter(o => o.pct < 100).sort((a, b) => b.planeado - a.planeado);
+    const op = (porFazer[0] || data.operacoes[0])?.operacao;
     st.ter = { e, d: data, op, modo: 'parcelas', sel: new Set(), pts: [], partes: [], cortes: [],
                dia: hojeISO(), layer: L.layerGroup().addTo(st.mapa) };
     st.mapa.doubleClickZoom.disable();
+    // O preenchimento da empreitada tapava o das parcelas: fica só o contorno.
+    st.porId.get(e.id)?.setStyle({ fillOpacity: 0.02 });
     desenharTerreno();
     desenharDetalhe();
     const c = st.porId.get(e.id);
