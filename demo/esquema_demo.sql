@@ -21,19 +21,24 @@ CREATE SCHEMA IF NOT EXISTS demo;
 
 -- ── Catálogos ─────────────────────────────────────────────────────
 
--- Os códigos INTERV do Guia Técnico de Cartografia do Programa de
--- Sapadores Florestais (ICNF/SISF, pp. 11–13). O modo de execução não
--- vem do guia: é a classificação que decide que meios se recomendam.
+-- As intervenções da listagem da FSBF (demo/catalogo/intervencoes.csv),
+-- sem o grupo Incêndios Rurais. O modo de execução não vem da listagem:
+-- é a classificação que decide que meios se recomendam.
 CREATE TABLE IF NOT EXISTS demo.operacoes (
-    codigo            TEXT PRIMARY KEY,                 -- INTERV
+    codigo            TEXT PRIMARY KEY,                 -- COD da listagem
     designacao        TEXT NOT NULL,
-    tipo_interv       SMALLINT,                         -- TIPO_INTERV do guia; a camada linha não o tem
-    tipo_interv_desc  TEXT NOT NULL,
+    grupo             TEXT,                             -- GrupoIntervencao
+    ordem             SMALLINT,                         -- ID da listagem
     geometria         TEXT NOT NULL CHECK (geometria IN ('poligono','linha')),
     unidade           TEXT NOT NULL CHECK (unidade IN ('ha','km')),
     modo              TEXT NOT NULL CHECK (modo IN
                       ('moto-manual','mecanico','rede-viaria','fogo','quimico','manual'))
 );
+-- Antes eram os códigos do guia SISF, com TIPO_INTERV.
+ALTER TABLE demo.operacoes ADD COLUMN IF NOT EXISTS grupo TEXT;
+ALTER TABLE demo.operacoes ADD COLUMN IF NOT EXISTS ordem SMALLINT;
+ALTER TABLE demo.operacoes DROP COLUMN IF EXISTS tipo_interv;
+ALTER TABLE demo.operacoes DROP COLUMN IF EXISTS tipo_interv_desc;
 
 -- Tipos de meio que a recomendação sabe combinar. O código é a classe
 -- da viatura (viaturas.classe), excepto OP, que é um operacional.

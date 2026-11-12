@@ -73,4 +73,6 @@ O que é simulado e o que falta para ser real:
 - registos: exportações da aplicação da frota (já há exemplo) e das máquinas
   (estrutura por confirmar);
 - rendimentos por operação, máquina e povoamento, e custos horários: não
-  há tabela; os da demonstração são estimativas.
+  há tabela; os da demonstração são estimativas, numa tabela que se pode
+  afinar (`demo/catalogo/rendimentos.csv`);
+- intervenções: a listagem da FSBF, sem o grupo Incêndios Rurais.

@@ -1,0 +1,61 @@
+﻿ID;INTERVENCAO;COD;GrupoIntervencao;GEOMETRIA;UNIDADE;MODO
+1;CDO - Gestão moto-manual de combustível e correcção de densidades excessivas;CDO;Silvicultura;poligono;ha;moto-manual
+2;CDR - Gestão moto-manual de combustível, correcção de densidades excessivas e desramação/poda;CDR;Silvicultura;poligono;ha;moto-manual
+3;CAO - Gestão moto-manual de combustível;CAO;Silvicultura;poligono;ha;moto-manual
+4;MDO - Gestão mecânica de combustível e correcção de densidades;MDO;Silvicultura;poligono;ha;mecanico
+5;MDR - Gestão mecânica de combustível, correcção de densidades excessivas e desramação/poda;MDR;Silvicultura;poligono;ha;mecanico
+6;MAO - Gestão mecânica de combustível;MAO;Silvicultura;poligono;ha;mecanico
+7;QQQ - Gestão com fogo controlado/queimadas;QQQ;Silvicultura;poligono;ha;fogo
+8;PQQ - Preparação de parcelas para Fogo Controlado;PQQ;Silvicultura;poligono;ha;moto-manual
+9;DDD - Correcção de densidades excessivas;DDD;Silvicultura;poligono;ha;moto-manual
+10;RRR - Desramações/podas;RRR;Silvicultura;poligono;ha;moto-manual
+11;DRO - Correcção de densidades excessivas e desramações/podas;DRO;Silvicultura;poligono;ha;moto-manual
+12;AAA - Criação faixas ou manchas por alteração do coberto vegetal;AAA;Silvicultura;poligono;ha;mecanico
+13;GFI - Gestão de combustíveis com aplicação de fitocidas;GFI;Silvicultura;poligono;ha;quimico
+14;GAG - Gestão de combustíveis com culturas agrícolas;GAG;Silvicultura;poligono;ha;mecanico
+15;OUT - Outras intervenções / operações (especificar no campo das observações);OUT;Silvicultura;poligono;ha;manual
+16;GSI - Gestão de combustíveis com silvopastorícia;GSI;Silvicultura;poligono;ha;manual
+17;CRV - Construção de via da rede viária florestal;CRV;Silvicultura;linha;km;rede-viaria
+18;MRV - Manutenção / beneficiação de rede viária florestal;MRV;Silvicultura;linha;km;rede-viaria
+19;CPA - Construção de ponto de água;CPA;Silvicultura;poligono;ha;mecanico
+20;MPA - Manutenção / beneficiação de ponto de água;MPA;Silvicultura;poligono;ha;mecanico
+21;LEE - Locais estratégicos de estacionamento;LEE;Incêndios Rurais;;;
+22;PCS - Primeira intervenção com sucesso;PCS;Incêndios Rurais;;;
+23;PSS - Primeira intervenção sem sucesso;PSS;Incêndios Rurais;;;
+24;ALA - Apoio a combate com linha de água;ALA;Incêndios Rurais;;;
+25;AFM - Apoio a combate com faixa de contenção;AFM;Incêndios Rurais;;;
+26;RLA - Apoio ao rescaldo com linha de água;RLA;Incêndios Rurais;;;
+27;RFM - Apoio ao rescaldo com faixa de contenção;RFM;Incêndios Rurais;;;
+28;VPR - Vigilância pós-rescaldo;VPR;Incêndios Rurais;;;
+29;PRP - Prospecção;PRP;Silvicultura ;poligono;ha;manual
+30;ERR - Erradicação;ERR;Silvicultura ;poligono;ha;moto-manual
+31;AMO - Amostragem;AMO;Silvicultura ;poligono;ha;manual
+32;SEN - Sensibilização;SEN;Silvicultura ;poligono;ha;manual
+33;MPC - Marcação, piquetagem e abertura de covas;MPC;Silvicultura;poligono;ha;manual
+34;APF - Adubação de plantação e plantação;APF;Silvicultura ;poligono;ha;manual
+35;APC - Adubação de plantação, plantação e colocação de protectores individuais;APC;Silvicultura ;poligono;ha;manual
+36;SEM - Sementeira;SEM;Silvicultura ;poligono;ha;manual
+37;RTR - Retancha e rega;RTR;Silvicultura ;poligono;ha;manual
+38;RET - Retancha;RET;Silvicultura ;poligono;ha;manual
+39;SAA - Sacha e amontoa;SAA;Silvicultura ;poligono;ha;manual
+40;LLA - Limpeza de linha de água.;LLA;Silvicultura ;poligono;ha;moto-manual
+41;PDI - Placas de defesa contra incêndios;PDI;Silvicultura ;poligono;ha;manual
+42;RQU - Recolha e queima de resíduos;RQU;Silvicultura ;poligono;ha;moto-manual
+43;RAA - Recuperação de áreas ardidas;RAA;Estabilização de emergência;poligono;ha;mecanico
+44;FOR - Formação;FOR;Formação;poligono;ha;manual
+45;VIS - Vistoria;VIS;Vistoria;poligono;ha;manual
+46;CIM - Controlo de exóticas/invasoras - meio manual ou mecânico;CIM;Silvicultura;poligono;ha;mecanico
+47;CIQ - Controlo de exóticas/invasoras - meio químico;CIQ;Silvicultura;poligono;ha;quimico
+48;EEM - Estabilização de emergência;EEM;Estabilização de emergência;poligono;ha;mecanico
+49;RES - Recolha e estilhagem de sobrantes;RES;Silvicultura;poligono;ha;mecanico
+50;CBR - Construção das bermas;CBR;Silvicultura;linha;km;rede-viaria
+51;CRR - Construção da rede de drenagem;CRR;Silvicultura;linha;km;rede-viaria
+52;CIR - Construção das zonas de inversão de marcha;CIR;Silvicultura;linha;km;rede-viaria
+53;MBR - Beneficiação das bermas;MBR;Silvicultura;linha;km;rede-viaria
+54;MRR - Regularização da rede de drenagem;MRR;Silvicultura;linha;km;rede-viaria
+55;MIR - Regularização das zonas de inversão de marcha;MIR;Silvicultura;linha;km;rede-viaria
+56;ARD - Construção de rede divisional;ARD;Silvicultura;poligono;ha;mecanico
+57;BRD - Manutenção / beneficiação de rede divisional;BRD;Silvicultura;poligono;ha;mecanico
+58;PPB - Pré-posicionamento para IR;PPB;Incêndios Rurais;;;
+59;LOG - Gestão logística;LOG;Logística;poligono;ha;manual
+60;DES - Deslocações em serviço;DES;Deslocações;poligono;ha;manual

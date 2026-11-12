@@ -22,7 +22,7 @@ const { proximoCodigo, contexto, calcular, aplicarAlternativa } = require('./pla
 const { diasUteis, CLASSES_LIGEIRAS } = require('./recomendacao');
 const { diaLisboa, somarDias, diasUteisEntre } = require('./execucao');
 
-const MECANICAS = ['MAO', 'MDO', 'MDE', 'MDR', 'RES', 'CIM', 'RAA'];
+const MECANICAS = ['MAO', 'MDO', 'MDR', 'RES', 'CIM', 'RAA', 'AAA'];
 const doisDig = n => String(n).padStart(2, '0');
 const hhmm = m => `${doisDig(Math.floor(m / 60) % 24)}:${doisDig(Math.round(m % 60))}`;
 const arred = (x, c = 1) => Math.round(x * 10 ** c) / 10 ** c;

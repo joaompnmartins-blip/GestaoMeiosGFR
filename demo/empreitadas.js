@@ -446,7 +446,7 @@
       <span class="emp-pill" style="color:${corDe(p.interv)}">${MODOS[op?.modo]?.nome || ''}</span>
       <dl class="emp-attrs">
         ${linha('INTERV', `<code>${esc(p.interv)}</code>${esc(op?.designacao || '')}`)}
-        ${linha('TIPO_INTERV', p.tipo_interv != null ? `<code>${p.tipo_interv}</code>${esc(op?.tipo_interv_desc || '')}` : null)}
+        ${linha('Grupo', op?.grupo ? esc(op.grupo) : null)}
         ${linha('TIPO_ELEM', p.tipo_elem ? `<code>${p.tipo_elem}</code>${ELEM[p.tipo_elem]}` : null)}
         ${linha('TIPO_FGC', p.tipo_fgc ? `<code>${p.tipo_fgc}</code>${FGC[p.tipo_fgc]}` : null)}
         ${linha('TIPO_POV', `<code>${p.tipo_pov}</code>${POV[p.tipo_pov]}`)}
@@ -481,9 +481,13 @@
   // linha só entram operações medidas em km.
   function linhasOperacoes(ops, geometria) {
     const opcoes = st.cat.operacoes.filter(o => o.geometria === geometria);
+    // Agrupadas como na listagem (Silvicultura, Formação, …), pela ordem dela.
+    const grupos = [...new Set(opcoes.map(c => c.grupo || ''))];
     const linha = o => `<tr>
-      <td><select class="form-select emp-op-cod">${opcoes.map(c =>
-        `<option value="${c.codigo}"${c.codigo === o.operacao ? ' selected' : ''}>${c.codigo} — ${esc(c.designacao)}</option>`).join('')}</select></td>
+      <td><select class="form-select emp-op-cod">${grupos.map(g => `<optgroup label="${esc(g || 'Outras')}">${
+        opcoes.filter(c => (c.grupo || '') === g).map(c =>
+          `<option value="${c.codigo}"${c.codigo === o.operacao ? ' selected' : ''}>${c.codigo} — ${esc(c.designacao)}</option>`).join('')
+      }</optgroup>`).join('')}</select></td>
       <td style="width:92px"><input class="form-input emp-op-q" type="number" min="0.01" step="0.01" value="${o.quantidade ?? ''}"/></td>
       <td style="width:26px;font-size:11px;color:var(--muted)">${geometria === 'linha' ? 'km' : 'ha'}</td>
       <td style="width:28px"><button class="btn btn-ghost btn-xs emp-op-rem" title="Retirar operação">✕</button></td></tr>`;

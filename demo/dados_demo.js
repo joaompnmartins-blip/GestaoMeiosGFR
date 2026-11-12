@@ -22,63 +22,48 @@
 
 // ── Catálogos ─────────────────────────────────────────────────────
 
-// Guia Técnico de Cartografia para o Programa de Sapadores Florestais,
-// ICNF/SISF, pp. 11–13. As acções de gestão de combustíveis servem para
-// matos (TIPO_INTERV 8) e povoamentos (1); guarda-se o 8 e a proposta
-// escolhe consoante o tipo de povoamento.
-const TIPOS_INTERV = {
-  10: 'Acções de (re)arborização',
-  8:  'Gestão de combustíveis (matos)',
-  1:  'Gestão de combustíveis (povoamentos)',
-  14: 'Controlo de exóticas/invasoras',
-  12: 'Gestão pós-incêndio',
-  15: 'Tratamento de sobrantes',
-  13: 'Inventariação',
-  5:  'Fitossanidade',
-  7:  'Outras atividades',
-};
+// O catálogo das intervenções e a tabela de rendimentos vêm dos CSV em
+// demo/catalogo/ (ver o README de lá). São a fonte: para mudar uma
+// designação, um modo ou um rendimento, muda-se o CSV e reinicia-se.
+const fs = require('fs');
+const path = require('path');
+const { parse } = require('csv-parse/sync');
 
-// [código, designação, TIPO_INTERV, geometria, modo]
-const OPERACOES = [
-  ['MPA',  'Marcação, piquetagem e abertura de covas',                              10, 'poligono', 'manual'],
-  ['APF',  'Adubação de plantação e plantação',                                     10, 'poligono', 'manual'],
-  ['APC',  'Adubação de plantação, plantação e colocação de protetores individuais',10, 'poligono', 'manual'],
-  ['RET',  'Retancha',                                                              10, 'poligono', 'manual'],
-  ['SAA',  'Sacha e amontoa',                                                       10, 'poligono', 'manual'],
-  ['OUTa', 'Outras intervenções / operações de (re)arborização',                    10, 'poligono', 'manual'],
-  ['CDO',  'Gestão moto-manual de combustível e correção de densidades excessivas', 8,  'poligono', 'moto-manual'],
-  ['CDR',  'Gestão moto-manual de combustível, correção de densidades e desramação/poda', 8, 'poligono', 'moto-manual'],
-  ['CDE',  'Gestão moto-manual de combustível e desramação/poda',                   8,  'poligono', 'moto-manual'],
-  ['CAO',  'Gestão moto-manual de combustível',                                     8,  'poligono', 'moto-manual'],
-  ['MDO',  'Gestão mecânica de combustível e correção de densidades',               8,  'poligono', 'mecanico'],
-  ['MDR',  'Gestão mecânica de combustível, correção de densidades e desramação/poda', 8, 'poligono', 'mecanico'],
-  ['MDE',  'Gestão mecânica de combustível e desramação/poda',                      8,  'poligono', 'mecanico'],
-  ['MAO',  'Gestão mecânica de combustível',                                        8,  'poligono', 'mecanico'],
-  ['QQQ',  'Gestão com fogo controlado/queimadas',                                  8,  'poligono', 'fogo'],
-  ['DDD',  'Correção de densidades excessivas',                                     8,  'poligono', 'moto-manual'],
-  ['RRR',  'Desramações/podas',                                                     8,  'poligono', 'moto-manual'],
-  ['DRO',  'Correção de densidades excessivas e desramações/podas',                 8,  'poligono', 'moto-manual'],
-  ['GSI',  'Gestão de combustíveis com silvopastorícia',                            8,  'poligono', 'manual'],
-  ['GFI',  'Gestão de combustíveis com aplicação de fitocidas',                     8,  'poligono', 'quimico'],
-  ['CIM',  'Controlo de exóticas/invasoras - meio manual ou mecânico',              14, 'poligono', 'mecanico'],
-  ['CIQ',  'Controlo de exóticas/invasoras - meio químico',                         14, 'poligono', 'quimico'],
-  ['RAA',  'Recuperação de áreas ardidas',                                          12, 'poligono', 'mecanico'],
-  ['EEM',  'Estabilização de emergência',                                           12, 'poligono', 'mecanico'],
-  ['RQU',  'Recolha e queima de sobrantes',                                         15, 'poligono', 'moto-manual'],
-  ['RES',  'Recolha e estilhagem de sobrantes',                                     15, 'poligono', 'mecanico'],
-  ['INV',  'Inventariação',                                                         13, 'poligono', 'manual'],
-  ['ARM',  'Colocação / manutenção de armadilhas',                                  5,  'poligono', 'manual'],
-  ['TCU',  'Aplicação de tratamentos fitossanitários - culturais',                  5,  'poligono', 'manual'],
-  ['TQB',  'Aplicação de tratamentos fitossanitários - químicos, biológicos',       5,  'poligono', 'quimico'],
-  ['MAB',  'Marcação e abate pontual de árvores',                                   5,  'poligono', 'moto-manual'],
-  ['OUT',  'Outras intervenções / operações',                                       7,  'poligono', 'manual'],
-  // Camada linha (p. 13): não tem TIPO_INTERV, tem TIPO_ELEM.
-  ['CON',  'Construção de via da rede viária florestal',                            null, 'linha', 'rede-viaria'],
-  ['MAN',  'Manutenção / beneficiação de rede viária florestal',                    null, 'linha', 'rede-viaria'],
-  ['LLA',  'Limpeza de linha de água',                                              null, 'linha', 'moto-manual'],
-  ['OUI',  'Manutenção ou intervenções em outras infraestruturas florestais',       null, 'linha', 'manual'],
-];
-const TIPO_ELEM = { CON: 'RVF', MAN: 'RVF', LLA: 'LA', OUI: 'OUI' };
+// O Excel português tanto grava em UTF-8 como em Windows-1252: aceitam-se os dois.
+function lerCsv(nome) {
+  const bytes = fs.readFileSync(path.join(__dirname, 'catalogo', nome));
+  let texto;
+  try { texto = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { texto = new TextDecoder('windows-1252').decode(bytes); }
+  return parse(texto, { bom: true, columns: true, delimiter: ';', trim: true, skip_empty_lines: true });
+}
+const decimal = v => (v === '' || v == null ? null : Number(String(v).replace(',', '.')));
+
+// O grupo Incêndios Rurais é actividade da equipa, não obra: fica de fora.
+const GRUPOS_EXCLUIDOS = ['Incêndios Rurais'];
+const MODOS = ['moto-manual', 'mecanico', 'rede-viaria', 'fogo', 'quimico', 'manual'];
+
+// { codigo, designacao, grupo, ordem, geometria, unidade, modo }
+const OPERACOES = lerCsv('intervencoes.csv')
+  .filter(l => !GRUPOS_EXCLUIDOS.includes(l.GrupoIntervencao))
+  .map(l => {
+    const o = {
+      codigo: l.COD, ordem: Number(l.ID), grupo: l.GrupoIntervencao,
+      // O texto do ficheiro traz o código à frente: «CDO - Gestão …».
+      designacao: l.INTERVENCAO.replace(new RegExp(`^${l.COD}\\s*-\\s*`), ''),
+      geometria: l.GEOMETRIA, unidade: l.UNIDADE, modo: l.MODO,
+    };
+    if (!['poligono', 'linha'].includes(o.geometria) || o.unidade !== (o.geometria === 'linha' ? 'km' : 'ha') ||
+        !MODOS.includes(o.modo))
+      throw new Error(`intervencoes.csv: ${o.codigo} com geometria, unidade ou modo inválidos.`);
+    return o;
+  });
+const OP = Object.fromEntries(OPERACOES.map(o => [o.codigo, o]));
+const CODIGOS = OPERACOES.map(o => o.codigo);
+
+// Gestão de combustíveis: só estas propostas podem ser faixas (TIPO_FGC).
+const COMBUSTIVEIS = ['CDO', 'CDR', 'CAO', 'MDO', 'MDR', 'MAO', 'QQQ', 'PQQ', 'DDD', 'RRR', 'DRO',
+                      'AAA', 'GFI', 'GAG', 'GSI'];
 
 // Custos SIMULADOS. O código é a classe da viatura no catálogo da GOGFR,
 // excepto OP, que é um operacional. Máquinas de rastos não andam na estrada:
@@ -98,21 +83,21 @@ const TIPOS_MEIO = [
 
 // Rendimentos SIMULADOS, em unidades da operação por hora (ha/h ou km/h),
 // para matos/incultos. Nos povoamentos rende-se menos: multiplica-se pelo
-// factor do tipo de povoamento. Na rede viária o povoamento não conta.
-// OP é por operacional: uma equipa de 6 rende seis vezes isto.
-const RENDIMENTO_BASE = {
-  OP: { MPA: .010, APF: .008, APC: .006, RET: .015, SAA: .012, OUTa: .010,
-        CDO: .018, CDR: .012, CDE: .015, CAO: .025, QQQ: .040, DDD: .020,
-        RRR: .015, DRO: .012, GSI: .020, GFI: .050, CIM: .012, CIQ: .040,
-        RAA: .010, EEM: .008, RQU: .020, RES: .010, INV: .080, ARM: .050,
-        TCU: .020, TQB: .050, MAB: .010, OUT: .010, LLA: .012, OUI: .020 },
-  TB: { MAO: .45, MDO: .35, MDE: .25, MDR: .20, RES: .30, CIM: .25, RAA: .30 },
-  TR: { MAO: .40, MDO: .32, MDE: .22, MDR: .18, RES: .25, CIM: .22, RAA: .28, EEM: .15 },
-  DR: { MAO: .60, MDO: .50, MDE: .35, MDR: .30, RES: .45, CIM: .35, RAA: .40 },
-  MR: { MAO: .70, MDO: .40, RAA: .35, EEM: .30, CON: .06, MAN: .25 },
-  GR: { MDE: .12, CIM: .15, RAA: .20, EEM: .25, CON: .04, MAN: .12, LLA: .08 },
-};
-const FACTOR_POV = { 1: 0.80, 2: 0.85, 3: 0.70, 4: 1.00 };   // resinosas, folhosas, mistos, matos
+// factor do tipo de povoamento (povoamentos.csv). Na rede viária o
+// povoamento não conta. OP é por operacional: uma equipa de 6 rende seis
+// vezes isto. Célula vazia: esse meio não faz essa operação.
+const TIPOS_RENDIMENTO = ['OP', 'TB', 'TR', 'DR', 'MR', 'GR'];
+const RENDIMENTO_BASE = {};
+for (const l of lerCsv('rendimentos.csv')) {
+  if (!OP[l.COD]) throw new Error(`rendimentos.csv: ${l.COD} não está no catálogo das intervenções.`);
+  for (const t of TIPOS_RENDIMENTO) {
+    const v = decimal(l[t]);
+    if (v == null) continue;
+    if (!(v > 0)) throw new Error(`rendimentos.csv: ${l.COD}/${t} tem de ser positivo.`);
+    (RENDIMENTO_BASE[t] ||= {})[l.COD] = v;
+  }
+}
+const FACTOR_POV = Object.fromEntries(lerCsv('povoamentos.csv').map(l => [Number(l.TIPO_POV), decimal(l.FACTOR)]));
 
 // As bases FSBF (as de operacionais_fsbf), no centro da localidade.
 // `rumos` é para onde há terra: a Marinha Grande tem o mar a poente, Olhão
@@ -275,23 +260,24 @@ function diasUteis(referencia, quantos) {
 
 function gerarRendimentos() {
   const linhas = [];
-  const modoDe = Object.fromEntries(OPERACOES.map(o => [o[0], o[4]]));
   for (const [meio, ops] of Object.entries(RENDIMENTO_BASE))
     for (const [op, base] of Object.entries(ops))
       for (const pov of [1, 2, 3, 4]) {
-        const f = modoDe[op] === 'rede-viaria' ? 1 : FACTOR_POV[pov];
+        const f = OP[op].modo === 'rede-viaria' ? 1 : FACTOR_POV[pov];
         linhas.push({ operacao: op, tipo_meio: meio, tipo_pov: pov, por_hora: arred(base * f, 4) });
       }
   return linhas;
 }
 
-const PESOS_POLIGONO = { MAO: 12, MDO: 10, CAO: 10, CDO: 6, RES: 6, MDE: 4, QQQ: 4, MDR: 3,
-                         CDR: 3, RQU: 3, CIM: 3, CDE: 2, DDD: 2, APF: 2, RAA: 2, GFI: 1,
-                         CIQ: 1, MPA: 1, EEM: 1 };
-const PESOS_LINHA    = { MAN: 10, LLA: 5, CON: 2 };
+const PESOS_POLIGONO = { MAO: 12, MDO: 10, CAO: 10, CDO: 6, RES: 6, QQQ: 4, MDR: 3, CDR: 3,
+                         RQU: 3, CIM: 3, AAA: 3, LLA: 3, PQQ: 2, DDD: 2, APF: 2, RAA: 2,
+                         BRD: 2, GFI: 1, CIQ: 1, MPC: 1, EEM: 1, GAG: 1, SEM: 1, ERR: 1,
+                         ARD: 1, CPA: 1, MPA: 1 };
+const PESOS_LINHA    = { MRV: 10, MBR: 3, MRR: 3, CRV: 2, CBR: 1, CRR: 1, CIR: 1, MIR: 1 };
+// Pontos de água: polígonos pequenos, de umas centenas a 3000 m².
+const PONTOS_AGUA    = ['CPA', 'MPA'];
 
 function gerarPropostas(r, referencia) {
-  const op = Object.fromEntries(OPERACOES.map(o => [o[0], o]));
   // O plano de actividades entrega-se até 31 de Outubro para o ano seguinte.
   const ano = referencia.getMonth() >= 9 ? referencia.getFullYear() + 1 : referencia.getFullYear();
   const propostas = [];
@@ -308,25 +294,24 @@ function gerarPropostas(r, referencia) {
       if (eLinha) {
         geom = linha(r, centro, r.entre(0.8, 6));
         comp = arred(comprimentoKm(geom), 2);
-        nome = TIPO_ELEM[interv] === 'LA'
-          ? `Linha de água ${doisDig(n)} — ${base}`
-          : `Caminho florestal ${doisDig(n)} — ${base}`;
+        nome = `Caminho florestal ${doisDig(n)} — ${base}`;
       } else {
-        const ehGestao = op[interv][2] === 8;
-        tipoFgc = ehGestao && r() < 0.5 ? r.um(['FIC', 'FRC']) : null;
-        geom = poligono(r, centro, tipoFgc ? r.entre(3, 15) : r.entre(2, 40), !!tipoFgc);
+        const pontoAgua = PONTOS_AGUA.includes(interv);
+        tipoFgc = COMBUSTIVEIS.includes(interv) && r() < 0.5 ? r.um(['FIC', 'FRC']) : null;
+        const ha = pontoAgua ? r.entre(0.03, 0.3) : tipoFgc ? r.entre(3, 15)
+                 : interv === 'LLA' ? r.entre(1, 6) : r.entre(2, 40);
+        geom = poligono(r, centro, ha, !!tipoFgc || interv === 'LLA');
         area = arred(areaHa(geom), 2);
-        nome = tipoFgc ? `Faixa ${tipoFgc} ${doisDig(n)} — ${base}` : `Talhão ${doisDig(n)} — ${base}`;
+        nome = `${pontoAgua ? 'Ponto de água' : interv === 'LLA' ? 'Linha de água'
+                : tipoFgc ? `Faixa ${tipoFgc}` : 'Talhão'} ${doisDig(n)} — ${base}`;
       }
       // Ritmo de referência para o N_DIAS da proposta: 1,5 ha ou 0,8 km por dia.
       const nDias = Math.max(1, Math.min(60, Math.round(area ? area / 1.5 : comp / 0.8)));
-      let tipoInterv = op[interv][2];
-      if (tipoInterv === 8 && tipoPov !== 4) tipoInterv = 1;     // combustíveis em povoamento
       propostas.push({
         cod_equipa: `FSBF-${sigla}`, ano, fase: 'PA',
         trim: r.pesado({ '1T': 30, '2T': 35, '3T': 10, '4T': 25 }),
-        n_dias: nDias, tipo_pov: tipoPov, nome, tipo_interv: eLinha ? null : tipoInterv,
-        interv, tipo_fgc: tipoFgc, tipo_elem: eLinha ? TIPO_ELEM[interv] : null,
+        n_dias: nDias, tipo_pov: tipoPov, nome, tipo_interv: null,
+        interv, tipo_fgc: tipoFgc, tipo_elem: eLinha ? 'RVF' : null,
         fin: r() < 0.85 ? 'SP' : 'SN', observ: null,
         geometria: eLinha ? 'linha' : 'poligono', geom,
         area_ha: area, comprimento_km: comp, base_proxima: base,
@@ -452,18 +437,13 @@ async function inserir(c, tabela, linhas) {
 }
 
 async function escreverCatalogos(c) {
-  await c.query(`INSERT INTO demo.operacoes (codigo, designacao, tipo_interv, tipo_interv_desc, geometria, unidade, modo)
-                 SELECT * FROM json_to_recordset($1) AS x(codigo text, designacao text, tipo_interv smallint,
-                        tipo_interv_desc text, geometria text, unidade text, modo text)
+  await c.query(`INSERT INTO demo.operacoes (codigo, designacao, grupo, ordem, geometria, unidade, modo)
+                 SELECT * FROM json_to_recordset($1) AS x(codigo text, designacao text, grupo text,
+                        ordem smallint, geometria text, unidade text, modo text)
                  ON CONFLICT (codigo) DO UPDATE SET designacao = EXCLUDED.designacao,
-                        tipo_interv = EXCLUDED.tipo_interv, tipo_interv_desc = EXCLUDED.tipo_interv_desc,
+                        grupo = EXCLUDED.grupo, ordem = EXCLUDED.ordem,
                         geometria = EXCLUDED.geometria, unidade = EXCLUDED.unidade, modo = EXCLUDED.modo`,
-    [JSON.stringify(OPERACOES.map(([codigo, designacao, ti, geometria, modo]) => ({
-      codigo, designacao, tipo_interv: ti,
-      tipo_interv_desc: ti === null ? (TIPO_ELEM[codigo] === 'LA' ? 'Linhas de água'
-                                     : TIPO_ELEM[codigo] === 'RVF' ? 'Rede viária florestal' : 'Outras infraestruturas')
-                                   : TIPOS_INTERV[ti],
-      geometria, unidade: geometria === 'linha' ? 'km' : 'ha', modo })))]);
+    [JSON.stringify(OPERACOES)]);
 
   await c.query(`INSERT INTO demo.tipos_meio (codigo, designacao, custo_hora_eur, custo_km_eur, operadores,
                                              precisa_transporte, mobilizacao_eur)
@@ -480,6 +460,14 @@ async function escreverCatalogos(c) {
   // acima tem de sair também da base.
   await c.query('DELETE FROM demo.rendimentos WHERE simulado');
   await inserir(c, 'demo.rendimentos', gerarRendimentos().map(x => ({ ...x, simulado: true })));
+
+  // Códigos que saíram do catálogo: apagam-se os que já ninguém usa. Os
+  // que ainda estão em empreitadas ficam até se repor (ver garantirDadosDemo).
+  await c.query(`DELETE FROM demo.rendimentos WHERE NOT (operacao = ANY($1))`, [CODIGOS]);
+  await c.query(`DELETE FROM demo.operacoes o WHERE NOT (codigo = ANY($1))
+                   AND NOT EXISTS (SELECT 1 FROM demo.empreitada_operacoes x WHERE x.operacao = o.codigo)
+                   AND NOT EXISTS (SELECT 1 FROM demo.empreitada_meios x WHERE x.operacao = o.codigo)
+                   AND NOT EXISTS (SELECT 1 FROM demo.horas_operacionais x WHERE x.operacao = o.codigo)`, [CODIGOS]);
 
   await c.query(`INSERT INTO demo.bases (nome, companhia, lat, lon)
                  SELECT * FROM json_to_recordset($1) AS x(nome text, companhia text, lat float8, lon float8)
@@ -537,10 +525,10 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
-    await escreverCatalogos(c);
     await c.query(`TRUNCATE demo.horas_operacionais, demo.empreitada_meios, demo.empreitada_operacoes,
                             demo.empreitadas, ext.propostas_empreitada, ext.fsbf_frota_utilizacao,
                             ext.fsbf_maquinas_utilizacao RESTART IDENTITY`);
+    await escreverCatalogos(c);
     const { frota, maquinas } = await atribuirMeios(c, r);
     const propostas = gerarPropostas(r, referencia);
     await inserir(c, 'ext.propostas_empreitada', propostas.map((p, i) => ({ id: i + 1, ...p })));
@@ -562,10 +550,15 @@ async function reporDadosDemo(pool, { referencia = new Date(), semente = 2027 } 
   }
 }
 
-// A cada arranque: catálogos sempre; fontes externas só se estiverem vazias.
+// A cada arranque: catálogos sempre; fontes externas só se estiverem vazias
+// ou se usarem intervenções que já não estão no catálogo (o catálogo mudou
+// e há códigos que saíram ou mudaram de sentido — repõe-se tudo).
 async function garantirDadosDemo(pool) {
-  const { rows } = await pool.query('SELECT count(*)::int n FROM ext.propostas_empreitada');
-  if (rows[0].n === 0) {
+  const { rows } = await pool.query(
+    `SELECT (SELECT count(*) FROM ext.propostas_empreitada)::int AS n,
+            (SELECT count(*) FROM ext.propostas_empreitada WHERE NOT (interv = ANY($1)))
+          + (SELECT count(*) FROM demo.empreitada_operacoes WHERE NOT (operacao = ANY($1))) AS fora`, [CODIGOS]);
+  if (rows[0].n === 0 || Number(rows[0].fora) > 0) {
     const r = await reporDadosDemo(pool);
     console.log(`Demonstração: ${r.propostas} propostas, ${r.registos_frota} registos de ${r.frota} viaturas, ` +
                 `${r.registos_maquinas} de ${r.maquinas} máquinas; cenários ${r.cenarios.join(', ')}.`);

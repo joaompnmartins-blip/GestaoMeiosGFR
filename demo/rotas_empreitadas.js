@@ -105,7 +105,7 @@ module.exports = function montarRotasEmpreitadas(app, { pool, requireAuth, FSBF_
   // Catálogos de uma vez: o ecrã precisa de todos para desenhar e filtrar.
   app.get('/api/demo/catalogos', ...leitura, wrap(async (req, res) => {
     const [ops, tipos, bases] = await Promise.all([
-      pool.query('SELECT * FROM demo.operacoes ORDER BY geometria DESC, tipo_interv NULLS LAST, codigo'),
+      pool.query('SELECT * FROM demo.operacoes ORDER BY ordem, codigo'),
       pool.query('SELECT * FROM demo.tipos_meio ORDER BY codigo'),
       pool.query('SELECT * FROM demo.bases ORDER BY companhia, nome'),
     ]);

@@ -1,0 +1,52 @@
+﻿COD;INTERVENCAO;UNIDADE;OP;TB;TR;DR;MR;GR
+CDO;Gestão moto-manual de combustível e correcção de densidades excessivas;ha;0,018;;;;;
+CDR;Gestão moto-manual de combustível, correcção de densidades excessivas e desramação/poda;ha;0,012;;;;;
+CAO;Gestão moto-manual de combustível;ha;0,025;;;;;
+MDO;Gestão mecânica de combustível e correcção de densidades;ha;;0,35;0,32;0,5;0,4;
+MDR;Gestão mecânica de combustível, correcção de densidades excessivas e desramação/poda;ha;;0,2;0,18;0,3;;
+MAO;Gestão mecânica de combustível;ha;;0,45;0,4;0,6;0,7;
+QQQ;Gestão com fogo controlado/queimadas;ha;0,04;;;;;
+PQQ;Preparação de parcelas para Fogo Controlado;ha;0,03;;;;;
+DDD;Correcção de densidades excessivas;ha;0,02;;;;;
+RRR;Desramações/podas;ha;0,015;;;;;
+DRO;Correcção de densidades excessivas e desramações/podas;ha;0,012;;;;;
+AAA;Criação faixas ou manchas por alteração do coberto vegetal;ha;;0,35;0,3;0,45;0,4;
+GFI;Gestão de combustíveis com aplicação de fitocidas;ha;0,05;;;;;
+GAG;Gestão de combustíveis com culturas agrícolas;ha;;0,5;0,4;;;
+OUT;Outras intervenções / operações (especificar no campo das observações);ha;0,01;;;;;
+GSI;Gestão de combustíveis com silvopastorícia;ha;0,02;;;;;
+CRV;Construção de via da rede viária florestal;km;;;;;0,06;0,04
+MRV;Manutenção / beneficiação de rede viária florestal;km;;;;;0,25;0,12
+CPA;Construção de ponto de água;ha;;;;;0,03;0,02
+MPA;Manutenção / beneficiação de ponto de água;ha;0,005;;;;;0,05
+PRP;Prospecção;ha;0,08;;;;;
+ERR;Erradicação;ha;0,01;;;;;
+AMO;Amostragem;ha;0,06;;;;;
+SEN;Sensibilização;ha;0,05;;;;;
+MPC;Marcação, piquetagem e abertura de covas;ha;0,01;;;;;
+APF;Adubação de plantação e plantação;ha;0,008;;;;;
+APC;Adubação de plantação, plantação e colocação de protectores individuais;ha;0,006;;;;;
+SEM;Sementeira;ha;0,02;;;;;
+RTR;Retancha e rega;ha;0,01;;;;;
+RET;Retancha;ha;0,015;;;;;
+SAA;Sacha e amontoa;ha;0,012;;;;;
+LLA;Limpeza de linha de água.;ha;0,012;;;;;0,1
+PDI;Placas de defesa contra incêndios;ha;0,02;;;;;
+RQU;Recolha e queima de resíduos;ha;0,02;;;;;
+RAA;Recuperação de áreas ardidas;ha;0,01;0,3;0,28;0,4;0,35;0,2
+FOR;Formação;ha;0,05;;;;;
+VIS;Vistoria;ha;0,05;;;;;
+CIM;Controlo de exóticas/invasoras - meio manual ou mecânico;ha;0,012;0,25;0,22;0,35;;0,15
+CIQ;Controlo de exóticas/invasoras - meio químico;ha;0,04;;;;;
+EEM;Estabilização de emergência;ha;0,008;;0,15;;0,3;0,25
+RES;Recolha e estilhagem de sobrantes;ha;0,01;0,3;0,25;0,45;;
+CBR;Construção das bermas;km;;;;;0,1;0,08
+CRR;Construção da rede de drenagem;km;;;;;;0,06
+CIR;Construção das zonas de inversão de marcha;km;;;;;0,08;0,06
+MBR;Beneficiação das bermas;km;;;;;0,3;0,15
+MRR;Regularização da rede de drenagem;km;0,015;;;;;0,12
+MIR;Regularização das zonas de inversão de marcha;km;;;;;0,25;0,12
+ARD;Construção de rede divisional;ha;;0,3;0,25;0,4;0,35;
+BRD;Manutenção / beneficiação de rede divisional;ha;;0,4;0,35;0,5;0,45;
+LOG;Gestão logística;ha;0,05;;;;;
+DES;Deslocações em serviço;ha;0,05;;;;;
