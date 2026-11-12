@@ -201,27 +201,12 @@ function deslocar([lon, lat], m, graus) {
   return [lon + m * Math.sin(a) / mPorGrauLon(lat), lat + m * Math.cos(a) / M_POR_GRAU_LAT];
 }
 
-// Área de um polígono GeoJSON, em hectares.
-function areaHa(geom) {
-  const anel = geom.coordinates[0];
-  const lat0 = anel[0][1];
-  const xy = anel.map(([lon, lat]) => [lon * mPorGrauLon(lat0), lat * M_POR_GRAU_LAT]);
-  let s = 0;
-  for (let i = 0; i < xy.length - 1; i++) s += xy[i][0] * xy[i + 1][1] - xy[i + 1][0] * xy[i][1];
-  return Math.abs(s) / 2 / 10000;
-}
-
-// Comprimento de uma linha GeoJSON, em quilómetros.
-function comprimentoKm(geom) {
-  let s = 0;
-  const c = geom.coordinates;
-  for (let i = 1; i < c.length; i++) {
-    const dx = (c[i][0] - c[i - 1][0]) * mPorGrauLon(c[i][1]);
-    const dy = (c[i][1] - c[i - 1][1]) * M_POR_GRAU_LAT;
-    s += Math.hypot(dx, dy);
-  }
-  return s / 1000;
-}
+// Área de um polígono GeoJSON, em hectares, e comprimento de uma linha, em
+// quilómetros. Geodésicos, com o Turf.js: a mesma medida que o registo do
+// executado usa (demo/terreno.js), para 100 % feito ser mesmo 100 %.
+const turf = require('@turf/turf');
+const areaHa = geom => turf.area(turf.polygon([geom.coordinates[0]])) / 10000;
+const comprimentoKm = geom => turf.length(turf.lineString(geom.coordinates), { units: 'kilometers' });
 
 // Perímetro de um polígono GeoJSON, em metros.
 const perimetroM = geom => comprimentoKm({ coordinates: geom.coordinates[0] }) * 1000;
